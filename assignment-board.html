@@ -166,6 +166,30 @@
   .shareRow{display:flex;gap:9px;flex-wrap:wrap;}
   .qrbox{display:flex;justify-content:center;padding:16px;background:#F7F9FC;border:1px solid var(--line);border-radius:12px;margin-top:10px;min-height:150px;align-items:center;}
   .qrbox img,.qrbox canvas{border-radius:6px;}
+  .modal.wide{max-width:680px;}
+  .histload{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+  .histfilters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .hfbtn{padding:6px 14px;border-radius:20px;border:1.5px solid var(--line-strong);background:var(--bg);font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+  .hfbtn.sel{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .hrow{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+  .hrow-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);cursor:pointer;}
+  .hrow-head:hover{background:var(--teal-wash);}
+  .hdate{font-weight:800;font-size:13px;color:var(--ink);min-width:90px;}
+  .hshift{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);border:1px solid var(--line-strong);color:var(--ink-soft);}
+  .hcharge{font-size:12px;color:var(--ink-soft);flex:1;}
+  .hcensus{font-size:12px;font-weight:700;color:var(--ink);}
+  .hstamp{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;}
+  .hstamp.ok{background:#E3F4EA;color:#1C7A46;}
+  .hstamp.warn{background:#FFF8EC;color:#8A6210;}
+  .hrow-body{padding:12px 14px;border-top:1px solid var(--line);display:none;background:var(--bg);}
+  .hrow-body.open{display:block;}
+  .hnurse{font-size:12px;padding:5px 0;border-bottom:1px solid var(--line);}
+  .hnurse:last-child{border-bottom:none;}
+  .hnname{font-weight:700;display:inline-block;min-width:110px;}
+  .hnrooms{color:var(--ink-soft);}
+  .hlobar{display:inline-block;width:60px;height:6px;background:var(--line);border-radius:4px;vertical-align:middle;margin:0 6px;}
+  .hlobar i{display:block;height:100%;background:var(--teal);border-radius:4px;}
+  .hsection{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
   .printArea{display:none;}
   .phibadge{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 11px;margin:8px 0 2px;}
   .acureview{background:#FFF8EC;border:1px solid #F0C860;border-radius:9px;padding:8px 12px;font-size:12px;line-height:1.6;margin:6px 0;}
@@ -520,6 +544,7 @@
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFloor()">Floor &amp; beds setup</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openRubric()">Edit acuity rubric</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');changePin()">Change charge PIN</button>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📋 Shift history</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openImpact()">Impact &amp; savings</button>
           <div class="msep chargeOnly"></div>
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
@@ -633,6 +658,27 @@
       <div class="rsharebtns" style="margin-top:10px;"><button class="btn primary" onclick="submitGate()">Unlock</button></div>
       <div id="gateMsg" class="rmsg" style="color:var(--bad)"></div>
       <p class="covnote" style="margin-top:12px;">Ask your charge nurse for the code. It stops the link from opening the board for anyone who hasn't been given the code — a front-desk gate, not a hospital-grade login.</p>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="histScrim" onclick="if(event.target===this)closeHistory()">
+  <div class="modal wide">
+    <div class="mhead"><span class="rt">📋 Shift history</span><button class="btn" onclick="closeHistory()">Close</button></div>
+    <div class="mbody">
+      <p class="covnote">Shifts save automatically when the charge taps <b>Next shift</b>. Keep files in one folder — select one or many to review or generate a report.</p>
+      <div class="histload">
+        <label class="btn primary" style="cursor:pointer;">📂 Load shift files<input type="file" id="histFile" accept=".json" multiple style="display:none" onchange="loadShiftFiles(this)"></label>
+        <button class="btn" onclick="downloadSnapshot(true)">⬇ Save this shift now</button>
+      </div>
+      <div id="histMeta" style="display:none;margin-top:10px;">
+        <div id="histSummaryLine" class="covnote"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn primary" onclick="generatePDFReport()">📄 Generate PDF report</button>
+          <button class="btn" onclick="clearHistFiles()">✕ Clear</button>
+        </div>
+      </div>
+      <div id="histList" style="margin-top:12px;"></div>
     </div>
   </div>
 </div>
@@ -1776,6 +1822,7 @@ async function cloudInit(){
   if(!CLOUD.url || !CLOUD.key || typeof window==='undefined' || typeof window.supabase==='undefined') return false;
   try{
     sb = window.supabase.createClient(CLOUD.url, CLOUD.key);
+    window._sb = sb;
     cloudReady = true;
     await cloudPull();
     cloudSubscribe();
@@ -1839,9 +1886,283 @@ async function loadState(){
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); const ph=document.getElementById('prioH'); if(ph)ph.classList.toggle('on',balancePriority==='hallway'); const pe=document.getElementById('prioE'); if(pe)pe.classList.toggle('on',balancePriority==='hours'); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
 function setShiftType(t){ shiftType=t; applyShiftUI(); scheduleSave(); }
+/* ═══════════════════════════════════════════════════════════
+   SHIFT HISTORY — auto-downloads a JSON file on every Next shift
+   Files save to the PC's Downloads folder. Load any back here.
+   ═══════════════════════════════════════════════════════════ */
+
+function buildSnapshot(){
+  const occ=occupied();
+  const nurseSnap=nurses.map(n=>{
+    const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id)).map(r=>r.id);
+    const load=nurseLoad(n.id);
+    return {id:n.id,name:n.name,level:n.level,rooms:rs,
+            hrs:Math.round(load.hrs*100)/100,adj:Math.round(load.adj*100)/100};
+  });
+  const zones=pctZones().map(z=>({name:z.pct.name,rooms:z.rooms.slice().sort((a,b)=>a-b)}));
+  const lds=nurseSnap.map(n=>n.adj).filter(x=>x>0);
+  const spread=lds.length?(Math.max(...lds)-Math.min(...lds)):0;
+  const dnars=occ.filter(r=>r.flags.includes('dnar')).map(r=>r.id);
+  const isos=occ.filter(r=>r.flags.includes('iso')).map(r=>r.id);
+  const bk=nurseBreaks();
+  return {
+    unit:FLOOR.unit, unitId, shiftDate, shiftType, chargeName,
+    census:occ.length, totalBeds:TOTAL_BEDS,
+    spread:Math.round(spread*100)/100,
+    nurses:nurseSnap, pcts:zones,
+    breaks:Object.fromEntries(Object.entries(bk).map(([k,v])=>[k,v.window])),
+    dnars, isos, savedAt:new Date().toISOString()
+  };
+}
+
+function downloadSnapshot(manual=false){
+  const snap=buildSnapshot();
+  const fname=`evenshift-${unitId}-${shiftDate}-${shiftType}.json`;
+  const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=fname; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  if(manual){ const el=document.getElementById('histList'); if(el) el.innerHTML=`<div class="hint" style="color:var(--ok,#1C7A46)">✓ Downloaded: <b>${fname}</b> — keep it somewhere easy to find.</div>`; }
+}
+
+let _histSnaps=[];
+
+function openHistory(){ if(!chargeMode)return; document.getElementById('histScrim').classList.add('on'); }
+function closeHistory(){ document.getElementById('histScrim').classList.remove('on'); }
+function clearHistFiles(){ _histSnaps=[]; document.getElementById('histMeta').style.display='none'; document.getElementById('histList').innerHTML=''; document.getElementById('histFile').value=''; }
+
+function loadShiftFiles(input){
+  const files=[...input.files]; if(!files.length) return;
+  let done=0; const snaps=[];
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{ snaps.push({snap:JSON.parse(e.target.result),fname:file.name}); }catch(e){}
+      if(++done===files.length) afterFilesLoaded(snaps);
+    };
+    reader.readAsText(file);
+  });
+  input.value='';
+}
+
+function afterFilesLoaded(items){
+  _histSnaps=items.sort((a,b)=>{
+    const ds=(s)=>(s.snap.shiftDate||'')+(s.snap.shiftType==='Day'?'A':'B');
+    return ds(a)<ds(b)?-1:ds(a)>ds(b)?1:0;
+  });
+  const n=_histSnaps.length;
+  const el=document.getElementById('histMeta'); if(el) el.style.display='';
+  const sl=document.getElementById('histSummaryLine');
+  if(sl) sl.innerHTML=`<b>${n} shift${n>1?'s':''} loaded</b>${n>1?` · ${_histSnaps[0].snap.shiftDate} → ${_histSnaps[n-1].snap.shiftDate}`:''} · tap <b>Generate PDF report</b> for the full manager summary.`;
+  const list=document.getElementById('histList');
+  if(list) list.innerHTML=_histSnaps.map(({snap,fname},i)=>renderSnapRow(snap,fname,i)).join('');
+}
+
+function renderSnapRow(snap,fname,i){
+  const balanced=(snap.spread||0)<=0.5;
+  const stamp=balanced?`<span class="hstamp ok">✓ Balanced</span>`:`<span class="hstamp warn">⚠ ±${(snap.spread||0).toFixed(1)}h</span>`;
+  const mx=Math.max(0.1,...(snap.nurses||[]).map(n=>n.adj||0));
+  const nurseRows=(snap.nurses||[]).map(n=>{
+    const pct=Math.round((n.adj||0)/mx*100);
+    const brk=snap.breaks&&snap.breaks[n.id]?` <span style="font-size:11px;color:var(--ink-soft)">Break: ${snap.breaks[n.id]}</span>`:'';
+    const tag=n.level==='Float'?' <span style="font-size:10px;color:#1C7A5E">(float)</span>':n.level==='Orienting'?' <span style="font-size:10px;color:#A9741B">(or)</span>':'';
+    return `<div class="hnurse"><span class="hnname">${esc(n.name)}${tag}</span><span class="hnrooms">${(n.rooms||[]).join(', ')||'—'}</span><span class="hlobar"><i style="width:${pct}%"></i></span><span style="font-size:11px;color:var(--ink-soft)">${n.hrs||0}h${brk}</span></div>`;
+  }).join('');
+  const pctRows=(snap.pcts||[]).map(z=>`<div class="hnurse"><span class="hnname">${esc(z.name)}</span><span class="hnrooms">${(z.rooms||[]).join(', ')||'—'}</span></div>`).join('');
+  const flags=[];
+  if((snap.dnars||[]).length) flags.push(`DNAR: ${snap.dnars.join(', ')}`);
+  if((snap.isos||[]).length)  flags.push(`ISO: ${snap.isos.join(', ')}`);
+  const flagLine=flags.length?`<div class="hsection">Alerts</div><div style="font-size:11.5px;color:var(--bad);padding:4px 0">${flags.join('  ·  ')}</div>`:'';
+  return `<div class="hrow"><div class="hrow-head" onclick="toggleHrow(${i})">
+    <span class="hdate">${esc(snap.shiftDate||'')} ${esc(snap.shiftType||'')}</span>
+    <span class="hcharge">${snap.chargeName?`Charge: <b>${esc(snap.chargeName)}</b>  · `:''}Census <b>${snap.census||0}</b>/${snap.totalBeds||0}</span>${stamp}
+  </div><div class="hrow-body" id="hbody-${i}">
+    <div class="hsection">Nurses</div>${nurseRows}
+    ${pctRows?`<div class="hsection">PCT zones</div>${pctRows}`:''}${flagLine}
+    <div style="font-size:10px;color:var(--ink-soft);margin-top:8px;">File: ${esc(fname)} · Saved ${snap.savedAt?new Date(snap.savedAt).toLocaleString():''}</div>
+  </div></div>`;
+}
+
+function toggleHrow(i){ const b=document.getElementById('hbody-'+i); if(b) b.classList.toggle('open'); }
+
+/* ── PDF REPORT ENGINE ───────────────────────────────────────── */
+function aggregateSnaps(snaps){
+  const shifts=snaps.map(s=>s.snap);
+  const unitName=shifts[0]&&shifts[0].unit||'Unit';
+  const totalBeds=shifts[0]&&shifts[0].totalBeds||0;
+  const target=FLOOR.ratio||4;
+  // census
+  const censuses=shifts.map(s=>s.census||0);
+  const avgCensus=Math.round(censuses.reduce((a,b)=>a+b,0)/censuses.length);
+  const dayCensus=shifts.filter(s=>s.shiftType==='Day').map(s=>s.census||0);
+  const nightCensus=shifts.filter(s=>s.shiftType==='Night').map(s=>s.census||0);
+  const avgDay=dayCensus.length?Math.round(dayCensus.reduce((a,b)=>a+b,0)/dayCensus.length):0;
+  const avgNight=nightCensus.length?Math.round(nightCensus.reduce((a,b)=>a+b,0)/nightCensus.length):0;
+  // ratio compliance
+  const shortShifts=shifts.filter(s=>{ const m=(s.nurses||[]).length; const c=s.census||0; return m>0&&c>0&&c/m>target; });
+  // balance
+  const spreads=shifts.map(s=>s.spread||0);
+  const avgSpread=Math.round(spreads.reduce((a,b)=>a+b,0)/spreads.length*100)/100;
+  const balanced=spreads.filter(x=>x<=0.5).length;
+  // floats
+  const floatShifts=shifts.filter(s=>(s.nurses||[]).some(n=>n.level==='Float')).length;
+  // charge performance
+  const chargeMap={};
+  shifts.forEach(s=>{ const c=s.chargeName||'Unknown'; if(!chargeMap[c]) chargeMap[c]={shifts:0,spread:0}; chargeMap[c].shifts++; chargeMap[c].spread+=s.spread||0; });
+  const chargeStats=Object.entries(chargeMap).map(([name,d])=>({name,shifts:d.shifts,avgSpread:Math.round(d.spread/d.shifts*100)/100})).sort((a,b)=>a.avgSpread-b.avgSpread);
+  // per-nurse equity
+  const nurseMap={};
+  shifts.forEach(s=>{ const nurses=s.nurses||[]; const adjs=nurses.map(n=>n.adj||0).filter(x=>x>0); const avg=adjs.length?adjs.reduce((a,b)=>a+b,0)/adjs.length:0;
+    nurses.forEach(n=>{ if(!n.name) return; if(!nurseMap[n.name]) nurseMap[n.name]={shifts:0,totalAdj:0,adjs:[],above:0,below:0,level:n.level};
+      nurseMap[n.name].shifts++; nurseMap[n.name].totalAdj+=n.adj||0; nurseMap[n.name].adjs.push(n.adj||0);
+      if(avg>0){ if((n.adj||0)>avg*1.15) nurseMap[n.name].above++; else if((n.adj||0)<avg*0.85) nurseMap[n.name].below++; }
+    });
+  });
+  const nurseStats=Object.entries(nurseMap).map(([name,d])=>({name,shifts:d.shifts,avgAdj:Math.round(d.totalAdj/d.shifts*100)/100,above:d.above,below:d.below,level:d.level||'RN'})).sort((a,b)=>b.avgAdj-a.avgAdj);
+  return {unitName,totalBeds,target,shifts,avgCensus,avgDay,avgNight,shortShifts,avgSpread,balanced,floatShifts,chargeStats,nurseStats,spreads};
+}
+
+function rpt(txt,fw,fs,clr,al){ return `<span style="font-weight:${fw||400};font-size:${fs||14}px;color:${clr||'#10151D'};text-align:${al||'left'}">${txt}</span>`; }
+function escH(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function generatePDFReport(){
+  if(!_histSnaps.length){ alert('Load some shift files first.'); return; }
+  const ag=aggregateSnaps(_histSnaps);
+  const n=ag.shifts.length;
+  const dateRange=n>1?`${ag.shifts[0].shiftDate} – ${ag.shifts[n-1].shiftDate}`:ag.shifts[0].shiftDate;
+  const html=buildReportHTML(ag,dateRange,n);
+  const w=window.open('','_blank');
+  if(!w){ alert('Allow pop-ups for this site to open the report.'); return; }
+  w.document.write(html); w.document.close();
+  setTimeout(()=>w.print(),600);
+}
+
+function buildReportHTML(ag,dateRange,n){
+  const NAVY='#16202E',BLUE='#2E6BE6',LBLUE='#EEF3FF',LGRAY='#F4F6F9',MGRAY='#C2CAD5',GREEN='#1C7A46',GREENB='#E3F4EA',RED='#9A2A2A',REDB='#FBE9E9',GOLD='#C07000',GOLDB='#FFF8EC',SOFT='#5A6270',WHITE='#fff';
+  const shortPct=Math.round(ag.shortShifts.length/n*100);
+  const onTargetPct=100-shortPct;
+  const balPct=Math.round(ag.balanced/n*100);
+
+  // Metric cards
+  const metricCard=(label,val,sub,bg,fg)=>`<div style="background:${bg};border-radius:10px;padding:14px 16px;flex:1;min-width:130px;">
+    <div style="font-size:22px;font-weight:800;color:${fg};line-height:1;">${escH(val)}</div>
+    <div style="font-size:11px;font-weight:700;color:${fg};margin-top:2px;">${escH(label)}</div>
+    <div style="font-size:10px;color:${fg};opacity:.7;margin-top:2px;">${escH(sub)}</div></div>`;
+
+  // Shift table rows
+  const shiftRows=ag.shifts.map(s=>{
+    const m=(s.nurses||[]).length; const c=s.census||0;
+    const ratio=m?`1:${Math.ceil(c/m)}`:'—';
+    const short=m>0&&c>0&&c/m>ag.target;
+    const bal=(s.spread||0)<=0.5;
+    const floats=(s.nurses||[]).filter(n=>n.level==='Float').length;
+    return `<tr>
+      <td>${escH(s.shiftDate||'')}</td><td>${escH(s.shiftType||'')}</td>
+      <td>${escH(s.chargeName||'—')}</td>
+      <td style="text-align:center;"><b>${c}</b>/${s.totalBeds||0}</td>
+      <td style="text-align:center;${short?`color:${RED};font-weight:700`:''}">${ratio}</td>
+      <td style="text-align:center;"><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${bal?GREENB:GOLDB};color:${bal?GREEN:GOLD};">${bal?'✓ Balanced':'⚠ '+((s.spread||0).toFixed(1))+'h'}</span></td>
+      <td style="text-align:center;">${floats>0?`<span style="color:${BLUE};font-weight:700;">${floats} float${floats>1?'s':''}</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Nurse equity rows
+  const maxAdj=Math.max(0.1,...ag.nurseStats.map(n=>n.avgAdj));
+  const nurseRows=ag.nurseStats.map(n=>{
+    const pct=Math.round(n.avgAdj/maxAdj*100);
+    const abovePct=n.shifts>0?Math.round(n.above/n.shifts*100):0;
+    const flag=abovePct>=40?`<span style="color:${GOLD};font-size:10px;margin-left:4px;">⚠ frequently heavy</span>`
+              :abovePct<=10&&n.shifts>3?`<span style="color:${SOFT};font-size:10px;margin-left:4px;">often lighter</span>`:'';
+    const tag=n.level==='Float'?' (float)':n.level==='Orienting'?' (or)':'';
+    return `<tr>
+      <td>${escH(n.name)}<span style="font-size:10px;color:${SOFT}">${tag}</span>${flag}</td>
+      <td style="text-align:center;">${n.shifts}</td>
+      <td><div style="display:flex;align-items:center;gap:8px;"><div style="width:80px;height:8px;background:#E6E9EE;border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${BLUE};border-radius:4px;"></div></div><span style="font-size:12px;">${n.avgAdj}h</span></div></td>
+      <td style="text-align:center;${abovePct>=40?`color:${GOLD};font-weight:700`:''}">${n.above} / ${n.shifts}</td>
+      <td style="text-align:center;">${n.below} / ${n.shifts}</td>
+    </tr>`;
+  }).join('');
+
+  // Charge rows
+  const chargeRows=ag.chargeStats.map(c=>{
+    const bal=c.avgSpread<=0.5;
+    return `<tr>
+      <td><b>${escH(c.name)}</b></td>
+      <td style="text-align:center;">${c.shifts}</td>
+      <td style="text-align:center;"><span style="padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${bal?GREENB:GOLDB};color:${bal?GREEN:GOLD};">${c.avgSpread.toFixed(2)}h avg spread</span></td>
+      <td style="text-align:center;color:${SOFT};font-size:12px;">${bal?'Consistently balanced':'Review load distribution'}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>EvenShift Report — ${escH(ag.unitName)} — ${escH(dateRange)}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,Arial,sans-serif;font-size:13px;color:${NAVY};background:#fff;padding:0;}
+    @page{margin:12mm;size:letter portrait;}
+    @media print{body{padding:0;}}
+    .page{padding:0 0 24px;}
+    h1{font-size:24px;font-weight:800;color:${NAVY};}
+    h2{font-size:14px;font-weight:800;color:${NAVY};margin:22px 0 8px;padding-bottom:4px;border-bottom:2px solid ${BLUE};}
+    h3{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${SOFT};margin:14px 0 6px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th{background:${NAVY};color:${WHITE};padding:7px 10px;text-align:left;font-size:11px;font-weight:700;}
+    td{padding:6px 10px;border-bottom:1px solid #E6E9EE;vertical-align:middle;}
+    tr:nth-child(even) td{background:${LGRAY};}
+    .cover{background:${NAVY};padding:22px 24px 18px;margin-bottom:20px;}
+    .metrics{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+    .note{font-size:10px;color:${SOFT};font-style:italic;margin-top:4px;}
+    .footer{margin-top:24px;padding-top:8px;border-top:1px solid ${MGRAY};display:flex;justify-content:space-between;font-size:9px;color:${SOFT};}
+  </style></head><body>
+  <div class="cover">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#8AAFFF;text-transform:uppercase;margin-bottom:4px;">EvenShift</div>
+        <h1 style="color:#fff;font-size:22px;">${escH(ag.unitName)} — Assignment Report</h1>
+        <div style="color:#B8CFFF;font-size:12px;margin-top:4px;">${escH(dateRange)} &nbsp;·&nbsp; ${n} shift${n>1?'s':''} reviewed &nbsp;·&nbsp; ${ag.totalBeds} beds &nbsp;·&nbsp; Target ratio 1:${ag.target}</div>
+      </div>
+      <div style="text-align:right;color:#8AAFFF;font-size:10px;">Generated ${new Date().toLocaleDateString()}</div>
+    </div>
+  </div>
+
+  <div class="page" style="padding:0 2px;">
+    <h2>Key metrics</h2>
+    <div class="metrics">
+      ${metricCard('Shifts reviewed',n,'total analyzed',LBLUE,BLUE)}
+      ${metricCard('Ratio compliance',onTargetPct+'%',`${n-ag.shortShifts.length}/${n} shifts at 1:${ag.target}`,ag.shortShifts.length===0?GREENB:GOLDB,ag.shortShifts.length===0?GREEN:GOLD)}
+      ${metricCard('Balanced assignments',balPct+'%',`${ag.balanced}/${n} within 0.5h`,ag.balanced===n?GREENB:GOLDB,ag.balanced===n?GREEN:GOLD)}
+      ${metricCard('Avg load spread',ag.avgSpread+'h','target ≤ 0.5h',ag.avgSpread<=0.5?GREENB:GOLDB,ag.avgSpread<=0.5?GREEN:GOLD)}
+      ${metricCard('Avg census',ag.avgCensus,`Day: ${ag.avgDay} · Night: ${ag.avgNight}`,LGRAY,NAVY)}
+      ${metricCard('Float shifts',ag.floatShifts,`of ${n} shifts`,ag.floatShifts===0?LGRAY:GOLDB,ag.floatShifts===0?SOFT:GOLD)}
+    </div>
+    ${ag.shortShifts.length?`<div style="background:${REDB};border:1px solid #F2C9C9;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:11px;color:${RED};"><b>⚠ ${ag.shortShifts.length} shift${ag.shortShifts.length>1?'s':''} below 1:${ag.target} ratio:</b> ${ag.shortShifts.map(s=>`${s.shiftDate} ${s.shiftType}`).join(' · ')}</div>`:''}
+
+    <h2>Shift summary</h2>
+    <table><thead><tr><th>Date</th><th>Shift</th><th>Charge</th><th style="text-align:center">Census</th><th style="text-align:center">Ratio</th><th style="text-align:center">Balance</th><th style="text-align:center">Floats</th></tr></thead>
+    <tbody>${shiftRows}</tbody></table>
+
+    <h2>Nurse load equity</h2>
+    <p class="note">Average adjusted acuity hours per shift. "Above avg" = that nurse's load was 15%+ above the floor average that shift. Flags nurses who are consistently over- or under-loaded.</p>
+    <table style="margin-top:8px;"><thead><tr><th>Nurse</th><th style="text-align:center">Shifts</th><th>Avg load</th><th style="text-align:center">Above avg</th><th style="text-align:center">Below avg</th></tr></thead>
+    <tbody>${nurseRows}</tbody></table>
+
+    <h2>Charge performance</h2>
+    <p class="note">Average load spread per shift for each charge. Target: ≤ 0.5h. Lower is better.</p>
+    <table style="margin-top:8px;"><thead><tr><th>Charge nurse</th><th style="text-align:center">Shifts</th><th style="text-align:center">Avg spread</th><th>Assessment</th></tr></thead>
+    <tbody>${chargeRows}</tbody></table>
+
+    <div class="footer">
+      <span>EvenShift &nbsp;·&nbsp; ${escH(ag.unitName)} &nbsp;·&nbsp; Room numbers only — no PHI</span>
+      <span>Report generated ${new Date().toLocaleString()}</span>
+    </div>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+}
 function nextShift(){ if(!chargeMode)return;
   if(!confirm('Start next shift?\n\nKeeps each patient\u2019s acuity, flags and notes as the starting point, and clears the nurse assignments and continuity locks so the oncoming charge can re-build.')) return;
   pushUndo();
+  downloadSnapshot();  // auto-saves to PC before clearing
   Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null; });
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
