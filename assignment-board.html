@@ -1138,12 +1138,17 @@ function geoClean(nid,r){ const hh=HOME[nid]; return hh==null || hallOf(r.id)===
    pull each nurse's rooms physically close on the real double-loaded floor (soft tiebreaker).
    Annealing search: counts stay even by construction; pins / won't-take / orienting honored. */
 function generate(){ if(!chargeMode)return; pushUndo();
-  const occ=occupied().slice();
-  const M=nurses.length, N=occ.length;
+  // nurses whose rooms are all locked to them are "kept" — don't touch them
+  const keptIds=new Set(nurses.filter(n=>{ const rs=occupied().filter(r=>r.nurse===n.id); return rs.length>0&&rs.every(r=>r.lock===n.id); }).map(n=>n.id));
+  // free assignments for non-kept rooms
+  occupied().forEach(r=>{ if(!keptIds.has(r.lock)) r.nurse=null; });
+  const freeNurses=nurses.filter(n=>!keptIds.has(n.id));
+  const occ=occupied().filter(r=>!keptIds.has(r.lock));
+  const M=freeNurses.length, N=occ.length;
   if(!M||!N){ selectedRoom=null; renderAssign(); scheduleSave(); return; }
+  const nurses_orig=nurses; // keep reference; generate uses freeNurses from here
   const base=Math.floor(N/M), rem=N%M;
-  const sizes=[]; for(let s=0;s<M;s++) sizes.push(base+(s<rem?1:0));   // counts differ by <=1
-  // start compact: order by hall then distance-from-station, slice into groups
+  const sizes=[]; for(let s=0;s<M;s++) sizes.push(base+(s<rem?1:0));
   const order=occ.slice().sort((a,b)=>(RHALL[a.id]-RHALL[b.id])||(RD[a.id]-RD[b.id]));
   let G=[],idx=0; for(let s=0;s<M;s++){ G.push(order.slice(idx,idx+sizes[s])); idx+=sizes[s]; }
   const hrs=g=>g.reduce((s,r)=>s+r.acuity,0);
@@ -1188,18 +1193,20 @@ function generate(){ if(!chargeMode)return; pushUndo();
     if(g.some(r=>(r.avoid||[]).includes(nid))) return false;
     return true; };
   const sc=n=>(pinRoomOf(n.id)!=null?10:0)+(n.level==='Orienting'?5:0)+(n.level==='Float'?4:0);
-  const ord=[...nurses].sort((a,b)=>sc(b)-sc(a));
+  const ord=[...freeNurses].sort((a,b)=>sc(b)-sc(a));
   const gHrs=G.map(hrs); const assign=new Array(M).fill(null);
   (function bt(oi){ if(oi>=ord.length) return true; const nid=ord[oi].id;
     let cands=[]; for(let gi=0;gi<M;gi++) if(assign[gi]==null && can(nid,gi)) cands.push(gi);
     if(ord[oi].level==='Orienting'||ord[oi].level==='Float') cands.sort((x,y)=>gHrs[x]-gHrs[y]);
     for(const gi of cands){ assign[gi]=nid; if(bt(oi+1)) return true; assign[gi]=null; }
     return false; })(0);
-  const finalIds = assign.every(x=>x!=null) ? assign : G.map((g,gi)=>{ const f=g.find(r=>r.lock); return f?f.lock:nurses[gi%M].id; });
+  const finalIds = assign.every(x=>x!=null) ? assign : G.map((g,gi)=>{ const f=g.find(r=>r.lock); return f?f.lock:freeNurses[gi%M].id; });
   occ.forEach(r=>{ r.nurse=null; });
   G.forEach((g,gi)=>{ const nid=finalIds[gi]; g.forEach(r=>{ r.nurse=nid; }); });
   occ.forEach(r=>{ if(r.lock) r.nurse=r.lock; });
-  HOME={}; nurses.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
+  // restore kept nurses' assignments
+  occupied().forEach(r=>{ if(keptIds.has(r.lock)) r.nurse=r.lock; });
+  HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   selectedRoom=null; renderAssign(); scheduleSave();
 }
 /* pull any room that drifted into the far hall back home, trading a corner/home room in return */
