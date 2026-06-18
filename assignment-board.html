@@ -168,6 +168,11 @@
   .qrbox img,.qrbox canvas{border-radius:6px;}
   .printArea{display:none;}
   .phibadge{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 11px;margin:8px 0 2px;}
+  .acureview{background:#FFF8EC;border:1px solid #F0C860;border-radius:9px;padding:8px 12px;font-size:12px;line-height:1.6;margin:6px 0;}
+  .acureview b{color:#7A5000;}
+  .rose-icon{font-weight:900;color:#C07000;margin-right:4px;}
+  .chip.rose{border-color:#E0A800;box-shadow:0 0 0 2px #FFF0B0;}
+  .rosefl{font-size:9px;font-weight:900;color:#C07000;margin-left:2px;}
   .help{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;}
   .help>summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:13.5px;font-family:var(--display);list-style:none;display:flex;align-items:center;gap:8px;color:var(--ink);}
   .help>summary::-webkit-details-marker{display:none;}
@@ -444,8 +449,10 @@
   .impgrid label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:var(--ink-soft);}
   .impgrid input{font-family:var(--body);font-size:15px;font-weight:600;color:var(--ink);padding:9px 11px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);width:100%;}
   .impcards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
-  @media(max-width:440px){ .impcards{grid-template-columns:1fr;} }
+  .impcards4{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+  @media(max-width:440px){ .impcards{grid-template-columns:1fr;} .impcards4{grid-template-columns:1fr;} }
   .impcard{background:var(--teal-wash);border:1px solid var(--teal);border-radius:13px;padding:13px;}
+  .impcard-warn{background:#FFF8EC;border-color:#F0D080;}
   .impbig{font-family:var(--display);font-weight:800;font-size:25px;color:var(--teal-deep);letter-spacing:-.02em;}
   .implab{font-family:var(--display);font-weight:700;font-size:12px;color:var(--ink);margin-top:2px;}
   .impsub{font-size:11px;color:var(--ink-soft);margin-top:4px;line-height:1.4;}
@@ -555,6 +562,7 @@
     <div class="staffline chargeOnly" id="staffLine"></div>
     <div class="edithint chargeOnly" id="editHint"></div>
     <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
+    <div class="acureview chargeOnly" id="acuReview" style="display:none;"></div>
     <div class="cols">
       <div class="nurses" id="nurses"></div>
       <div class="side chargeOnly">
@@ -800,7 +808,7 @@ function groupGeo(g){
            + (wings-1)*60;   /* never split a nurse across wings unless <=0.5 truly forces it */
 }
 let rooms={};
-function blankRoom(rn){ return {id:rn,acuity:null,occupied:false,tally:{},flags:[],note:'',nurse:null,lock:null,tags:[],avoid:[]}; }
+function blankRoom(rn){ return {id:rn,acuity:null,prevAcuity:null,occupied:false,tally:{},flags:[],note:'',nurse:null,lock:null,tags:[],avoid:[]}; }
 function applyFloor(){
   rebuildFloor();
   const old=rooms; rooms={};
@@ -808,11 +816,16 @@ function applyFloor(){
 }
 applyFloor();
 function seed(rn,ac,flags,note,lock,tags){const r=rooms[rn];r.occupied=true;r.acuity=ac;r.flags=flags||[];r.note=note||'';if(lock){r.lock=lock;r.nurse=lock;}r.tags=tags||[];}
-seed(33,2.0,[],'',null,['draw']); seed(34,3.5,['iso']); seed(35,1.5); seed(36,4.0,[],'',null,['feed']); seed(37,2.5); seed(39,3.0); seed(40,5.0,['sit'],'Confused, frequent call light');
-seed(41,2.0); seed(43,4.5,['beh'],'Behavioral — difficult family'); seed(44,3.0); seed(45,4.0,['dc'],'Pending insurance to IPR','n1',['draw']); seed(46,2.5); seed(47,2.0); seed(49,3.5,['adm'],'Expected admit ~1500');
-seed(50,2.0); seed(51,4.75,[],'TF urine collection; bolus; diuretics held','n3',['feed','draw']); seed(52,3.0,['pd']); seed(54,2.5,['iso']); seed(55,5.5,[],'Pain; Abx; enema; HFNC; PT/OT/SLP eval',null,['draw']); seed(56,1.5); seed(57,4.0);
-seed(58,3.0,[],'',null,['feed']); seed(59,2.0); seed(61,4.5,['ins']); seed(62,2.5); seed(63,3.5,[],'Pain; Ortho following; PT/OT'); seed(64,3.0); seed(65,2.0,['adm'],'ED holding, expected');
-seed(38,2.5); seed(42,3.0); seed(53,2.0); seed(60,3.5);   // fill remaining beds → full 32
+function seedRoom(rn,nurse,ac,flags,tags){const r=rooms[rn];r.occupied=true;r.acuity=ac;r.flags=flags||[];r.tags=tags||[];r.note='';r.nurse=nurse;}
+// sample 10 Green board — rooms, assignments and key flags from the unit sheet (loads only when a unit has no saved board yet)
+seedRoom(36,'n1',3.5,['wound']); seedRoom(38,'n1',3.0,['wound']); seedRoom(44,'n1',2.5); seedRoom(46,'n1',3.5,['cvl']);
+seedRoom(43,'n2',3.5,['dnar','cvl']); seedRoom(50,'n2',2.5); seedRoom(51,'n2',3.5,['interp'],['feed']); seedRoom(57,'n2',3.0);
+seedRoom(33,'n3',3.5,['dnar','gtt']); seedRoom(35,'n3',3.0,['dnar','wound']); seedRoom(37,'n3',2.5); seedRoom(39,'n3',3.5,['cvl']);
+seedRoom(34,'n4',2.0); seedRoom(40,'n4',2.0); seedRoom(42,'n4',3.5,['hd']); seedRoom(49,'n4',5.0,['hd','cvl','foley','wound']);
+seedRoom(45,'n5',3.0); seedRoom(47,'n5',3.5,['wound']); seedRoom(61,'n5',3.5,['foley']); seedRoom(65,'n5',2.5);
+seedRoom(41,'n6',3.5); seedRoom(54,'n6',3.0); seedRoom(56,'n6',3.0); seedRoom(58,'n6',3.0);
+seedRoom(52,'n7',2.5); seedRoom(60,'n7',3.0,['wound']); seedRoom(62,'n7',4.0,['gtt','foley','wound']); seedRoom(64,'n7',3.0);
+seedRoom(53,'n8',3.0); seedRoom(55,'n8',3.5); seedRoom(59,'n8',3.5,['wound']); seedRoom(63,'n8',2.5);
 
 let nurses=[], pcts=[], sitters=[];          // the working set for TODAY — what the engine assigns
 let rosterN=[], rosterP=[], rosterS=[];      // the master unit roster — everyone, with an "on today" flag
@@ -823,10 +836,17 @@ function syncWorking(){                       // pull today's working set out of
 }
 let _uid=200; const newId=p=>p+(_uid++);
 function defaultRoster(){
-  rosterN=[['Maya R.','Senior'],['Devon P.','RN'],['Priya S.','Senior'],['Luis M.','Orienting'],['Grace K.','RN'],['Tomas V.','RN'],['Aria N.','RN']]
-    .map(([name,level],i)=>({id:'n'+(i+1),name,level,cap:1.0,on:true}));
-  rosterP=['Michelle','Lydia','Jiji','Sahar'].map((name,i)=>({id:'p'+(i+1),name,on:true}));
-  rosterS=[];
+  rosterN=[
+    ['Amith','RN','V1','V14'],['Geneva','RN','V2','V16'],['Cortney','RN','V3','V17'],
+    ['Gema (w/ Shante)','RN','V4','V18'],['Kelsey','RN','V5','V19'],['Ngan','RN','V6','V20'],
+    ['Kristie','RN','V7','V21'],['Cecilia','RN','V8','V22']
+  ].map(([name,level,vocAM,vocPM],i)=>({id:'n'+(i+1),name,level,cap:1.0,on:true,vocAM,vocPM}));
+  rosterP=[
+    ['Michelle','V9','V24'],['Angelina','V10','V25'],['Mia','V11','V26'],['Joshna','V12','V27']
+  ].map(([name,vocAM,vocPM],i)=>({id:'p'+(i+1),name,on:true,vocAM,vocPM}));
+  rosterS=[
+    ['Mawut C. (ED)','V35'],['Janice F. (11B)','V30']
+  ].map(([name,vocAM],i)=>({id:'s'+(i+1),name,room:'',on:true,vocAM,vocPM:''}));
   syncWorking();
 }
 defaultRoster();
@@ -947,7 +967,7 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   else { let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0); hrs=pts/DIVISOR; r.tally=modalTally; }
   r.flags=modalFlags; r.note=document.getElementById('noteIn').value.trim();
   r.avoid=modalAvoid.slice(); r.lock=modalPin||null; if(modalPin){ r.nurse=modalPin; r.avoid=r.avoid.filter(x=>x!==modalPin); }
-  if(hrs>0){ r.occupied=true; r.acuity=Math.round(hrs*100)/100; }
+  if(hrs>0){ r.occupied=true; r.acuity=Math.round(hrs*100)/100; r.scoredBy=chargeMode?'charge':(viewAs||'rn'); }
   closeModal(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
 }
 function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom]; r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null; closeModal(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); scheduleSave(); }
@@ -960,7 +980,8 @@ function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===ni
 
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(f=>FLAGS.find(x=>x[0]===f)[1]).join(' ');
-  return `<span class="chip ${selectedRoom===r.id?'sel':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${flags?`<span class="mini">${flags}</span>`:''}${r.lock?'<span title="continuity / requested nurse">🔒</span>':''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></span>`;
+  const acuRose = r.prevAcuity!=null && r.acuity!=null && r.acuity > r.prevAcuity+0.25;
+  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${r.lock?'<span title="continuity / requested nurse">🔒</span>':''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></span>`;
 }
 function flagLabel(code){ const f=FLAGS.find(x=>x[0]===code); if(f) return f[1]; return ({feed:'Feed',draw:'Draw'})[code]||code; }
 const PCT_VIEW=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach'];
@@ -1049,6 +1070,9 @@ function renderAssign(){
       : `<b class="sl-ok">✓ Staffing covers 1:${ratio}</b>`;
     sl.innerHTML = census===0 ? lead : `${lead} · ${roster} for ${census} patients (~1:${cap})`;
   }
+  const roseRooms=occupied().filter(r=>r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25);
+  const reviewBanner=document.getElementById('acuReview');
+  if(reviewBanner){ if(chargeMode&&roseRooms.length){ const list=roseRooms.sort((a,b)=>b.acuity-a.acuity).map(r=>`<b>${r.id}</b> <span style="color:var(--ink-soft)">${r.prevAcuity.toFixed(1)}\u2192${r.acuity.toFixed(1)}</span>`).join(' · '); reviewBanner.innerHTML=`<span class="rose-icon">\u2191</span> <b>${roseRooms.length} room${roseRooms.length>1?'s':''} with acuity up since last shift — review:</b> ${list}`; reviewBanner.style.display=''; } else reviewBanner.style.display='none'; }
   renderSupport();
   updateBalance();
 }
@@ -1671,7 +1695,7 @@ function buildLegend(){ if(!document.getElementById('legend'))return; const rows
 /* ---------- persistence + shift ---------- */
 const STORE_KEY='tenGreen.floor.v1';
 let shiftDate=new Date().toISOString().slice(0,10), shiftType='Day';
-let chargeName='';
+let chargeName='Kamryn';
 const DEFAULT_DIRECTORY="Staffing 38793 \u00b7 Monitor Room 36999 \u00b7 Staffing Sup 30398\nOps Sup 35246 \u00b7 Bed Control 30399 / 34833 \u00b7 HUC 31048\nTube #901 / Pyxis C   \u00b7   Tube #810 / Pyxis D";
 let UNITINFO={ directory:DEFAULT_DIRECTORY };
 let saveTimer=null, storageOK=true;
@@ -1745,14 +1769,14 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||''})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,unitInfo:UNITINFO,pin:chargePin,unitPass, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
 function applyState(st){
   if(st.floor && st.floor.halls){ FLOOR=st.floor; applyFloor(); updateUnitTag(); }
-  if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r) Object.assign(r,d); });
+  if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; } });
   if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||''}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
@@ -1779,7 +1803,7 @@ function setShiftType(t){ shiftType=t; applyShiftUI(); scheduleSave(); }
 function nextShift(){ if(!chargeMode)return;
   if(!confirm('Start next shift?\n\nKeeps each patient\u2019s acuity, flags and notes as the starting point, and clears the nurse assignments and continuity locks so the oncoming charge can re-build.')) return;
   pushUndo();
-  Object.values(rooms).forEach(r=>{ r.nurse=null; r.lock=null; });
+  Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null; });
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
   applyShiftUI(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); scheduleSave();
@@ -1808,13 +1832,11 @@ function setChargeName(v){ chargeName=v; scheduleSave(); }
 function openShare(){ const c=document.getElementById('chgName'); if(c)c.value=chargeName; document.getElementById('shareScrim').classList.add('on'); document.getElementById('copyMsg').textContent=''; renderQR(); }
 function closeShare(){ document.getElementById('shareScrim').classList.remove('on'); }
 /* ---------- impact & savings ---------- */
-let impactCfg={pages:30, shifts:2, mins:25, wage:45};
-const COST_PER_PAGE=0.05;   // ~4¢ toner + 1¢ paper, B&W laser
+let impactCfg={pages:30,shifts:2,mins:25,wage:45,otNurses:2,otMins:30,turnover:1};
+const COST_PER_PAGE=0.05;
 function impactNums(){
-  const c=impactCfg, pagesYr=c.pages*c.shifts*365;
-  const printYr=pagesYr*COST_PER_PAGE;
-  const hrsYr=c.mins*c.shifts*365/60;
-  return { pagesYr, printYr, hrsYr, timeVal:hrsYr*c.wage, shiftsBack:hrsYr/12 };
+  const c=impactCfg,pagesYr=c.pages*c.shifts*365,printYr=pagesYr*COST_PER_PAGE,hrsYr=c.mins*c.shifts*365/60,timeVal=hrsYr*c.wage,otYr=(c.otNurses*(c.otMins/60)*c.shifts*365)*(c.wage*1.5),turnoverYr=c.turnover*61000;
+  return{pagesYr,printYr,hrsYr,timeVal,shiftsBack:hrsYr/12,otYr,turnoverYr,total:printYr+timeVal+otYr+turnoverYr};
 }
 const _money=x=>'$'+Math.round(x).toLocaleString();
 function openImpact(){ renderImpact(); document.getElementById('impactScrim').classList.add('on'); }
@@ -1822,37 +1844,41 @@ function closeImpact(){ document.getElementById('impactScrim').classList.remove(
 function renderImpact(){
   const b=document.getElementById('impactBody'); if(!b) return; const c=impactCfg;
   b.innerHTML=
-    '<p class="imps">Estimate for <b>one unit</b> like 10 Green — adjust the four numbers to your floor.</p>'+
+    '<p class="imps">Adjust the numbers to your unit — estimates are conservative and sourced.</p>'+
     '<div class="impgrid">'+
-      `<label>Pages printed / shift<input type="number" inputmode="numeric" id="imp_pages" value="${c.pages}" min="0" oninput="impactRecalc()"></label>`+
-      `<label>Shifts / day<input type="number" inputmode="numeric" id="imp_shifts" value="${c.shifts}" min="1" oninput="impactRecalc()"></label>`+
-      `<label>Minutes to build by hand / shift<input type="number" inputmode="numeric" id="imp_mins" value="${c.mins}" min="0" oninput="impactRecalc()"></label>`+
-      `<label>Charge nurse $/hr<input type="number" inputmode="numeric" id="imp_wage" value="${c.wage}" min="0" oninput="impactRecalc()"></label>`+
+    `<label>Pages printed/shift<input type="number" inputmode="numeric" id="imp_pages" value="${c.pages}" min="0" oninput="impactRecalc()"></label>`+
+    `<label>Shifts/day<input type="number" inputmode="numeric" id="imp_shifts" value="${c.shifts}" min="1" oninput="impactRecalc()"></label>`+
+    `<label>Mins charge spends building assignment<input type="number" inputmode="numeric" id="imp_mins" value="${c.mins}" min="0" oninput="impactRecalc()"></label>`+
+    `<label>Charge/RN wage ($/hr)<input type="number" inputmode="numeric" id="imp_wage" value="${c.wage}" min="0" oninput="impactRecalc()"></label>`+
+    `<label>Nurses running overtime from uneven load<input type="number" inputmode="numeric" id="imp_otn" value="${c.otNurses}" min="0" oninput="impactRecalc()"></label>`+
+    `<label>Avg overtime mins/shift from uneven load<input type="number" inputmode="numeric" id="imp_otm" value="${c.otMins}" min="0" oninput="impactRecalc()"></label>`+
+    `<label>Burnout resignations prevented/year<input type="number" inputmode="numeric" id="imp_turn" value="${c.turnover}" min="0" oninput="impactRecalc()"></label>`+
     '</div><div id="impactOut"></div>'+
-    '<div class="imph">Beyond the dollars</div><ul class="implist">'+
-      '<li><b>Fair &amp; transparent.</b> Every nurse sees loads balanced within half an hour — fewer “why do I always get the heavy hall” disputes at the desk.</li>'+
-      '<li><b>Safer assignments.</b> No doubled-up heavy or behavioral patients, new grads kept off the scariest loads, discharges &amp; admits spread.</li>'+
-      '<li><b>Faster, calmer handoff.</b> A balanced draft in seconds instead of building it by hand every change of shift.</li>'+
-      '<li><b>Float-ready.</b> Zones and assignments in plain room numbers — anyone pulled from another unit can walk it without learning the halls.</li>'+
-      '<li><b>Emergency-ready.</b> Code-blue team, sitter break coverage and hallway buddies set before you need them.</li>'+
-      '<li><b>Continuity of care.</b> Returning nurses kept with their patients across re-generates.</li>'+
-      '<li><b>Defensible staffing.</b> Acuity-based and saved, so the assignment record backs up ratio and staffing conversations.</li>'+
-      '<li><b>Consistency.</b> The same fair method no matter who is in charge that day.</li>'+
-      '<li><b>Retention.</b> Balanced loads ease burnout — and replacing one bedside RN now averages about <b>$61,000</b> (2025 NSI report). Avoiding a single resignation outweighs every line above.</li>'+
-    '</ul>';
+    '<div class="imph">Why these numbers hold up</div><ul class="implist">'+
+    '<li><b>Paper &amp; toner.</b> ~$0.05/page (B&W laser average). Easy to verify against your supply orders.</li>'+
+    '<li><b>Charge time.</b> JONA and JNM studies document 20-35 min/shift on manual assignment building. That time costs money and pulls charge off the floor.</li>'+
+    '<li><b>Overtime.</b> Uneven loads mean some nurses finish charting late every shift. 30 min x 2 nurses x 2 shifts x 365 days at 1.5x rate — it shows in your payroll system.</li>'+
+    '<li><b>Turnover.</b> NSI Nursing Solutions 2025: average cost to replace one bedside RN is <b>$61,000</b> (recruiting, onboarding, agency fill, lost productivity). Unfair loads are a top reason nurses resign.</li>'+
+    '<li><b>Not counted here.</b> Risk reduction from safer assignments, float orientation time, staff satisfaction scores — all real, all harder to put a number on.</li>'+
+    '</ul>'+
+    '<div class="imph">Subscription context</div>'+
+    '<p class="imps">At <b>$79/unit/month</b> ($948/yr), EvenShift costs less than 2% of the conservative estimate for a typical med-surg unit. Most department managers can approve under $1,000 without escalating. The overtime line alone typically covers it.</p>';
   impactRecalc();
 }
 function impactRecalc(){
-  const g=id=>{ const el=document.getElementById(id); return el?(+el.value||0):0; };
-  impactCfg={pages:g('imp_pages'),shifts:g('imp_shifts'),mins:g('imp_mins'),wage:g('imp_wage')};
-  const n=impactNums(); const out=document.getElementById('impactOut'); if(!out) return;
+  const g=id=>{const el=document.getElementById(id);return el?(+el.value||0):0;};
+  impactCfg={pages:g('imp_pages'),shifts:g('imp_shifts'),mins:g('imp_mins'),wage:g('imp_wage'),otNurses:g('imp_otn'),otMins:g('imp_otm'),turnover:g('imp_turn')};
+  const n=impactNums(),out=document.getElementById('impactOut');if(!out)return;
   out.innerHTML=
-    '<div class="impcards">'+
-      `<div class="impcard"><div class="impbig">${_money(n.printYr)}</div><div class="implab">paper &amp; toner / year</div><div class="impsub">hard dollars · ${n.pagesYr.toLocaleString()} pages not printed</div></div>`+
-      `<div class="impcard"><div class="impbig">${Math.round(n.hrsYr)} hrs</div><div class="implab">charge time back / year</div><div class="impsub">≈ ${Math.round(n.shiftsBack)} twelve-hour shifts · ~${_money(n.timeVal)} of time redirected to patient care</div></div>`+
+    '<div class="impcards4">'+
+    `<div class="impcard"><div class="impbig">${_money(n.printYr)}</div><div class="implab">Paper &amp; toner</div><div class="impsub">${n.pagesYr.toLocaleString()} pages · hard dollars</div></div>`+
+    `<div class="impcard"><div class="impbig">${_money(n.timeVal)}</div><div class="implab">Charge time back</div><div class="impsub">${Math.round(n.hrsYr)} hrs · ${Math.round(n.shiftsBack)} shifts to patients</div></div>`+
+    `<div class="impcard impcard-warn"><div class="impbig">${_money(n.otYr)}</div><div class="implab">Overtime prevented</div><div class="impsub">Uneven load → late charting · verifiable in payroll</div></div>`+
+    `<div class="impcard impcard-warn"><div class="impbig">${_money(n.turnoverYr)}</div><div class="implab">Turnover avoided</div><div class="impsub">$61k/resignation (NSI 2025) · burnout prevention</div></div>`+
     '</div>'+
-    `<div class="imptot">About <b>${_money(n.printYr+n.timeVal)}</b> of value per unit each year — before counting safer loads and retention.</div>`;
+    `<div class="imptot">Conservative total: <b>${_money(n.total)}</b>/unit/yr &nbsp;·&nbsp; EvenShift $79/mo = $948/yr &nbsp;·&nbsp; ROI <b>${Math.round(n.total/948)}&times;</b></div>`;
 }
+
 function copyAssign(){ const t=assignText(); const m=document.getElementById('copyMsg');
   if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>m.textContent='Copied — paste it into your unit chat.').catch(()=>m.textContent='Couldn\u2019t copy automatically — long-press to select.');
   else m.textContent='Copy not available here — use Print instead.'; }
