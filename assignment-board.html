@@ -270,7 +270,17 @@
   .lockbtn{font-family:var(--display);font-weight:700;font-size:11.5px;padding:7px 11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:.14s;}
   .lockbtn.unlocked{background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);}
   .nursepick{align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:10px 13px;margin-bottom:14px;box-shadow:var(--shadow);}
-  .nursepick .npk{font-family:var(--display);font-weight:700;font-size:13px;color:var(--ink);}
+  .nursepick{flex-direction:column;gap:8px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);}
+  .nursepick .npk{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);}
+  .whobtns{display:flex;flex-direction:column;gap:6px;}
+  .wgrp{display:flex;flex-direction:column;gap:4px;}
+  .wgrplbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .wbrow{display:flex;flex-wrap:wrap;gap:6px;}
+  .whobtn{padding:8px 14px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--bg);font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit;}
+  .whobtn.sel{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .scorehint{font-size:12px;color:var(--ink-soft);padding:4px 0 2px;font-style:italic;}
+  .chip.rntap{cursor:pointer;border-color:var(--teal);}
+  .brkInput{width:88px;height:26px;border:1px solid var(--line-strong);border-radius:7px;padding:0 7px;font-size:12px;font-family:inherit;color:var(--ink);background:#fff;}
   .nursepick select{flex:1;min-width:0;font-family:var(--body);font-size:14px;font-weight:600;color:var(--ink);padding:9px 11px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);}
   .pickprompt{text-align:center;color:var(--ink-soft);font-size:14px;line-height:1.6;padding:34px 18px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:14px;}
   .pickprompt span{font-size:12px;}
@@ -543,8 +553,8 @@
 
   <div class="view" id="v-assign">
     <div class="nursepick lockedOnly" id="nursePick">
-      <span class="npk">Your assignment</span>
-      <select id="whoSel" onchange="setViewAs(this.value)"></select>
+      <span class="npk">Who are you?</span>
+      <div class="whobtns" id="whoBtns"></div>
     </div>
     <div class="assignTop chargeOnly">
       <div style="display:flex;gap:8px;align-items:center;">
@@ -979,6 +989,13 @@ function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw
 function maxAdj(){return Math.max(10,...nurses.map(n=>nurseLoad(n.id).adj));}
 function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===nid).map(r=>hallOf(r.id)))]; return hs; }
 
+/* RN self-view chip — tappable to score, shows "tap" if unscored */
+function rnChip(r){
+  const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(f=>FLAGS.find(x=>x[0]===f)[1]).join(' ');
+  const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
+  const scored=r.acuity>0;
+  return `<span class="chip rntap${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?r.acuity.toFixed(1):'tap'}</span></span>`;
+}
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(f=>FLAGS.find(x=>x[0]===f)[1]).join(' ');
   const acuRose = r.prevAcuity!=null && r.acuity!=null && r.acuity > r.prevAcuity+0.25;
@@ -1016,7 +1033,7 @@ function renderAssign(){
   if(!chargeMode){
     const role=lockedRole();
     const c=document.getElementById('nurses');
-    if(role===null){ if(c) c.innerHTML='<div class="pickprompt">👤 Select your name above to see your assignment.<br><span>Charge / ANM: tap <b>View only</b> at the top to unlock the full board.</span></div>'; return; }
+    if(role===null){ if(c) c.innerHTML='<div class="pickprompt">👆 Tap your name above to see your patients and score them.<br><span>Charge / ANM: tap <b>🔒 View only</b> at the top to unlock.</span></div>'; return; }
     if(role==='pct'){ renderMyPCT(); return; }
     if(role==='sitter'){ renderMySitter(); return; }
     // role 'rn' → falls through to the nurse-slice render below
@@ -1048,7 +1065,8 @@ function renderAssign(){
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
       <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${L.hrs.toFixed(1)}</b> hrs · ${L.count} pt</span></div>
       ${bparts.length?`<div class="burds">${bparts.join(' · ')}</div>`:''}
-      <div class="chips">${ rs.length? rs.map(roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
+      ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
+      <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
   }).join('');
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
   document.getElementById('pool').innerHTML=pool.length? pool.map(roomChip).join('') : '<span class="empty2">All rooms assigned</span>';
@@ -1291,12 +1309,14 @@ function roleOf(v){ if(!v||v==='charge') return null; if(v.indexOf('p:')===0) re
 function lockedRole(){ return roleOf(viewAs); }
 function canScoreRoom(rn){ if(chargeMode) return true; const r=rooms[rn]; return !!(r && r.occupied && lockedRole()==='rn' && r.nurse===viewAs); }   // an RN may score only their own patients
 function updateScoreTab(){ const na=document.getElementById('navAcuity'); if(na) na.style.display=(chargeMode||lockedRole()==='rn')?'':'none'; }
-function fillWho(){ const s=document.getElementById('whoSel'); if(!s)return; const cur=viewAs;
-  let h='<option value="">— select your name —</option>';
-  if(nurses.length) h+='<optgroup label="Nurses / floats">'+nurses.map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join('')+'</optgroup>';
-  if(pcts.length) h+='<optgroup label="PCTs">'+pcts.map(p=>`<option value="p:${p.id}">${esc(p.name)}</option>`).join('')+'</optgroup>';
-  if(sitters.length) h+='<optgroup label="Sitters">'+sitters.map(x=>`<option value="s:${x.id}">${esc(x.name)}</option>`).join('')+'</optgroup>';
-  s.innerHTML=h; s.value=roleOf(cur)?cur:''; }
+function fillWho(){
+  const b=document.getElementById('whoBtns'); if(!b) return;
+  let h='';
+  if(nurses.length) h+=`<div class="wgrp"><span class="wgrplbl">Nurses</span><div class="wbrow">${nurses.map(n=>`<button class="whobtn${viewAs===n.id?' sel':''}" onclick="setViewAs('${n.id}')">${esc(n.name)}</button>`).join('')}</div></div>`;
+  if(pcts.length) h+=`<div class="wgrp"><span class="wgrplbl">PCTs</span><div class="wbrow">${pcts.map(p=>`<button class="whobtn${viewAs==='p:'+p.id?' sel':''}" onclick="setViewAs('p:${p.id}')">${esc(p.name)}</button>`).join('')}</div></div>`;
+  if(sitters.length) h+=`<div class="wgrp"><span class="wgrplbl">Sitters</span><div class="wbrow">${sitters.map(x=>`<button class="whobtn${viewAs==='s:'+x.id?' sel':''}" onclick="setViewAs('s:${x.id}')">${esc(x.name)}</button>`).join('')}</div></div>`;
+  b.innerHTML=h;
+}
 function applyAccessUI(){
   if(chargeMode && (viewAs===''||(viewAs!=='charge'&&!nurses.find(n=>n.id===viewAs)))) viewAs='charge';   // charge sees full board
   if(!chargeMode && viewAs==='charge') viewAs='';                                                         // hide full board from nurses
@@ -1605,6 +1625,10 @@ function sitterCoverage(){
   });
 }
 /* suggested staggered break windows — your buddy covers your patients */
+function setBreakTime(nid,val){
+  const n=rosterN.find(x=>x.id===nid); if(!n) return;
+  n.breakTime=val.trim(); scheduleSave();
+}
 function nurseBreaks(){
   const pairs=buddyPairs(); const startH=shiftType==='Night'?23:11;
   const fmt=d=>String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
@@ -1675,8 +1699,12 @@ function renderSupport(){
   // ---- Nurse breaks ----
   if(assigned && nurses.length){
     const bk=nurseBreaks();
-    const rows=nurses.filter(n=>roomsByNurse(n.id).length>0).map(n=>{ const b=bk[n.id]; if(!b) return ''; return `<div class="covtr"><span class="covname">${esc(n.name)}</span><span class="covval">${b.window}</span><span class="covqty">${b.cover.length?esc(b.cover.join(', ')):'\u2014'}</span></div>`; }).join('');
-    if(rows) h+='<div class="covsec"><div class="covh"><span class="covtitle">Nurse breaks</span><span class="covsub">staggered · buddy covers</span></div><div class="covtable">'+rows+'</div></div>';
+    const rows=nurses.filter(n=>roomsByNurse(n.id).length>0).map(n=>{ const b=bk[n.id]; if(!b) return '';
+      const stored=rosterN.find(x=>x.id===n.id); const val=esc((stored&&stored.breakTime)||b.window||'');
+      return chargeMode
+        ? `<div class="covtr"><span class="covname">${esc(n.name)}</span><input class="brkInput" value="${val}" placeholder="e.g. 1130-1200" onchange="setBreakTime('${n.id}',this.value)"><span class="covqty">${b.cover.length?esc(b.cover.join(', ')):'\u2014'}</span></div>`
+        : `<div class="covtr"><span class="covname">${esc(n.name)}</span><span class="covval">${val}</span><span class="covqty">${b.cover.length?esc(b.cover.join(', ')):'\u2014'}</span></div>`; }).join('');
+    if(rows) h+='<div class="covsec"><div class="covh"><span class="covtitle">Nurse breaks</span><span class="covsub">'+(chargeMode?'tap to edit · ':'')+'buddy covers</span></div><div class="covtable">'+rows+'</div></div>';
   }
   // ---- Sitter break coverage ----
   if(sitters.length){
