@@ -189,6 +189,8 @@
   .felab{width:90px!important;flex:none;}
   .fefull{flex:1;}
   .faded{opacity:.4;}
+  .ruleSel{height:32px;border:1px solid var(--line-strong);border-radius:8px;padding:0 6px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink);flex:none;}
+  .capIn{width:46px;height:32px;border:1px solid var(--line-strong);border-radius:8px;padding:0 6px;font-size:13px;font-family:inherit;flex:none;}
   .meetSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
   .meetRow{font-size:13px;padding:6px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;margin-bottom:4px;line-height:1.5;}
   .meetRow b{color:var(--ink);}
@@ -628,6 +630,7 @@
     <div class="edithint chargeOnly" id="editHint"></div>
     <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
     <div class="acureview chargeOnly" id="acuReview" style="display:none;"></div>
+    <div class="acureview chargeOnly" id="flagViol" style="display:none;"></div>
     <div class="cols">
       <div class="nurses" id="nurses"></div>
       <div class="side chargeOnly">
@@ -882,15 +885,19 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","ISO","Isolation"],["dc","D/C","Discharge"],["adm","ADM","Admission"],["beh","BEH","Behavioral"],["conf","Conf","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["ins","INS","Insulin drip"],["cvl","CVL","Central line"],["wound","Wound","Wound care"],["tot","Total","Total care"],["sit","1:1","1:1 sitter"],["pd","PD","Dialysis"],["tele","Tele","Telemetry / monitored"],["foley","Foley","Foley catheter"],["hd","HD","Hemodialysis"],["restr","Restr","Restraints"],["interp","Interp","Interpreter needed"],["oos","OOS","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (PICC/CVL)"],["wound","Wound","Wound care"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","Dialysis","Peritoneal dialysis"],["tele","Tele","Telemetry / monitored"],["foley","Foley","Foley catheter"],["hd","Hemodialysis","Hemodialysis"],["restr","Restraints","Restraints"],["interp","Interpreter","Interpreter needed"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
 let UNIT_FLAG_CONFIG={
   hidden:[],          // display-flag codes to hide from scorer
   renames:{},         // {code:{label,full}} overrides
-  custom:[]           // [{code:'cf1',label:'PICC',full:'PICC line',inMeeting:false}]
+  custom:[],          // [{code:'cf1',label:'PICC',full:'PICC line'}]
+  rules:{}            // {code:{mode:'spread'|'cap'|'none', cap:N}} — how the engine balances this flag
 };
+// Default balance rules baked from 10 Green convention (engine already handles beh/conf/heavy internally)
+const DEFAULT_FLAG_RULES={beh:{mode:'cap',cap:1},gtt:{mode:'spread'},ins:{mode:'spread'},cvl:{mode:'spread'},trach:{mode:'cap',cap:1},tot:{mode:'spread'},sit:{mode:'spread'},conf:{mode:'spread'},dc:{mode:'spread'},adm:{mode:'spread'}};
+function flagRule(code){ const r=(UNIT_FLAG_CONFIG.rules||{})[code]; if(r) return r; return DEFAULT_FLAG_RULES[code]||{mode:'none'}; }
 function getActiveFlags(){
   const base=FLAGS.filter(([code])=>!UNIT_FLAG_CONFIG.hidden.includes(code)||ENGINE_FLAG_CODES.has(code));
   const renamed=base.map(([code,label,full])=>{ const r=UNIT_FLAG_CONFIG.renames[code]; return r?[code,r.label||label,r.full||full]:[code,label,full]; });
@@ -1122,14 +1129,17 @@ function maxAdj(){return Math.max(10,...nurses.map(n=>nurseLoad(n.id).adj));}
 function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===nid).map(r=>hallOf(r.id)))]; return hs; }
 
 /* RN self-view chip — tappable to score, shows "tap" if unscored */
+/* short codes ONLY for the tiny board chips; everywhere else uses full labels */
+const MINI_LABEL={iso:'Iso',dc:'D/C',adm:'Adm',sit:'1:1',beh:'Beh'};
+function miniFlag(f){ return MINI_LABEL[f]||getFlagLabel(f); }
 function rnChip(r){
-  const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(f=>getFlagLabel(f)).join(' ');
+  const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(miniFlag).join(' ');
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
   const scored=r.acuity>0;
   return `<span class="chip rntap${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?r.acuity.toFixed(1):'tap'}</span></span>`;
 }
 function roomChip(r){
-  const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(f=>getFlagLabel(f)).join(' ');
+  const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(miniFlag).join(' ');
   const acuRose = r.prevAcuity!=null && r.acuity!=null && r.acuity > r.prevAcuity+0.25;
   return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${r.lock?'<span title="continuity / requested nurse">🔒</span>':''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></span>`;
 }
@@ -1255,7 +1265,7 @@ function dropTo(e,nid){ if(!chargeMode)return;e.preventDefault();leaveDrop();if(
 /* burden tags a patient carries, for spreading load types across nurses */
 /* every demanding thing a patient brings, for spreading the MIX across nurses (not just the hours) */
 const BURDEN_W={beh:4,conf:4,trach:4,tot:3,sit:3,cvl:2,gtt:2,ins:2,wound:2,dc:2,adm:2,iso:1.5,pd:1.5,feed:1,draw:1}; // 'hi' excluded — hours already covers acuity
-const BURDEN_LAB={hi:'hi-acuity',trach:'trach',beh:'behavioral',conf:'confused',tot:'total care',cvl:'central line',gtt:'drip',ins:'insulin gtt',wound:'wound',dc:'D/C',adm:'admit',iso:'iso',pd:'dialysis',sit:'1:1',feed:'tube feed',draw:'blood draw'};
+const BURDEN_LAB={hi:'hi-acuity',trach:'trach',beh:'behavioral',conf:'fall risk',tot:'total care',cvl:'central line',gtt:'drip',ins:'insulin',wound:'wound',dc:'discharge',adm:'admit',iso:'isolation',pd:'dialysis',sit:'1:1',feed:'tube feed',draw:'blood draw'};
 const BURDEN_ORDER=['trach','beh','conf','tot','cvl','gtt','ins','wound','dc','adm','iso','pd','sit','hi','feed','draw'];
 function patientTags(r){
   const t=[];
@@ -1320,7 +1330,19 @@ function generate(){ if(!chargeMode)return; pushUndo();
       if(cf>capConf)  c+=(cf-capConf)*55;     // #5 spread confused / fall-risk
       if(dc>0&&adm>0) c+=Math.min(dc,adm)*40; // #4 don't pair a discharge with a fresh admit
     } return c; };
-  const cost=()=>Math.max(0,spread()-0.5)*200 + safety() + geo() + 2*burden();   // hours first, then safety caps, then geography + an even mix of burden types
+  const cost=()=>Math.max(0,spread()-0.5)*200 + safety() + geo() + 2*burden() + flagRuleCost();   // hours first, then safety caps, then geography + even burden mix + per-unit flag rules
+  // per-unit flag rules: spread (penalize clustering) or cap (penalize exceeding max)
+  const ruleCodes=getActiveFlags().map(x=>x[0]).filter(c=>{ const r=flagRule(c); return r.mode==='spread'||r.mode==='cap'; });
+  const ruleTotals={}; ruleCodes.forEach(c=>{ ruleTotals[c]=occ.filter(r=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).length; });
+  function flagRuleCost(){ let c=0;
+    for(const code of ruleCodes){ const rule=flagRule(code); const total=ruleTotals[code]; if(!total) continue;
+      if(rule.mode==='cap'){ const cap=Math.max(1,rule.cap||1);
+        for(const g of G){ let k=0; for(const r of g){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)) k++; } if(k>cap) c+=(k-cap)*120; }
+      } else if(rule.mode==='spread'){ const fair=Math.ceil(total/M);
+        for(const g of G){ let k=0; for(const r of g){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)) k++; } if(k>fair) c+=(k-fair)*(k-fair)*30; }
+      }
+    } return c;
+  }
   let cur=cost(), bestC=cur, best=G.map(g=>g.slice()), sinceBest=0, T=8;
   for(let it=0; it<22000; it++){
     T*=0.99975;
@@ -1360,6 +1382,27 @@ function generate(){ if(!chargeMode)return; pushUndo();
   occupied().forEach(r=>{ if(keptIds.has(r.lock)) r.nurse=r.lock; });
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   selectedRoom=null; renderAssign(); scheduleSave();
+  checkFlagViolations();
+}
+/* After generate: detect cap/spread rule violations and tell the charge */
+function checkFlagViolations(){
+  const occ=occupied(); const msgs=[];
+  getActiveFlags().forEach(([code,label])=>{
+    const rule=flagRule(code); if(rule.mode!=='cap'&&rule.mode!=='spread') return;
+    const total=occ.filter(r=>(r.flags||[]).includes(code)||(r.tags||[]).includes(code)).length;
+    if(!total) return;
+    const cap=rule.mode==='cap'?Math.max(1,rule.cap||1):Math.ceil(total/Math.max(1,nurses.length));
+    const overs=[];
+    nurses.forEach(n=>{ const k=occ.filter(r=>r.nurse===n.id&&((r.flags||[]).includes(code)||(r.tags||[]).includes(code))).length; if(k>cap) overs.push(`${n.name} (${k})`); });
+    if(overs.length) msgs.push(`<b>${esc(label)}</b>: ${rule.mode==='cap'?'max '+cap+'/nurse':'aim '+cap+'/nurse'} — exceeded by ${overs.map(esc).join(', ')}`);
+  });
+  const banner=document.getElementById('flagViol');
+  if(banner){
+    if(msgs.length){
+      banner.innerHTML=`<span class="rose-icon">⚠</span> <b>Couldn't fully balance these — the floor forced it (geography or numbers):</b><br>${msgs.join('<br>')}<br><span style="font-size:11px;color:var(--ink-soft)">Tap a room then a nurse to fix manually, or accept as-is.</span>`;
+      banner.style.display='';
+    } else banner.style.display='none';
+  }
 }
 /* pull any room that drifted into the far hall back home, trading a corner/home room in return */
 function fixGeo(){
@@ -1962,7 +2005,7 @@ function applyState(st){
   if(st.shiftType) shiftType=st.shiftType;
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
-  if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[]};
+  if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{}};
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
@@ -1988,29 +2031,29 @@ function renderFlagEditor(){
   const custom=UNIT_FLAG_CONFIG.custom||[];
   let h='';
   // Engine flags (locked)
-  h+=`<div class="meetSec">Engine flags 🔒 — always on, rename label if needed</div>`;
+  h+=`<div class="meetSec">Engine flags 🔒 — always on · set how each balances</div>`;
   engine.forEach(([code,label,full])=>{
     const ren=UNIT_FLAG_CONFIG.renames[code]||{};
     h+=`<div class="flagEdRow"><span class="felock">🔒</span>`+
-      `<input class="subin felab" value="${esc(ren.label||label)}" placeholder="Short label" onchange="setFlagRename('${code}','label',this.value)">`+
-      `<input class="subin fefull" value="${esc(ren.full||full)}" placeholder="Full description" onchange="setFlagRename('${code}','full',this.value)"></div>`;
+      `<input class="subin felab" value="${esc(ren.label||label)}" placeholder="Label" onchange="setFlagRename('${code}','label',this.value)">`+
+      ruleSelector(code)+`</div>`;
   });
-  // Display flags (hideable + renameable)
-  h+=`<div class="meetSec" style="margin-top:14px;">Display flags — show/hide, rename, or remove</div>`;
+  // Display flags (hideable + renameable + rule)
+  h+=`<div class="meetSec" style="margin-top:14px;">Display flags — show/hide, rename, set balancing</div>`;
   display.forEach(([code,label,full])=>{
     const ren=UNIT_FLAG_CONFIG.renames[code]||{};
     const hidden=UNIT_FLAG_CONFIG.hidden.includes(code);
     h+=`<div class="flagEdRow">`+
       `<label class="fetog" title="${hidden?'Hidden from scorer':'Visible in scorer'}"><input type="checkbox" ${hidden?'':'checked'} onchange="toggleFlagHidden('${code}',!this.checked)"></label>`+
-      `<input class="subin felab ${hidden?'faded':''}" value="${esc(ren.label||label)}" placeholder="Short label" onchange="setFlagRename('${code}','label',this.value)">`+
-      `<input class="subin fefull ${hidden?'faded':''}" value="${esc(ren.full||full)}" placeholder="Full description" onchange="setFlagRename('${code}','full',this.value)"></div>`;
+      `<input class="subin felab ${hidden?'faded':''}" value="${esc(ren.label||label)}" placeholder="Label" onchange="setFlagRename('${code}','label',this.value)">`+
+      ruleSelector(code)+`</div>`;
   });
   // Custom flags
-  h+=`<div class="meetSec" style="margin-top:14px;">Custom flags — add anything your unit needs</div>`;
+  h+=`<div class="meetSec" style="margin-top:14px;">Custom flags — add anything · set balancing</div>`;
   custom.forEach((c,i)=>{
     h+=`<div class="flagEdRow">`+
-      `<input class="subin felab" value="${esc(c.label||'')}" placeholder="Short label (e.g. PICC)" onchange="UNIT_FLAG_CONFIG.custom[${i}].label=this.value;scheduleSave()">`+
-      `<input class="subin fefull" value="${esc(c.full||'')}" placeholder="Full description" onchange="UNIT_FLAG_CONFIG.custom[${i}].full=this.value;scheduleSave()">`+
+      `<input class="subin felab" value="${esc(c.label||'')}" placeholder="e.g. Chest tube" onchange="UNIT_FLAG_CONFIG.custom[${i}].label=this.value;scheduleSave()">`+
+      ruleSelector(c.code)+
       `<button class="srm" onclick="removeCustomFlag(${i})">✕</button></div>`;
   });
   h+=`<button class="btn sm" style="margin-top:8px;" onclick="addCustomFlag()">+ Add custom flag</button>`;
@@ -2018,6 +2061,27 @@ function renderFlagEditor(){
   el.innerHTML=h;
 }
 
+function ruleSelector(code){
+  const r=flagRule(code); const mode=r.mode||'none'; const cap=r.cap||2;
+  return `<select class="ruleSel" onchange="setFlagRule('${code}',this.value)">`+
+    `<option value="none" ${mode==='none'?'selected':''}>Don't balance</option>`+
+    `<option value="spread" ${mode==='spread'?'selected':''}>Spread evenly</option>`+
+    `<option value="cap" ${mode==='cap'?'selected':''}>Cap per nurse…</option>`+
+    `</select>`+
+    (mode==='cap'?`<input class="capIn" type="number" min="1" max="9" value="${cap}" onchange="setFlagCap('${code}',this.value)" title="Max per nurse">`:'');
+}
+function setFlagRule(code,mode){
+  if(!UNIT_FLAG_CONFIG.rules) UNIT_FLAG_CONFIG.rules={};
+  if(mode==='none') UNIT_FLAG_CONFIG.rules[code]={mode:'none'};
+  else if(mode==='spread') UNIT_FLAG_CONFIG.rules[code]={mode:'spread'};
+  else UNIT_FLAG_CONFIG.rules[code]={mode:'cap',cap:(UNIT_FLAG_CONFIG.rules[code]&&UNIT_FLAG_CONFIG.rules[code].cap)||flagRule(code).cap||2};
+  scheduleSave(); renderFlagEditor();
+}
+function setFlagCap(code,val){
+  if(!UNIT_FLAG_CONFIG.rules) UNIT_FLAG_CONFIG.rules={};
+  const cap=Math.max(1,parseInt(val)||1);
+  UNIT_FLAG_CONFIG.rules[code]={mode:'cap',cap}; scheduleSave();
+}
 function setFlagRename(code,key,val){
   if(!UNIT_FLAG_CONFIG.renames[code]) UNIT_FLAG_CONFIG.renames[code]={};
   UNIT_FLAG_CONFIG.renames[code][key]=val.trim(); scheduleSave();
