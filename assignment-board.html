@@ -178,6 +178,17 @@
   .mtab{padding:8px 16px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--bg);font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
   .mtab.sel{background:var(--teal);border-color:var(--teal);color:#fff;}
   .meetSection{margin-bottom:14px;}
+  .custogs{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+  .custog{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);}
+  .custog input{accent-color:var(--teal);width:16px;height:16px;}
+  .custitem{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+  .flagEdRow{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .felock{font-size:14px;flex:none;}
+  .fetog{flex:none;display:flex;align-items:center;cursor:pointer;}
+  .fetog input{width:16px;height:16px;accent-color:var(--teal);}
+  .felab{width:90px!important;flex:none;}
+  .fefull{flex:1;}
+  .faded{opacity:.4;}
   .meetSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
   .meetRow{font-size:13px;padding:6px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;margin-bottom:4px;line-height:1.5;}
   .meetRow b{color:var(--ink);}
@@ -560,6 +571,7 @@
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFloor()">Floor &amp; beds setup</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openRubric()">Edit acuity rubric</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');changePin()">Change charge PIN</button>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFlagEditor()">🏷 Edit clinical flags</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openMeetingPrep()">📋 Meeting prep</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📁 Shift history</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openImpact()">Impact &amp; savings</button>
@@ -679,6 +691,16 @@
   </div>
 </div>
 
+<div class="scrim" id="flagScrim" onclick="if(event.target===this)closeFlagEditor()">
+  <div class="modal wide">
+    <div class="mhead"><span class="rt">🏷 Clinical flags</span><button class="btn" onclick="closeFlagEditor()">Done</button></div>
+    <div class="mbody">
+      <p class="covnote">Customize which flags appear in the scorer and how they're labeled. Engine flags (🔒) are always present — they drive assignment rules and can't be removed.</p>
+      <div id="flagEditorBody"></div>
+    </div>
+  </div>
+</div>
+
 <div class="scrim" id="meetScrim" onclick="if(event.target===this)closeMeetingPrep()">
   <div class="modal wide">
     <div class="mhead"><span class="rt">📋 Meeting prep</span><button class="btn" onclick="closeMeetingPrep()">Close</button></div>
@@ -686,9 +708,10 @@
       <div class="meetTabs">
         <button class="mtab sel" id="mtab-clin" onclick="switchMeetTab('clin')">🏥 9am Clinical</button>
         <button class="mtab" id="mtab-staff" onclick="switchMeetTab('staff')">👥 2pm/2am Staffing</button>
+        <button class="mtab" id="mtab-cust" onclick="switchMeetTab('cust')" style="margin-left:auto;">⚙ Customize</button>
       </div>
       <div id="meetBody" style="margin-top:12px;"></div>
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <div id="meetActions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn primary" onclick="shareMeetingPrep()">📤 Share</button>
         <button class="btn" onclick="copyMeetingPrep()">Copy as text</button>
       </div>
@@ -859,7 +882,22 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","ISO","Isolation"],["dc","D/C","Discharge"],["adm","ADM","Admission"],["beh","BEH","Behavioral"],["conf","Conf","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["ins","INS","Insulin drip"],["cvl","CVL","Central line"],["wound","Wound","Wound care"],["tot","Total","Total care"],["sit","1:1","1:1 sitter"],["pd","PD","Dialysis"],["tele","Tele","Telemetry / monitored"],["foley","Foley","Foley catheter"],["hd","HD","Hemodialysis"],["restr","Restr","Restraints"],["interp","Interp","Interpreter needed"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+const FLAGS=[["iso","ISO","Isolation"],["dc","D/C","Discharge"],["adm","ADM","Admission"],["beh","BEH","Behavioral"],["conf","Conf","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["ins","INS","Insulin drip"],["cvl","CVL","Central line"],["wound","Wound","Wound care"],["tot","Total","Total care"],["sit","1:1","1:1 sitter"],["pd","PD","Dialysis"],["tele","Tele","Telemetry / monitored"],["foley","Foley","Foley catheter"],["hd","HD","Hemodialysis"],["restr","Restr","Restraints"],["interp","Interp","Interpreter needed"],["oos","OOS","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+// Engine flags — always present, can rename label but not hide/delete
+const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
+// Per-unit flag customization
+let UNIT_FLAG_CONFIG={
+  hidden:[],          // display-flag codes to hide from scorer
+  renames:{},         // {code:{label,full}} overrides
+  custom:[]           // [{code:'cf1',label:'PICC',full:'PICC line',inMeeting:false}]
+};
+function getActiveFlags(){
+  const base=FLAGS.filter(([code])=>!UNIT_FLAG_CONFIG.hidden.includes(code)||ENGINE_FLAG_CODES.has(code));
+  const renamed=base.map(([code,label,full])=>{ const r=UNIT_FLAG_CONFIG.renames[code]; return r?[code,r.label||label,r.full||full]:[code,label,full]; });
+  const custom=(UNIT_FLAG_CONFIG.custom||[]).map(c=>[c.code,c.label||c.code,c.full||c.label||c.code]);
+  return [...renamed,...custom];
+}
+function getFlagLabel(code){ const f=getActiveFlags().find(x=>x[0]===code); return f?f[1]:code; }
 let RUBRIC_FLAT=[], POINTS={}, COMMON=[];
 function rebuildRubric(){ RUBRIC_FLAT=[]; POINTS={}; COMMON=[];
   RUBRIC.forEach(([grp,items])=>items.forEach(([lab,pts,quick],i)=>{ const key=grp+'|'+i; RUBRIC_FLAT.push({key,lab,pts,grp,quick:!!quick}); POINTS[key]=pts; if(quick)COMMON.push(key); })); }
@@ -969,7 +1007,7 @@ function renderAcuity(){
     html+=`<div class="hall"><h2>${n?n.name+'\u2019s patients':'Your patients'} · ${mine.length} · ${mine.reduce((s,r)=>s+r.acuity,0).toFixed(1)} hrs</h2><div class="rgrid">`;
     if(!mine.length) html+='<div class="empty2">No patients assigned to you yet.</div>';
     mine.forEach(rn=>{ const r=rn; const cls=acuClass(r.acuity);
-      const flags=r.flags.map(f=>`<span class="flag ${f}">${FLAGS.find(x=>x[0]===f)[1]}</span>`).join('');
+      const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
       html+=`<div class="rcard" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
     });
     html+='</div></div>';
@@ -983,7 +1021,7 @@ function renderAcuity(){
       if(!r.occupied){ html+=`<div class="rcard empty" onclick="openModal(${rn})"><div class="rno" style="color:#9AA6B6">${rn}</div><div style="font-size:11px;color:#9AA6B6;margin-top:18px;">Empty · tap to admit</div></div>`; }
       else{
         const cls=acuClass(r.acuity);
-        const flags=r.flags.map(f=>`<span class="flag ${f}">${FLAGS.find(x=>x[0]===f)[1]}</span>`).join('');
+        const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
         html+=`<div class="rcard" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
       }
     });
@@ -1010,8 +1048,8 @@ function setMode(m){
 }
 function flagsNoteHTML(){
   const r=rooms[modalRoom];
-  const toggles=FLAGS.map(([f,l,full])=>`<button class="ftog ${modalFlags.includes(f)?'on':''}" id="ft-${f}" title="${full}" onclick="togFlag('${f}')">${l}</button>`).join('');
-  const key=FLAGS.map(([f,l,full])=>`<b>${l}</b> ${full}`).join(' · ');
+  const toggles=getActiveFlags().map(([f,l,full])=>`<button class="ftog ${modalFlags.includes(f)?'on':''}" id="ft-${f}" title="${full}" onclick="togFlag('${f}')">${l}</button>`).join('');
+  const key=getActiveFlags().map(([f,l,full])=>`<b>${l}</b> ${full}`).join(' · ');
   const isoSel=modalFlags.includes('iso')?`<div class="subfield"><span class="sublab">Isolation type</span><div class="isorow">
     ${['Contact','Droplet','Airborne'].map(t=>`<label class="isotog"><input type="radio" name="isoType" value="${t[0]}" ${(r.isoType||'')===(t[0])?'checked':''} onchange="document.getElementById('isoType_val').value=this.value"> ${t}</label>`).join('')}
     <input type="hidden" id="isoType_val" value="${esc(r.isoType||'')}"></div></div>`:'';
@@ -1085,19 +1123,20 @@ function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===ni
 
 /* RN self-view chip — tappable to score, shows "tap" if unscored */
 function rnChip(r){
-  const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(f=>FLAGS.find(x=>x[0]===f)[1]).join(' ');
+  const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(f=>getFlagLabel(f)).join(' ');
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
   const scored=r.acuity>0;
   return `<span class="chip rntap${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?r.acuity.toFixed(1):'tap'}</span></span>`;
 }
 function roomChip(r){
-  const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(f=>FLAGS.find(x=>x[0]===f)[1]).join(' ');
+  const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(f=>getFlagLabel(f)).join(' ');
   const acuRose = r.prevAcuity!=null && r.acuity!=null && r.acuity > r.prevAcuity+0.25;
   return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${r.lock?'<span title="continuity / requested nurse">🔒</span>':''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></span>`;
 }
-function flagLabel(code){ const f=FLAGS.find(x=>x[0]===code); if(f) return f[1]; return ({feed:'Feed',draw:'Draw'})[code]||code; }
-const PCT_VIEW=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach'];
-function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return PCT_VIEW.filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
+function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
+const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos'];
+function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
+function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
 function renderMyPCT(){
   const id=viewAs.slice(2), p=pcts.find(x=>x.id===id);
   const z=pctZones().find(z=>z.pct.id===id);
@@ -1904,7 +1943,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||''})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,unitInfo:UNITINFO,pin:chargePin,unitPass, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||''})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,unitInfo:UNITINFO,pin:chargePin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -1923,6 +1962,8 @@ function applyState(st){
   if(st.shiftType) shiftType=st.shiftType;
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
+  if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[]};
+  if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
   if(st.rubric && Array.isArray(st.rubric.sections) && st.rubric.sections.length){ RUBRIC=st.rubric.sections; DIVISOR=st.rubric.divisor||2; ACUITY_LABEL=st.rubric.label||'nursing hours'; RUBRIC_NAME=st.rubric.name||'Custom'; rebuildRubric(); }
@@ -1935,15 +1976,114 @@ function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.va
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
 function setShiftType(t){ shiftType=t; applyShiftUI(); scheduleSave(); }
 /* ═══════════════════════════════════════════════════════════
+   FLAG EDITOR — per-unit clinical flag customization
+   ═══════════════════════════════════════════════════════════ */
+function openFlagEditor(){ if(!chargeMode)return; renderFlagEditor(); document.getElementById('flagScrim').classList.add('on'); }
+function closeFlagEditor(){ document.getElementById('flagScrim').classList.remove('on'); meetConfig.clinFlagCodes=null; scheduleSave(); }
+
+function renderFlagEditor(){
+  const el=document.getElementById('flagEditorBody'); if(!el) return;
+  const engine=FLAGS.filter(([code])=>ENGINE_FLAG_CODES.has(code));
+  const display=FLAGS.filter(([code])=>!ENGINE_FLAG_CODES.has(code));
+  const custom=UNIT_FLAG_CONFIG.custom||[];
+  let h='';
+  // Engine flags (locked)
+  h+=`<div class="meetSec">Engine flags 🔒 — always on, rename label if needed</div>`;
+  engine.forEach(([code,label,full])=>{
+    const ren=UNIT_FLAG_CONFIG.renames[code]||{};
+    h+=`<div class="flagEdRow"><span class="felock">🔒</span>`+
+      `<input class="subin felab" value="${esc(ren.label||label)}" placeholder="Short label" onchange="setFlagRename('${code}','label',this.value)">`+
+      `<input class="subin fefull" value="${esc(ren.full||full)}" placeholder="Full description" onchange="setFlagRename('${code}','full',this.value)"></div>`;
+  });
+  // Display flags (hideable + renameable)
+  h+=`<div class="meetSec" style="margin-top:14px;">Display flags — show/hide, rename, or remove</div>`;
+  display.forEach(([code,label,full])=>{
+    const ren=UNIT_FLAG_CONFIG.renames[code]||{};
+    const hidden=UNIT_FLAG_CONFIG.hidden.includes(code);
+    h+=`<div class="flagEdRow">`+
+      `<label class="fetog" title="${hidden?'Hidden from scorer':'Visible in scorer'}"><input type="checkbox" ${hidden?'':'checked'} onchange="toggleFlagHidden('${code}',!this.checked)"></label>`+
+      `<input class="subin felab ${hidden?'faded':''}" value="${esc(ren.label||label)}" placeholder="Short label" onchange="setFlagRename('${code}','label',this.value)">`+
+      `<input class="subin fefull ${hidden?'faded':''}" value="${esc(ren.full||full)}" placeholder="Full description" onchange="setFlagRename('${code}','full',this.value)"></div>`;
+  });
+  // Custom flags
+  h+=`<div class="meetSec" style="margin-top:14px;">Custom flags — add anything your unit needs</div>`;
+  custom.forEach((c,i)=>{
+    h+=`<div class="flagEdRow">`+
+      `<input class="subin felab" value="${esc(c.label||'')}" placeholder="Short label (e.g. PICC)" onchange="UNIT_FLAG_CONFIG.custom[${i}].label=this.value;scheduleSave()">`+
+      `<input class="subin fefull" value="${esc(c.full||'')}" placeholder="Full description" onchange="UNIT_FLAG_CONFIG.custom[${i}].full=this.value;scheduleSave()">`+
+      `<button class="srm" onclick="removeCustomFlag(${i})">✕</button></div>`;
+  });
+  h+=`<button class="btn sm" style="margin-top:8px;" onclick="addCustomFlag()">+ Add custom flag</button>`;
+  h+=`<p class="covnote" style="margin-top:10px;">Tip: after adding flags, go to Meeting prep → ⚙ Customize to choose which ones appear in the 9am snapshot.</p>`;
+  el.innerHTML=h;
+}
+
+function setFlagRename(code,key,val){
+  if(!UNIT_FLAG_CONFIG.renames[code]) UNIT_FLAG_CONFIG.renames[code]={};
+  UNIT_FLAG_CONFIG.renames[code][key]=val.trim(); scheduleSave();
+}
+function toggleFlagHidden(code,hide){
+  if(hide){ if(!UNIT_FLAG_CONFIG.hidden.includes(code)) UNIT_FLAG_CONFIG.hidden.push(code); }
+  else UNIT_FLAG_CONFIG.hidden=UNIT_FLAG_CONFIG.hidden.filter(c=>c!==code);
+  scheduleSave();
+}
+function addCustomFlag(){
+  const code='cf'+(Date.now()%100000);
+  UNIT_FLAG_CONFIG.custom.push({code,label:'',full:''}); scheduleSave(); renderFlagEditor();
+}
+function removeCustomFlag(i){
+  UNIT_FLAG_CONFIG.custom.splice(i,1); scheduleSave(); renderFlagEditor();
+}
+/* ─────────────────── end flag editor ─────────────────── */
+
+/* ═══════════════════════════════════════════════════════════
    MEETING PREP — Clinical (9am) + Staffing (2pm/2am)
    ═══════════════════════════════════════════════════════════ */
 let _meetTab='clin';
+const MEET_CLIN_DEFAULTS={throughput:true,isolation:true,clinFlags:true,unitStatus:true};
+const MEET_STAFF_DEFAULTS={census:true,staffing:true};
+let meetConfig={
+  clinSections:{...MEET_CLIN_DEFAULTS},
+  staffSections:{...MEET_STAFF_DEFAULTS},
+  clinCustom:[],   // [{text:'Rm 45 — closed for maintenance'}]
+  staffCustom:[]
+};
 
 function openMeetingPrep(){ if(!chargeMode)return; _meetTab='clin'; renderMeetTab(); document.getElementById('meetScrim').classList.add('on'); }
 function closeMeetingPrep(){ document.getElementById('meetScrim').classList.remove('on'); }
-function switchMeetTab(t){ _meetTab=t; document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('sel')); document.getElementById('mtab-'+t).classList.add('sel'); renderMeetTab(); }
+function switchMeetTab(t){
+  _meetTab=t;
+  document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('mtab-'+t).classList.add('sel');
+  const acts=document.getElementById('meetActions');
+  if(acts) acts.style.display=t==='cust'?'none':'flex';
+  renderMeetTab();
+}
 
-function row(label,val,cls){ return `<div class="meetRow${cls?' '+cls:''}">${label}: <b>${val}</b></div>`; }
+function renderCustomTab(){
+  const tab=_meetTab==='cust'?'clin':_meetTab;
+  const isStaff=_meetTab==='staff-cust';
+  const cfg=meetConfig; const clinSec=cfg.clinSections; const stfSec=cfg.staffSections;
+  const tog=(key,obj,label)=>`<label class="custog"><input type="checkbox" ${obj[key]?'checked':''} onchange="meetConfig.${obj===clinSec?'clinSections':'staffSections'}['${key}']=this.checked;scheduleSave()"> ${label}</label>`;
+  const customList=(arr,arrKey)=>arr.map((item,i)=>`<div class="custitem"><input class="subin" value="${esc(item.text)}" oninput="meetConfig.${arrKey}[${i}].text=this.value;scheduleSave()" placeholder="e.g. Rm 45 — closed for maintenance"><button class="srm" onclick="meetConfig.${arrKey}.splice(${i},1);scheduleSave();renderMeetTab()">✕</button></div>`).join('');
+  let h=`<div class="meetSection">`;
+  h+=`<div class="meetSec">9am Clinical — show/hide sections</div>`;
+  h+=`<div class="custogs">${tog('throughput',clinSec,'Throughput (D/C + admits)')}${tog('isolation',clinSec,'Isolation')}${tog('unitStatus',clinSec,'Unit status (OOS rooms)')}</div>`;
+  h+=`<div class="meetSec" style="margin-top:8px;">Clinical flags shown in 9am meeting</div>`;
+  const dispFlags=getDisplayFlagCodes(); const cfCodes=meetConfig.clinFlagCodes||(meetConfig.clinFlagCodes=dispFlags);
+  h+=`<div class="custogs">${dispFlags.map(code=>`<label class="custog"><input type="checkbox" ${cfCodes.includes(code)?'checked':''} onchange="toggleMeetFlag('${code}',this.checked)"> ${getFlagLabel(code)} <span style='font-size:10px;color:var(--ink-soft)'>(${code})</span></label>`).join('')}</div>`;
+  h+=`<div class="meetSec" style="margin-top:14px;">9am Custom items <span style="font-weight:400;font-size:10px;color:var(--ink-soft)">· free text — shown at top of Clinical snapshot</span></div>`;
+  h+=customList(cfg.clinCustom,'clinCustom');
+  h+=`<button class="btn sm" style="margin-top:6px;" onclick="meetConfig.clinCustom.push({text:''});scheduleSave();renderMeetTab()">+ Add item</button>`;
+  h+=`<div class="meetSec" style="margin-top:18px;">2pm/2am Staffing — show/hide sections</div>`;
+  h+=`<div class="custogs">${tog('census',stfSec,'Census + projections')}${tog('staffing',stfSec,'Staffing adequacy')}</div>`;
+  h+=`<div class="meetSec" style="margin-top:14px;">2pm/2am Custom items</div>`;
+  h+=customList(cfg.staffCustom,'staffCustom');
+  h+=`<button class="btn sm" style="margin-top:6px;" onclick="meetConfig.staffCustom.push({text:''});scheduleSave();renderMeetTab()">+ Add item</button>`;
+  h+=`<p class="covnote" style="margin-top:12px;">Changes save automatically and sync to all devices on this board.</p>`;
+  h+=`</div>`;
+  document.getElementById('meetBody').innerHTML=h;
+}
 function secHead(t){ return `<div class="meetSec">${t}</div>`; }
 
 function buildClinicalText(){
@@ -1997,57 +2137,73 @@ function buildStaffingText(){
 
 function renderMeetTab(){
   const el=document.getElementById('meetBody'); if(!el) return;
-  const occ=occupied();
+  if(_meetTab==='cust'){ renderCustomTab(); return; }
+  const occ=occupied(); const cfg=meetConfig;
   if(_meetTab==='clin'){
-    const dc=occ.filter(r=>r.flags.includes('dc'));
-    const adm=occ.filter(r=>r.flags.includes('adm'));
-    const isoC=occ.filter(r=>r.flags.includes('iso')&&r.isoType==='C');
-    const isoD=occ.filter(r=>r.flags.includes('iso')&&r.isoType==='D');
-    const isoA=occ.filter(r=>r.flags.includes('iso')&&r.isoType==='A');
-    const isoU=occ.filter(r=>r.flags.includes('iso')&&!r.isoType);
+    const cs=cfg.clinSections;
     let h=`<div class="meetSection">`;
-    h+=secHead('Throughput');
-    if(dc.length) h+=`<div class="meetRow">${dc.map(r=>`<b>Rm ${r.id}</b> D/C${r.dcTime?' — '+esc(r.dcTime):' — time not set'}`).join('<br>')}</div>`;
-    else h+=`<div class="meetRow">No pending discharges</div>`;
-    if(adm.length) h+=`<div class="meetRow warn">${adm.map(r=>`<b>Rm ${r.id||'Incoming'}</b> Admit${r.admTime?' — '+esc(r.admTime):' — time not set'}`).join('<br>')}</div>`;
-    h+=secHead('Isolation');
-    if(!isoC.length&&!isoD.length&&!isoA.length&&!isoU.length) h+=`<div class="meetRow">No isolation patients</div>`;
-    if(isoC.length) h+=`<div class="meetRow alert">Contact: <b>${isoC.map(r=>r.id).join(', ')}</b></div>`;
-    if(isoD.length) h+=`<div class="meetRow alert">Droplet: <b>${isoD.map(r=>r.id).join(', ')}</b></div>`;
-    if(isoA.length) h+=`<div class="meetRow alert" style="background:#F3DDF0;border-color:#D4A8D0;">Airborne: <b>${isoA.map(r=>r.id).join(', ')}</b></div>`;
-    if(isoU.length) h+=`<div class="meetRow warn">ISO — type not set: <b>${isoU.map(r=>r.id).join(', ')}</b></div>`;
-    const flagsToShow=[['cvl','Central lines'],['foley','Foley catheters'],['beh','Behavioral'],['restr','Restraints'],['dnar','DNAR'],['hd','Hemodialysis'],['trach','Trach'],['tot','Total care'],['gtt','IV drips'],['ins','Insulin drip']];
-    h+=secHead('Clinical flags');
-    flagsToShow.forEach(([code,label])=>{ const rs=occ.filter(r=>r.flags.includes(code)); h+=`<div class="meetRow${code==='beh'&&rs.length?' warn':''}">${label}: <b>${rs.length?rs.map(r=>r.id).join(', '):'None'}</b></div>`; });
-    h+=`</div>`;
-    el.innerHTML=h;
+    if(cfg.clinCustom.length){ h+=secHead('Custom items'); cfg.clinCustom.filter(x=>x.text.trim()).forEach(x=>h+=`<div class="meetRow">${esc(x.text)}</div>`); }
+    if(cs.unitStatus){ const oos=occ.filter(r=>r.flags.includes('oos')); if(oos.length){ h+=secHead('Unit status'); oos.forEach(r=>h+=`<div class="meetRow warn"><b>Rm ${r.id}</b> — Out of service / Maintenance${r.note?' · '+esc(r.note):''}</div>`); } }
+    if(cs.throughput){
+      const dc=occ.filter(r=>r.flags.includes('dc')); const adm=occ.filter(r=>r.flags.includes('adm'));
+      h+=secHead('Throughput');
+      if(dc.length) h+=`<div class="meetRow">${dc.map(r=>`<b>Rm ${r.id}</b> D/C${r.dcTime?' — '+esc(r.dcTime):' — time not set'}`).join('<br>')}</div>`;
+      else h+=`<div class="meetRow">No pending discharges</div>`;
+      if(adm.length) h+=`<div class="meetRow warn">${adm.map(r=>`<b>Rm ${r.id||'Incoming'}</b> Admit${r.admTime?' — '+esc(r.admTime):' — time not set'}`).join('<br>')}</div>`;
+    }
+    if(cs.isolation){
+      const isoC=occ.filter(r=>r.flags.includes('iso')&&r.isoType==='C');
+      const isoD=occ.filter(r=>r.flags.includes('iso')&&r.isoType==='D');
+      const isoA=occ.filter(r=>r.flags.includes('iso')&&r.isoType==='A');
+      const isoU=occ.filter(r=>r.flags.includes('iso')&&!r.isoType);
+      h+=secHead('Isolation');
+      if(!isoC.length&&!isoD.length&&!isoA.length&&!isoU.length) h+=`<div class="meetRow">No isolation patients</div>`;
+      if(isoC.length) h+=`<div class="meetRow alert">Contact: <b>${isoC.map(r=>r.id).join(', ')}</b></div>`;
+      if(isoD.length) h+=`<div class="meetRow alert">Droplet: <b>${isoD.map(r=>r.id).join(', ')}</b></div>`;
+      if(isoA.length) h+=`<div class="meetRow alert" style="background:#F3DDF0;border-color:#D4A8D0;">Airborne: <b>${isoA.map(r=>r.id).join(', ')}</b></div>`;
+      if(isoU.length) h+=`<div class="meetRow warn">ISO type not set: <b>${isoU.map(r=>r.id).join(', ')}</b></div>`;
+    }
+    if(cs.clinFlags!==false){
+      const codes=getMeetFlagCodes();
+      if(codes.length){ h+=secHead('Clinical flags');
+        codes.forEach(code=>{ const rs=occ.filter(r=>r.flags.includes(code)||(r.tags||[]).includes(code)); const label=getFlagLabel(code); h+=`<div class="meetRow${code==='beh'&&rs.length?' warn':''}">${label}: <b>${rs.length?rs.map(r=>r.id).join(', '):'None'}</b></div>`; }); }
+    }
+    h+=`</div>`; el.innerHTML=h;
   } else {
+    const ss=cfg.staffSections;
     const M=nurses.length, target=FLOOR.ratio||4;
     const dcCount=occ.filter(r=>r.flags.includes('dc')).length;
     const admCount=occ.filter(r=>r.flags.includes('adm')).length;
-    const proj=occ.length-dcCount+admCount;
+    const oosCount=occ.filter(r=>r.flags.includes('oos')).length;
+    const effectiveCensus=occ.length-oosCount;
+    const proj=effectiveCensus-dcCount+admCount;
     const needAtProj=Math.ceil(proj/target);
     const floats=nurses.filter(n=>n.level==='Float');
     const orients=nurses.filter(n=>n.level==='Orienting');
     const short=M<needAtProj;
     let h=`<div class="meetSection">`;
-    h+=secHead('Census');
-    h+=`<div class="meetRow">Current: <b>${occ.length} / ${TOTAL_BEDS}</b></div>`;
-    if(dcCount) h+=`<div class="meetRow">Expected discharges: <b>${dcCount}</b>${occ.filter(r=>r.flags.includes('dc')&&r.dcTime).map(r=>`<br><span style="font-size:12px;color:var(--ink-soft)">Rm ${r.id}: ${esc(r.dcTime)}</span>`).join('')}</div>`;
-    if(admCount) h+=`<div class="meetRow warn">Expected admits: <b>${admCount}</b>${occ.filter(r=>r.flags.includes('adm')&&r.admTime).map(r=>`<br><span style="font-size:12px;color:var(--ink-soft)">Rm ${r.id}: ${esc(r.admTime)}</span>`).join('')}</div>`;
-    h+=`<div class="meetRow"><b>Projected census: ${proj}</b></div>`;
-    h+=secHead('Staffing');
-    h+=`<div class="meetRow">Nurses on: <b>${M}</b>${floats.length?` · Floats: <b>${floats.map(n=>esc(n.name)).join(', ')}</b>`:''}${orients.length?` · Orienting: <b>${orients.map(n=>esc(n.name)).join(', ')}</b>`:''}</div>`;
-    h+=`<div class="meetRow">Needed at projected census (${proj}) · 1:${target}: <b>${needAtProj}</b></div>`;
-    h+=`<div class="meetRow ${short?'alert':'ok'}">${short?`⚠ Short — need <b>${needAtProj-M}</b> more nurse${needAtProj-M>1?'s':''}`:`✓ Covered — ${M-needAtProj>0?M-needAtProj+' over target ratio':' at target ratio'}`}</div>`;
-    if(pcts.length) h+=`<div class="meetRow">PCTs: <b>${pcts.length}</b></div>`;
-    if(sitters.length) h+=`<div class="meetRow">Sitters: <b>${sitters.map(s=>esc(s.name)+(s.room?' Rm '+s.room:'')).join(' · ')}</b></div>`;
-    h+=`</div>`;
-    el.innerHTML=h;
+    if(cfg.staffCustom.length){ h+=secHead('Custom items'); cfg.staffCustom.filter(x=>x.text.trim()).forEach(x=>h+=`<div class="meetRow">${esc(x.text)}</div>`); }
+    if(ss.census){
+      h+=secHead('Census');
+      h+=`<div class="meetRow">Current: <b>${effectiveCensus} / ${TOTAL_BEDS}</b>${oosCount?` <span style="font-size:11px;color:var(--ink-soft)">(${oosCount} OOS excluded)</span>`:''}</div>`;
+      if(dcCount) h+=`<div class="meetRow">Expected discharges: <b>${dcCount}</b>${occ.filter(r=>r.flags.includes('dc')&&r.dcTime).map(r=>`<br><span style="font-size:12px;color:var(--ink-soft)">Rm ${r.id}: ${esc(r.dcTime)}</span>`).join('')}</div>`;
+      if(admCount) h+=`<div class="meetRow warn">Expected admits: <b>${admCount}</b>${occ.filter(r=>r.flags.includes('adm')&&r.admTime).map(r=>`<br><span style="font-size:12px;color:var(--ink-soft)">Rm ${r.id}: ${esc(r.admTime)}</span>`).join('')}</div>`;
+      h+=`<div class="meetRow"><b>Projected census: ${proj}</b></div>`;
+    }
+    if(ss.staffing){
+      h+=secHead('Staffing');
+      h+=`<div class="meetRow">Nurses on: <b>${M}</b>${floats.length?` · Floats: <b>${floats.map(n=>esc(n.name)).join(', ')}</b>`:''}${orients.length?` · Orienting: <b>${orients.map(n=>esc(n.name)).join(', ')}</b>`:''}</div>`;
+      h+=`<div class="meetRow">Needed at projected ${proj} · 1:${target}: <b>${needAtProj}</b></div>`;
+      h+=`<div class="meetRow ${short?'alert':'ok'}">${short?`⚠ Short — need <b>${needAtProj-M}</b> more nurse${needAtProj-M>1?'s':''}`:`✓ Covered${M-needAtProj>0?' — '+(M-needAtProj)+' over target':' at target ratio'}`}</div>`;
+      if(pcts.length) h+=`<div class="meetRow">PCTs: <b>${pcts.length}</b></div>`;
+      if(sitters.length) h+=`<div class="meetRow">Sitters: <b>${sitters.map(s=>esc(s.name)+(s.room?' Rm '+s.room:'')).join(' · ')}</b></div>`;
+    }
+    h+=`</div>`; el.innerHTML=h;
   }
 }
 
-function getMeetText(){ return _meetTab==='clin'?buildClinicalText():buildStaffingText(); }
+function toggleMeetFlag(code,on){ if(!meetConfig.clinFlagCodes) meetConfig.clinFlagCodes=getDisplayFlagCodes(); if(on){ if(!meetConfig.clinFlagCodes.includes(code)) meetConfig.clinFlagCodes.push(code); } else meetConfig.clinFlagCodes=meetConfig.clinFlagCodes.filter(c=>c!==code); scheduleSave(); }
+function getMeetFlagCodes(){ if(!meetConfig.clinFlagCodes) meetConfig.clinFlagCodes=getDisplayFlagCodes(); return meetConfig.clinFlagCodes; }
 
 function copyMeetingPrep(){
   const t=getMeetText(); const m=document.getElementById('meetCopyMsg');
@@ -2417,9 +2573,9 @@ function impactRecalc(){
 function copyAssign(){ const t=assignText(); const m=document.getElementById('copyMsg');
   if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>m.textContent='Copied — paste it into your unit chat.').catch(()=>m.textContent='Couldn\u2019t copy automatically — long-press to select.');
   else m.textContent='Copy not available here — use Print instead.'; }
-const CLINREF=['iso','tele','trach','gtt','ins','cvl','foley','hd','pd','wound','tot','sit','feed','draw','restr','interp','dnar'];
-function clinicalGrid(){ const occ=occupied(); const LAB={feed:'Tube feed',draw:'Blood draw'};
-  return CLINREF.map(code=>{ const f=FLAGS.find(x=>x[0]===code); const label=f?(f[2]||f[1]):(LAB[code]||code);
+function getDisplayFlagCodes(){ return getActiveFlags().map(x=>x[0]).filter(c=>!ENGINE_FLAG_CODES.has(c)||c==='dnar'); }
+function clinicalGrid(){ const occ=occupied(); const codes=getDisplayFlagCodes();
+  return codes.map(code=>{ const label=getFlagLabel(code)||code;
     const rms=occ.filter(r=>(r.flags||[]).includes(code)||(r.tags||[]).includes(code)).map(r=>r.id).sort((a,b)=>a-b);
     return rms.length?{label,rooms:rms}:null; }).filter(Boolean); }
 function prColors(){ const PAL=['#DCE8FF','#FFE3D6','#DDF3E0','#F3DDF0','#FFF1C9','#D9F0F4','#E7E1FF','#FCE0E6','#E3EFD3','#FAD9C2','#D6E9FF','#EAD9C9']; const m={}; nurses.forEach((n,i)=>{ m[n.id]=PAL[i%PAL.length]; }); return m; }
