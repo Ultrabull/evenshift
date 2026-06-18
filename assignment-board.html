@@ -669,7 +669,7 @@
       <p class="covnote">Shifts save automatically when the charge taps <b>Next shift</b>. Keep files in one folder — select one or many to review or generate a report.</p>
       <div class="histload">
         <label class="btn primary" style="cursor:pointer;">📂 Load shift files<input type="file" id="histFile" accept=".json" multiple style="display:none" onchange="loadShiftFiles(this)"></label>
-        <button class="btn" onclick="downloadSnapshot(true)">⬇ Save this shift now</button>
+        <button class="btn" onclick="closeHistory();printAssign();">⬇ Save shift as PDF</button>
       </div>
       <div id="histMeta" style="display:none;margin-top:10px;">
         <div id="histSummaryLine" class="covnote"></div>
@@ -734,8 +734,9 @@
     <div class="mhead"><span class="rt">Print / share</span><button class="btn" onclick="closeShare()">Close</button></div>
     <div class="mbody">
       <label class="rubfield chargeOnly" style="display:block;margin-bottom:11px;">Charge nurse <span class="flhint">prints on the sheet</span><input id="chgName" oninput="setChargeName(this.value)" placeholder="Your name"></label>
-      <div class="shareRow"><button class="btn primary" onclick="printAssign()">Print / Save PDF</button><button class="btn" onclick="copyAssign()">Copy as text</button></div>
+      <div class="shareRow"><button class="btn primary" onclick="printAssign()">🖨 Print / Save PDF</button><button class="btn" onclick="shareAssign()">📤 Share</button><button class="btn" onclick="copyAssign()">Copy as text</button></div>
       <div id="copyMsg" class="hint" style="margin-top:7px;min-height:14px;"></div>
+      <p class="covnote" style="margin-top:8px;"><b>Share</b> opens your phone's share sheet (AirDrop, Messages, Email, WhatsApp) — no download needed. On a PC it opens the sheet in a new tab to share from the browser.</p>
       <h4 style="margin:16px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);">Scan to view</h4>
       <div class="hint">A nurse can scan this to pull the current assignment onto their phone. Once this is deployed to a server, the same QR becomes a live link that updates on its own.</div>
       <div id="qrBox" class="qrbox"></div>
@@ -1922,7 +1923,6 @@ function downloadSnapshot(manual=false){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=fname; document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(a.href);
-  if(manual){ const el=document.getElementById('histList'); if(el) el.innerHTML=`<div class="hint" style="color:var(--ok,#1C7A46)">✓ Downloaded: <b>${fname}</b> — keep it somewhere easy to find.</div>`; }
 }
 
 let _histSnaps=[];
@@ -2311,6 +2311,78 @@ function buildPrint(){
   const ts=new Date().toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   h+=`<div class="pr-foot">Generated with EvenShift \u00b7 ${ts} \u00b7 acuity-balanced, 1:${FLOOR.ratio||4} ratio checked \u00b7 room numbers only, no PHI</div>`;
   document.getElementById('printArea').innerHTML=h;
+}
+function shareAssign(){
+  buildPrint(); prQRdraw();
+  setTimeout(()=>{
+    const content=document.getElementById('printArea').innerHTML;
+    const unit=esc(FLOOR.unit||'Unit');
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EvenShift — ${unit} Assignment</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,Arial,sans-serif;font-size:12px;color:#10151D;background:#fff;padding:12px;}
+@page{margin:11mm;}
+@media print{@page{margin:11mm;}html,body{height:auto!important;}}
+.pr-top{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:2.5px solid #2E6BE6;padding-bottom:7px;margin-bottom:9px;}
+.pr-brand{display:flex;align-items:center;gap:7px;flex:none;}
+.pr-wordmark{font-size:15px;font-weight:800;color:#16202E;}
+.pr-sub{font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2E6BE6;margin-top:2px;}
+.pr-mid{flex:1;text-align:center;}
+.pr-title{font-size:17px;font-weight:800;color:#10151D;}
+.pr-meta{font-size:10px;line-height:1.5;color:#3a4250;margin-top:1px;}
+.pr-stamp{display:inline-block;margin-top:3px;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;}
+.pr-stamp.ok{background:#E3F4EA;color:#1C7A46;border:1px solid #BFE6CF;}
+.pr-stamp.warn{background:#FBF1DD;color:#8A6210;border:1px solid #EAD9AE;}
+.pr-qr{flex:none;text-align:center;}
+.pr-qr img,.pr-qr canvas,.pr-qr table{width:84px!important;height:84px!important;}
+.pr-qrlab{font-size:6.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#7A8290;margin-top:2px;}
+.pralert{font-size:10.5px;font-weight:700;color:#9A2A2A;background:#FBE9E9;border:1px solid #F2C9C9;border-radius:4px;padding:3px 8px;margin-bottom:8px;display:inline-block;}
+.prmap{display:flex;gap:12px;margin-bottom:10px;}
+.prwing{flex:1;border:1px solid #E2E6EC;border-radius:6px;padding:5px 7px;}
+.prwlab{display:block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#7A8290;margin-bottom:4px;}
+.prhall{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:3px;}
+.prc{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:19px;padding:0 3px;border:1px solid #C2CAD5;border-radius:4px;font-size:10px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.prc.e{color:#AEB6C2;border-style:dashed;}
+.prc b{font-size:7px;font-weight:800;margin-left:2px;opacity:.72;}
+.prc sup{font-size:6px;margin-left:1px;}
+.prc i{color:#9A2A2A;font-style:normal;font-weight:800;margin-left:1px;}
+.prcap{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#16202E;margin:8px 0 2px;}
+.prt{width:100%;border-collapse:collapse;font-size:10.5px;}
+.prt th{text-align:left;font-size:7.5px;text-transform:uppercase;letter-spacing:.04em;color:#7A8290;font-weight:700;border-bottom:1px solid #C2CAD5;padding:2px 5px;}
+.prt td{border-bottom:1px solid #E6E9EE;padding:3px 5px;vertical-align:middle;}
+.prt td.sw{width:17px;padding:0;text-align:center;font-size:8px;font-weight:800;color:#16202E;border-bottom:1px solid #fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.prt .nm{font-weight:700;white-space:nowrap;}
+.prt .nm small{font-weight:400;color:#7A8290;}
+.prt th.vc,.prt td.vc{width:44px;border-bottom:1px solid #8a929e;}
+.prt th.brk,.prt .brk{width:58px;font-size:9.5px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ld{width:64px;}
+.ldbar{display:block;width:58px;height:7px;background:#EDEFF3;border-radius:5px;overflow:hidden;}
+.ldbar i{display:block;height:100%;background:#2E6BE6;border-radius:5px;}
+.pr-cols{display:flex;gap:18px;margin-top:4px;}
+.pr-cols>div{flex:1;}
+.prbud{font-size:10px;line-height:1.7;}
+.prcode{font-size:9.5px;line-height:1.65;}
+.prcode b{display:inline-block;min-width:104px;}
+.pr-dir{margin-top:10px;border-top:1px solid #C2CAD5;padding-top:5px;font-size:9px;color:#3a4250;line-height:1.7;}
+.pr-foot{margin-top:9px;font-size:8px;color:#9098A4;text-align:center;letter-spacing:.03em;}
+.prclin{column-count:2;column-gap:18px;font-size:9.5px;line-height:1.65;}
+.prclinrow b{color:#16202E;}
+</style></head><body>
+${content}
+</body></html>`;
+    const blob=new Blob([html],{type:'text/html'});
+    const file=new File([blob],`EvenShift-${(FLOOR.unit||'Unit').replace(/\s+/g,'-')}-${shiftDate}-${shiftType}.html`,{type:'text/html'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:`EvenShift — ${FLOOR.unit||'Unit'} Assignment`,text:`${FLOOR.unit||'Unit'} ${shiftType} shift assignment — ${shiftDate}`})
+        .catch(e=>{ if(e.name!=='AbortError') openInTab(html); });
+    } else { openInTab(html); }
+  }, 80);
+}
+function openInTab(html){
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else { const m=document.getElementById('copyMsg'); if(m) m.textContent='Allow pop-ups for this site to open the sheet in a new tab.'; }
 }
 function prQRdraw(){ const box=document.getElementById('prQR'); if(!box||!window.QRCode) return; box.innerHTML=''; try{ new QRCode(box,{text:location.origin+location.pathname+'?u='+encodeURIComponent(unitId||'demo'),width:132,height:132,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} }
 function printAssign(){ const go=()=>{ buildPrint(); prQRdraw(); setTimeout(()=>window.print(),80); };
