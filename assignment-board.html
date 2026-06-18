@@ -736,6 +736,7 @@
         <div id="histSummaryLine" class="covnote"></div>
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn primary" onclick="generatePDFReport()">📄 Generate PDF report</button>
+          <button class="btn" onclick="shareReport()">📤 Share report</button>
           <button class="btn" onclick="clearHistFiles()">✕ Clear</button>
         </div>
       </div>
@@ -2419,6 +2420,20 @@ function aggregateSnaps(snaps){
 
 function rpt(txt,fw,fs,clr,al){ return `<span style="font-weight:${fw||400};font-size:${fs||14}px;color:${clr||'#10151D'};text-align:${al||'left'}">${txt}</span>`; }
 function escH(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function shareReport(){
+  if(!_histSnaps.length){ alert('Load some shift files first.'); return; }
+  const ag=aggregateSnaps(_histSnaps);
+  const n=ag.shifts.length;
+  const dateRange=n>1?`${ag.shifts[0].shiftDate} – ${ag.shifts[n-1].shiftDate}`:ag.shifts[0].shiftDate;
+  const html=buildReportHTML(ag,dateRange,n);
+  const fname=`EvenShift-Report-${(ag.unitName||'Unit').replace(/\s+/g,'-')}-${dateRange.replace(/\s+/g,'')}.html`;
+  const file=new File([new Blob([html],{type:'text/html'})],fname,{type:'text/html'});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:`EvenShift Report — ${ag.unitName}`,text:`${ag.unitName} assignment report · ${dateRange} · ${n} shifts`})
+      .catch(e=>{ if(e.name!=='AbortError') openInTab(html); });
+  } else { openInTab(html); }
+}
 
 function generatePDFReport(){
   if(!_histSnaps.length){ alert('Load some shift files first.'); return; }
