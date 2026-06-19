@@ -221,6 +221,15 @@
   .hsection{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
   .printArea{display:none;}
   .phibadge{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 11px;margin:8px 0 2px;}
+  .stepguide{display:flex;align-items:center;gap:11px;border-radius:12px;padding:12px 14px;margin:4px 0 8px;font-size:14px;line-height:1.45;}
+  .stepguide .stepnum{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;}
+  .stepguide .steptxt{flex:1;color:var(--ink);}
+  .stepguide.wait{background:#FFF8EC;border:1.5px solid #F0C860;}
+  .stepguide.wait .stepnum{background:#C79200;}
+  .stepguide.go{background:#EAF1FF;border:1.5px solid #9DBDF5;}
+  .stepguide.go .stepnum{background:var(--teal);}
+  .stepguide.done{background:#E3F4EA;border:1.5px solid #BFE6CF;}
+  .stepguide.done .stepnum{background:#1C7A46;}
   .acureview{background:#FFF8EC;border:1px solid #F0C860;border-radius:9px;padding:8px 12px;font-size:12px;line-height:1.6;margin:6px 0;}
   .acureview b{color:#7A5000;}
   .rose-icon{font-weight:900;color:#C07000;margin-right:4px;}
@@ -568,19 +577,19 @@
         </summary>
         <div class="menupop">
           <div class="mrow chargeOnly"><span class="mlab">View as</span><select id="viewAs" onchange="setViewAs(this.value)"></select></div>
-          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openShare()">Print / share</button>
+          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openShare()">📤 Print / share</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openUnitQR()">Unit link &amp; QR</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFloor()">Floor &amp; beds setup</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openRubric()">Edit acuity rubric</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');changePin()">Change charge PIN</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFlagEditor()">🏷 Edit clinical flags</button>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openMeetingPrep()">📋 Meeting prep</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📁 Shift history</button>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager reports &amp; analysis</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openImpact()">Impact &amp; savings</button>
           <div class="msep chargeOnly"></div>
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">Next shift →</button>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 Start new shift</button>
           <button class="mitem danger chargeOnly" onclick="this.closest('.menu').removeAttribute('open');clearFloor()">Clear floor</button>
         </div>
       </details>
@@ -614,7 +623,7 @@
     </div>
     <div class="assignTop chargeOnly">
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn sm" onclick="openStaff()">Staff…</button>
+        <button class="btn sm" onclick="openStaff()">👥 Staff</button>
         <details class="tools"><summary class="btn sm">Options ▾</summary>
           <div class="toolspop">
           <div class="hint" style="margin:0;font-size:11px;line-height:1.45;">Generate gives everyone an <b>even patient count</b> and <b>acuity within 0.5 hrs</b>, then pulls each nurse's rooms <b>physically close</b> on the floor (two rows per hall, corner in the middle). Pin or lock a patient to override.</div>
@@ -623,8 +632,9 @@
         </details>
         <button class="btn sm" id="undoBtn" onclick="undo()" style="display:none;">↶ Undo</button>
       </div>
-      <button class="btn primary big" onclick="generate()">Generate</button>
+      <button class="btn primary big" onclick="generate()">✨ Make assignment</button>
     </div>
+    <div class="stepguide chargeOnly" id="stepGuide"></div>
     <div class="balline chargeOnly" id="balline"><span class="verdict" id="verdict">—</span><span class="balcounts"> · <b id="ptCount">0</b> patients · <b id="hrTotal">0</b> hrs<span id="unWrap"> · <b id="unCount">0</b> unassigned</span></span></div>
     <div class="staffline chargeOnly" id="staffLine"></div>
     <div class="edithint chargeOnly" id="editHint"></div>
@@ -639,7 +649,7 @@
           <div class="hint" id="poolHint" style="margin-top:8px;">Tap a room, then tap a nurse. On a laptop you can also drag.</div>
           <button class="btn sm" style="margin-top:9px;width:100%;" onclick="event.stopPropagation(); assignAllNew()">Place new admits →</button>
         </div>
-        <details class="panel supportwrap" open><summary>Coverage &amp; safety</summary><div id="supportPanel" style="margin-top:10px;"></div></details>
+        <details class="panel supportwrap" open><summary>Who covers who (breaks, buddies, PCTs)</summary><div id="supportPanel" style="margin-top:10px;"></div></details>
       </div>
     </div>
     <footer class="note">Generate evens patient counts first, then nursing hours to within half an hour, keeps each nurse in one hall (or two on the same wing), spreads feeds, draws, drips and discharges, and protects new grads. PCTs cover zones; sitters cover 1:1.</footer>
@@ -725,22 +735,23 @@
 
 <div class="scrim" id="histScrim" onclick="if(event.target===this)closeHistory()">
   <div class="modal wide">
-    <div class="mhead"><span class="rt">📋 Shift history</span><button class="btn" onclick="closeHistory()">Close</button></div>
+    <div class="mhead"><span class="rt">📊 Manager reports &amp; analysis</span><button class="btn" onclick="closeHistory()">Close</button></div>
     <div class="mbody">
-      <p class="covnote">Shifts save automatically when the charge taps <b>Next shift</b>. Keep files in one folder — select one or many to review or generate a report.</p>
-      <div class="histload">
-        <label class="btn primary" style="cursor:pointer;">📂 Load shift files<input type="file" id="histFile" accept=".json" multiple style="display:none" onchange="loadShiftFiles(this)"></label>
-        <button class="btn" onclick="closeHistory();printAssign();">⬇ Save shift as PDF</button>
+      <p class="covnote">Every shift is saved automatically when the charge taps <b>Start new shift</b>. Pick a range, then share the report — the manager can save or print it from there.</p>
+      <div class="histfilters" id="histFilters">
+        <button class="hfbtn sel" data-range="7"  onclick="histRange(this,7)">Last 7 days</button>
+        <button class="hfbtn"     data-range="30" onclick="histRange(this,30)">Last 30 days</button>
+        <button class="hfbtn"     data-range="90" onclick="histRange(this,90)">Last 90 days</button>
+        <button class="hfbtn"     data-range="0"  onclick="histRange(this,0)">All time</button>
       </div>
       <div id="histMeta" style="display:none;margin-top:10px;">
         <div id="histSummaryLine" class="covnote"></div>
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn primary" onclick="generatePDFReport()">📄 Generate PDF report</button>
-          <button class="btn" onclick="shareReport()">📤 Share report</button>
-          <button class="btn" onclick="clearHistFiles()">✕ Clear</button>
+          <button class="btn primary" onclick="shareReport()">📤 Share report</button>
+          <button class="btn" onclick="generatePDFReport()">👁 View report</button>
         </div>
       </div>
-      <div id="histList" style="margin-top:12px;"></div>
+      <div id="histList" style="margin-top:12px;"><div class="hint">Loading…</div></div>
     </div>
   </div>
 </div>
@@ -1249,6 +1260,22 @@ function updateBalance(){
   else if(spread<=3.0){col='var(--warn)';txt=`Rooms kept together · hours ±${spread.toFixed(1)} hrs`;}
   else{col='var(--bad)';txt=`Hours ±${spread.toFixed(1)} hrs — add staff or split a cluster`;}
   if(v){v.textContent=txt; v.style.color=col;}
+  updateStepGuide();
+}
+/* Big plain-language "what to do next" banner — guides any new user step by step */
+function updateStepGuide(){
+  const g=document.getElementById('stepGuide'); if(!g||!chargeMode){ if(g)g.style.display='none'; return; }
+  const occ=occupied();
+  const scored=occ.filter(r=>r.acuity>0).length;
+  const total=occ.length;
+  const anyAssigned=occ.some(r=>r.nurse);
+  let step, txt, cls;
+  if(total===0){ step='1'; cls='wait'; txt='Add patients first — go to the <b>Score</b> tab and tap each room your unit has a patient in.'; }
+  else if(scored<total){ step='1'; cls='wait'; txt=`Score your patients — <b>${scored} of ${total}</b> done. Tap the <b>Score</b> tab and finish the rest, then come back here.`; }
+  else if(!anyAssigned){ step='2'; cls='go'; txt='All patients scored ✓ — now tap <b>✨ Make assignment</b> below to build a fair board.'; }
+  else { step='3'; cls='done'; txt='Assignment ready ✓ — tap <b>⋯</b> then <b>Print / share</b> to send it out. To set up the next shift, tap <b>⋯ → Start new shift</b>.'; }
+  g.innerHTML=`<span class="stepnum">${step}</span><span class="steptxt">${txt}</span>`;
+  g.className=`stepguide chargeOnly ${cls}`; g.style.display='';
 }
 /* ---------- undo: one tap back for the charge ---------- */
 let undoStack=[];
@@ -2312,46 +2339,52 @@ function buildSnapshot(){
   };
 }
 
-function downloadSnapshot(manual=false){
+async function pushHistory(){
   const snap=buildSnapshot();
-  const fname=`evenshift-${unitId}-${shiftDate}-${shiftType}.json`;
-  const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=fname; document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  // always keep a local file fallback (silent) in case cloud is off
+  if(!cloudOn()){
+    try{ const fname=`evenshift-${unitId}-${shiftDate}-${shiftType}.json`;
+      const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    }catch(e){}
+    return;
+  }
+  try{
+    await sb.from('shift_history').insert({unit:unitId,shift_date:shiftDate,shift_type:shiftType,
+      charge_name:chargeName||'',census:snap.census,total_beds:snap.totalBeds,snapshot:snap});
+  }catch(e){ console.warn('history save failed',e); }
 }
+// kept for the manual "save now" path if needed elsewhere
+function downloadSnapshot(){ pushHistory(); }
 
-let _histSnaps=[];
+let _histSnaps=[], _histRange=7;
 
-function openHistory(){ if(!chargeMode)return; document.getElementById('histScrim').classList.add('on'); }
+function openHistory(){ if(!chargeMode)return; document.getElementById('histScrim').classList.add('on'); loadHistory(); }
 function closeHistory(){ document.getElementById('histScrim').classList.remove('on'); }
-function clearHistFiles(){ _histSnaps=[]; document.getElementById('histMeta').style.display='none'; document.getElementById('histList').innerHTML=''; document.getElementById('histFile').value=''; }
+function histRange(btn,days){ document.querySelectorAll('.hfbtn').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); _histRange=days; loadHistory(); }
 
-function loadShiftFiles(input){
-  const files=[...input.files]; if(!files.length) return;
-  let done=0; const snaps=[];
-  files.forEach(file=>{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      try{ snaps.push({snap:JSON.parse(e.target.result),fname:file.name}); }catch(e){}
-      if(++done===files.length) afterFilesLoaded(snaps);
-    };
-    reader.readAsText(file);
-  });
-  input.value='';
-}
-
-function afterFilesLoaded(items){
-  _histSnaps=items.sort((a,b)=>{
-    const ds=(s)=>(s.snap.shiftDate||'')+(s.snap.shiftType==='Day'?'A':'B');
-    return ds(a)<ds(b)?-1:ds(a)>ds(b)?1:0;
-  });
-  const n=_histSnaps.length;
-  const el=document.getElementById('histMeta'); if(el) el.style.display='';
-  const sl=document.getElementById('histSummaryLine');
-  if(sl) sl.innerHTML=`<b>${n} shift${n>1?'s':''} loaded</b>${n>1?` · ${_histSnaps[0].snap.shiftDate} → ${_histSnaps[n-1].snap.shiftDate}`:''} · tap <b>Generate PDF report</b> for the full manager summary.`;
-  const list=document.getElementById('histList');
-  if(list) list.innerHTML=_histSnaps.map(({snap,fname},i)=>renderSnapRow(snap,fname,i)).join('');
+async function loadHistory(){
+  const list=document.getElementById('histList'); const meta=document.getElementById('histMeta');
+  if(!cloudOn()){ if(list) list.innerHTML='<div class="hint">Cloud isn\u2019t connected, so saved shifts can\u2019t be loaded here. Connect the board (⋯ → Unit link &amp; QR) to use reports.</div>'; if(meta) meta.style.display='none'; return; }
+  if(list) list.innerHTML='<div class="hint">Loading…</div>';
+  try{
+    let q=sb.from('shift_history').select('*').eq('unit',unitId).order('created_at',{ascending:false});
+    if(_histRange>0){ const since=new Date(Date.now()-_histRange*86400000).toISOString(); q=q.gte('created_at',since); }
+    const {data,error}=await q.limit(300);
+    if(error) throw error;
+    _histSnaps=(data||[]).map(row=>({snap:row.snapshot||{
+      shiftDate:row.shift_date,shiftType:row.shift_type,chargeName:row.charge_name,
+      census:row.census,totalBeds:row.total_beds},id:row.id}));
+    const n=_histSnaps.length;
+    if(meta) meta.style.display=n?'':'none';
+    const sl=document.getElementById('histSummaryLine');
+    if(sl&&n) sl.innerHTML=`<b>${n} shift${n>1?'s':''}</b> in this range · tap <b>Share report</b> to send it, or <b>View report</b> to see it first.`;
+    if(list){
+      if(!n) list.innerHTML='<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>';
+      else list.innerHTML=_histSnaps.map(({snap},i)=>renderSnapRow(snap,'',i)).join('');
+    }
+  }catch(e){ if(list) list.innerHTML=`<div class="hint" style="color:var(--bad)">Couldn\u2019t load reports: ${esc(e.message||'error')}. Make sure the shift_history table exists in Supabase.</div>`; }
 }
 
 function renderSnapRow(snap,fname,i){
@@ -2422,7 +2455,7 @@ function rpt(txt,fw,fs,clr,al){ return `<span style="font-weight:${fw||400};font
 function escH(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function shareReport(){
-  if(!_histSnaps.length){ alert('Load some shift files first.'); return; }
+  if(!_histSnaps.length){ alert('No shifts in this range yet. They\u2019re saved automatically when the charge taps Start new shift.'); return; }
   const ag=aggregateSnaps(_histSnaps);
   const n=ag.shifts.length;
   const dateRange=n>1?`${ag.shifts[0].shiftDate} – ${ag.shifts[n-1].shiftDate}`:ag.shifts[0].shiftDate;
@@ -2436,7 +2469,7 @@ function shareReport(){
 }
 
 function generatePDFReport(){
-  if(!_histSnaps.length){ alert('Load some shift files first.'); return; }
+  if(!_histSnaps.length){ alert('No shifts in this range yet. They\u2019re saved automatically when the charge taps Start new shift.'); return; }
   const ag=aggregateSnaps(_histSnaps);
   const n=ag.shifts.length;
   const dateRange=n>1?`${ag.shifts[0].shiftDate} – ${ag.shifts[n-1].shiftDate}`:ag.shifts[0].shiftDate;
@@ -2444,7 +2477,6 @@ function generatePDFReport(){
   const w=window.open('','_blank');
   if(!w){ alert('Allow pop-ups for this site to open the report.'); return; }
   w.document.write(html); w.document.close();
-  setTimeout(()=>w.print(),600);
 }
 
 function buildReportHTML(ag,dateRange,n){
@@ -2523,7 +2555,18 @@ function buildReportHTML(ag,dateRange,n){
     .metrics{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
     .note{font-size:10px;color:${SOFT};font-style:italic;margin-top:4px;}
     .footer{margin-top:24px;padding-top:8px;border-top:1px solid ${MGRAY};display:flex;justify-content:space-between;font-size:9px;color:${SOFT};}
+    .actionbar{position:sticky;top:0;z-index:10;background:${WHITE};border-bottom:1px solid ${MGRAY};padding:10px 12px;display:flex;gap:8px;align-items:center;margin:-12px -12px 14px;}
+    .actbtn{padding:9px 16px;border-radius:9px;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .actbtn.share{background:${BLUE};color:#fff;}
+    .actbtn.print{background:${LGRAY};color:${NAVY};border:1px solid ${MGRAY};}
+    .actmsg{font-size:11px;color:${SOFT};}
+    @media print{.actionbar{display:none!important;}}
   </style></head><body>
+  <div class="actionbar">
+    <button class="actbtn share" onclick="shareThisReport()">📤 Share</button>
+    <button class="actbtn print" onclick="window.print()">🖨 Print / Save PDF</button>
+    <span class="actmsg" id="actMsg"></span>
+  </div>
   <div class="cover">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
@@ -2566,13 +2609,27 @@ function buildReportHTML(ag,dateRange,n){
       <span>Report generated ${new Date().toLocaleString()}</span>
     </div>
   </div>
-  <script>window.onload=function(){window.print();}<\/script>
+  <script>
+  function shareThisReport(){
+    var msg=document.getElementById('actMsg');
+    try{
+      var html='<!DOCTYPE html>'+document.documentElement.outerHTML;
+      var fname='EvenShift-Report-${escH((ag.unitName||'Unit').replace(/\s+/g,'-'))}-${escH(dateRange.replace(/\s+/g,''))}.html';
+      var file=new File([new Blob([html],{type:'text/html'})],fname,{type:'text/html'});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'EvenShift Report',text:'${escH(ag.unitName)} assignment report'}).catch(function(e){ if(e.name!=='AbortError'&&msg) msg.textContent='Share cancelled or unavailable — use Print instead.'; });
+      } else if(navigator.share){
+        navigator.share({title:'EvenShift Report',text:document.body.innerText.slice(0,2000)}).catch(function(){});
+      } else { if(msg) msg.textContent='Sharing not supported on this browser — use Print / Save PDF.'; }
+    }catch(e){ if(msg) msg.textContent='Could not share — use Print / Save PDF.'; }
+  }
+  <\/script>
   </body></html>`;
 }
 function nextShift(){ if(!chargeMode)return;
   if(!confirm('Start next shift?\n\nKeeps each patient\u2019s acuity, flags and notes as the starting point, and clears the nurse assignments and continuity locks so the oncoming charge can re-build.')) return;
   pushUndo();
-  downloadSnapshot();  // auto-saves to PC before clearing
+  pushHistory();  // saves this shift to the cloud (or a local file if offline)
   Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null; });
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
