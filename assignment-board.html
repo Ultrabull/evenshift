@@ -22,6 +22,14 @@
     --display:'Plus Jakarta Sans','Inter',sans-serif;
     --body:'Inter',system-ui,sans-serif;
   }
+  body.dark{
+    color-scheme:dark;
+    --ink:#E6ECF3; --ink-soft:#9AA7B8; --bg:#161C26; --surface:#1E2733;
+    --line:#2A3441; --line-strong:#3A4655;
+    --teal:#5B8DEF; --teal-deep:#7CA5F5; --teal-wash:#243049;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.4);
+  }
+  body.dark html, body.dark{ background:#161C26; }
   *{box-sizing:border-box;} html,body{margin:0;padding:0;}
   html{background:#F6F8FB;}
   body{background:#F6F8FB;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;}
@@ -190,6 +198,14 @@
   .fefull{flex:1;}
   .faded{opacity:.4;}
   .ruleSel{height:32px;border:1px solid var(--line-strong);border-radius:8px;padding:0 6px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink);flex:none;}
+  .incsec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:12px 0 5px;}
+  .incrow{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:5px;background:var(--bg);}
+  .incrow.off{opacity:.5;}
+  .inctog{flex:none;width:48px;height:30px;border-radius:8px;border:1.5px solid var(--line-strong);background:#fff;font-size:12px;font-weight:700;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+  .inctog.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .incname{flex:1;font-size:14px;font-weight:600;color:var(--ink);}
+  .inclvl{font-size:11px;color:var(--ink-soft);}
+  .incadd{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
   .capIn{width:46px;height:32px;border:1px solid var(--line-strong);border-radius:8px;padding:0 6px;font-size:13px;font-family:inherit;flex:none;}
   .meetSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
   .meetRow{font-size:13px;padding:6px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;margin-bottom:4px;line-height:1.5;}
@@ -341,6 +357,37 @@
   .whobtn{padding:8px 14px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--bg);font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit;}
   .whobtn.sel{background:var(--teal);border-color:var(--teal);color:#fff;}
   .scorehint{font-size:12px;color:var(--ink-soft);padding:4px 0 2px;font-style:italic;}
+  .postbanner{border-radius:12px;padding:11px 14px;margin:6px 0;font-size:14px;line-height:1.45;}
+  .postbanner.draft{background:#FFF8EC;border:1.5px solid #F0C860;color:#7A5500;}
+  .postbanner.final{background:#E3F4EA;border:1.5px solid #BFE6CF;color:#1C5C36;}
+  .postbanner .pb-ico{margin-right:5px;}
+  .postbanner .pb-time{font-size:11.5px;color:var(--ink-soft);font-weight:400;}
+  #postBtn.posted{background:#E3F4EA;border-color:#1C7A46;color:#1C7A46;}
+  .offlinebar{background:#FBE9E9;border-bottom:1.5px solid #E8B4B4;color:#9A2A2A;font-size:12.5px;padding:8px 14px;line-height:1.4;}
+  .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .roomjump input{width:140px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 11px;font-size:14px;font-family:inherit;color:var(--ink);background:#fff;}
+  .roomjump span{font-size:12px;color:var(--ink-soft);}
+  .rcard.jumphi{outline:3px solid var(--teal);outline-offset:2px;box-shadow:0 0 0 4px var(--teal-wash);}
+  .introcard{text-align:center;padding:14px 10px 6px;}
+  .intro-ico{font-size:46px;margin-bottom:10px;}
+  .intro-title{font-size:19px;font-weight:800;color:var(--ink);margin-bottom:8px;}
+  .intro-text{font-size:14.5px;line-height:1.5;color:var(--ink-soft);margin-bottom:16px;}
+  .intro-dots{display:flex;gap:6px;justify-content:center;margin-bottom:16px;}
+  .idot{width:8px;height:8px;border-radius:50%;background:var(--line-strong);}
+  .idot.on{background:var(--teal);}
+  .intro-btns{display:flex;gap:8px;justify-content:center;}
+  .donebtn{display:block;width:100%;margin:6px 0;padding:9px;border-radius:10px;border:1.5px solid var(--teal);background:var(--teal-wash);color:var(--teal-deep);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .donebtn.done{background:#E3F4EA;border-color:#1C7A46;color:#1C7A46;}
+  .scoreprog{border-radius:12px;padding:10px 13px;margin:6px 0;background:#FFF8EC;border:1.5px solid #F0C860;}
+  .scoreprog.ok{background:#E3F4EA;border-color:#BFE6CF;}
+  .scoreprog .sp-head{font-size:13px;color:var(--ink);margin-bottom:7px;}
+  .scoreprog .sp-ok{font-size:13px;font-weight:700;color:#1C7A46;}
+  .scoreprog .sp-chips{display:flex;flex-wrap:wrap;gap:5px;}
+  .spchip{font-size:11.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--line);background:#fff;color:var(--ink);}
+  .spchip.spc-done{background:#E3F4EA;border-color:#BFE6CF;color:#1C7A46;}
+  .spchip.spc-all{background:#EAF1FF;border-color:#9DBDF5;color:#2E5BB8;}
+  .spchip.spc-part{background:#FFF8EC;border-color:#F0C860;color:#8A6210;}
+  .spchip.spc-none{background:#FBE9E9;border-color:#F2C9C9;color:#9A2A2A;}
   .chip.rntap{cursor:pointer;border-color:var(--teal);}
   .brkInput{width:88px;height:26px;border:1px solid var(--line-strong);border-radius:7px;padding:0 7px;font-size:12px;font-family:inherit;color:var(--ink);background:#fff;}
   .nursepick select{flex:1;min-width:0;font-family:var(--body);font-size:14px;font-weight:600;color:var(--ink);padding:9px 11px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);}
@@ -595,6 +642,7 @@
       </details>
     </div>
   </header>
+  <div class="offlinebar" id="offlineBar" style="display:none;">⚠ <b>Offline</b> — changes are saved on this device only and won\u2019t sync until you reconnect. Tap ⋯ → Unit link &amp; QR to reconnect.</div>
 
   <details class="help">
     <summary><span class="qmark">?</span> How EvenShift works</summary>
@@ -612,6 +660,7 @@
 
   <div class="view on" id="v-acuity">
     <div class="hint" style="font-size:12.5px;margin-bottom:6px;">Tap a room to score it — tally what the patient needs and it totals the acuity number.</div>
+    <div class="roomjump"><input id="roomSearch" inputmode="numeric" placeholder="Jump to room #" oninput="jumpRoom(this.value)"><span id="roomJumpMsg"></span></div>
     <div class="rubrictag chargeOnly" id="rubricTag" onclick="openRubric()" title="Edit acuity rubric"></div>
     <div id="halls"></div>
   </div>
@@ -621,6 +670,7 @@
       <span class="npk">Who are you?</span>
       <div class="whobtns" id="whoBtns"></div>
     </div>
+    <div class="postbanner" id="postBanner" style="display:none;"></div>
     <div class="assignTop chargeOnly">
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn sm" onclick="openStaff()">👥 Staff</button>
@@ -628,11 +678,17 @@
           <div class="toolspop">
           <div class="hint" style="margin:0;font-size:11px;line-height:1.45;">Generate gives everyone an <b>even patient count</b> and <b>acuity within 0.5 hrs</b>, then pulls each nurse's rooms <b>physically close</b> on the floor (two rows per hall, corner in the middle). Pin or lock a patient to override.</div>
             <button class="linkx" onclick="resetBoard()">Clear all assignments</button>
+            <button class="linkx" onclick="toggleDark()">🌙 Night / day mode</button>
+            <button class="linkx" onclick="printBlankSheet()">🖨 Print blank scoring sheet</button>
           </div>
         </details>
         <button class="btn sm" id="undoBtn" onclick="undo()" style="display:none;">↶ Undo</button>
       </div>
-      <button class="btn primary big" onclick="generate()">✨ Make assignment</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn sm" onclick="openIncoming()">🔄 Who's coming on</button>
+        <button class="btn primary big" onclick="generate()">✨ Make assignment</button>
+        <button class="btn sm" id="postBtn" onclick="togglePosted()">📌 Post</button>
+      </div>
     </div>
     <div class="stepguide chargeOnly" id="stepGuide"></div>
     <div class="balline chargeOnly" id="balline"><span class="verdict" id="verdict">—</span><span class="balcounts"> · <b id="ptCount">0</b> patients · <b id="hrTotal">0</b> hrs<span id="unWrap"> · <b id="unCount">0</b> unassigned</span></span></div>
@@ -640,6 +696,7 @@
     <div class="edithint chargeOnly" id="editHint"></div>
     <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
     <div class="acureview chargeOnly" id="acuReview" style="display:none;"></div>
+    <div class="scoreprog chargeOnly" id="scoreProg" style="display:none;"></div>
     <div class="acureview chargeOnly" id="flagViol" style="display:none;"></div>
     <div class="cols">
       <div class="nurses" id="nurses"></div>
@@ -691,6 +748,12 @@
   </div>
 </div>
 
+<div class="scrim" id="introScrim" style="z-index:200;">
+  <div class="modal" style="max-width:420px;">
+    <div class="introbody" id="introBody"></div>
+  </div>
+</div>
+
 <div class="scrim gate" id="gateScrim">
   <div class="modal">
     <div class="mhead"><span class="rt">Unit access</span></div>
@@ -700,6 +763,22 @@
       <div class="rsharebtns" style="margin-top:10px;"><button class="btn primary" onclick="submitGate()">Unlock</button></div>
       <div id="gateMsg" class="rmsg" style="color:var(--bad)"></div>
       <p class="covnote" style="margin-top:12px;">Ask your charge nurse for the code. It stops the link from opening the board for anyone who hasn't been given the code — a front-desk gate, not a hospital-grade login.</p>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="incScrim" onclick="if(event.target===this)closeIncoming()">
+  <div class="modal wide">
+    <div class="mhead"><span class="rt">🔄 Who's coming on next shift</span><button class="btn" onclick="closeIncoming()">Done</button></div>
+    <div class="mbody">
+      <p class="covnote">Turn <b>on</b> the staff working the next shift, turn <b>off</b> anyone going home. Patients and their scores stay — only the nurses change. Add a float or pool staff with the buttons at the bottom.</p>
+      <div id="incBody"></div>
+      <div class="incadd">
+        <button class="btn sm" onclick="addIncoming('n')">+ Add nurse / float</button>
+        <button class="btn sm" onclick="addIncoming('p')">+ Add PCT</button>
+        <button class="btn sm" onclick="addIncoming('s')">+ Add sitter</button>
+      </div>
+      <p class="covnote" style="margin-top:10px;">When you tap <b>✨ Make assignment</b>, nurses staying on keep their rooms where possible — only rooms from nurses who left get shared out to the new crew.</p>
     </div>
   </div>
 </div>
@@ -1027,7 +1106,7 @@ function renderAcuity(){
     if(!mine.length) html+='<div class="empty2">No patients assigned to you yet.</div>';
     mine.forEach(rn=>{ const r=rn; const cls=acuClass(r.acuity);
       const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-      html+=`<div class="rcard" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
+      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
     });
     html+='</div></div>';
     document.getElementById('halls').innerHTML=html;
@@ -1037,11 +1116,11 @@ function renderAcuity(){
     html+=`<div class="hall"><h2><span class="dot" style="background:${h.color}"></span>${h.label}</h2><div class="rgrid">`;
     h.rooms.forEach(rn=>{
       const r=rooms[rn];
-      if(!r.occupied){ html+=`<div class="rcard empty" onclick="openModal(${rn})"><div class="rno" style="color:#9AA6B6">${rn}</div><div style="font-size:11px;color:#9AA6B6;margin-top:18px;">Empty · tap to admit</div></div>`; }
+      if(!r.occupied){ html+=`<div class="rcard empty" data-room="${rn}" onclick="openModal(${rn})"><div class="rno" style="color:#9AA6B6">${rn}</div><div style="font-size:11px;color:#9AA6B6;margin-top:18px;">Empty · tap to admit</div></div>`; }
       else{
         const cls=acuClass(r.acuity);
         const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-        html+=`<div class="rcard" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
+        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
       }
     });
     html+='</div></div>';
@@ -1221,6 +1300,8 @@ function renderAssign(){
       <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${L.hrs.toFixed(1)}</b> hrs · ${L.count} pt</span></div>
       ${bparts.length?`<div class="burds">${bparts.join(' · ')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
+      ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
+        return `<button class="donebtn ${done?'done':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${done?'✓ You\u2019re done — scores sent':(unscored>0?`Score your ${unscored} remaining, then tap “I\u2019m done”`:'✓ Tap when all your patients are scored')}</button>`; })():''}
       <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
   }).join('');
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
@@ -1262,8 +1343,39 @@ function updateBalance(){
   if(v){v.textContent=txt; v.style.color=col;}
   updateStepGuide();
 }
+/* Charge-facing: which nurses still need to score their patients */
+function updateScoreProgress(){
+  const el=document.getElementById('scoreProg'); if(!el) return;
+  if(!chargeMode){ el.style.display='none'; return; }
+  const assignedNurses=nurses.filter(n=>occupied().some(r=>r.nurse===n.id));
+  if(!assignedNurses.length){ el.style.display='none'; return; }
+  const rows=assignedNurses.map(n=>{
+    const rs=occupied().filter(r=>r.nurse===n.id);
+    const scored=rs.filter(r=>r.acuity>0).length;
+    const allScored=scored===rs.length;
+    const done=n.scoredDone && allScored;
+    const status=done?'done':(allScored?'allscored':(scored>0?'partial':'none'));
+    return {name:n.name,scored,total:rs.length,status};
+  });
+  const waiting=rows.filter(r=>r.status!=='done');
+  if(!waiting.length){
+    el.innerHTML=`<span class="sp-ok">✓ Everyone has scored and marked done — ready to build the next assignment.</span>`;
+    el.className='scoreprog chargeOnly ok'; el.style.display=''; return;
+  }
+  const chips=rows.map(r=>{
+    const cls=r.status==='done'?'spc-done':r.status==='allscored'?'spc-all':r.status==='partial'?'spc-part':'spc-none';
+    const tag=r.status==='done'?'✓ done':r.status==='allscored'?`${r.scored}/${r.total} ✓`:`${r.scored}/${r.total}`;
+    return `<span class="spchip ${cls}">${esc(r.name)} <b>${tag}</b></span>`;
+  }).join('');
+  const need=rows.filter(r=>r.status==='none'||r.status==='partial').map(r=>r.name);
+  el.innerHTML=`<div class="sp-head">🩺 Scoring progress${need.length?` — still waiting on <b>${need.map(esc).join(', ')}</b>`:' — all scored, waiting for “done”'}</div><div class="sp-chips">${chips}</div>`;
+  el.className='scoreprog chargeOnly'; el.style.display='';
+}
+
 /* Big plain-language "what to do next" banner — guides any new user step by step */
 function updateStepGuide(){
+  updateScoreProgress();
+  updatePostUI();
   const g=document.getElementById('stepGuide'); if(!g||!chargeMode){ if(g)g.style.display='none'; return; }
   const occ=occupied();
   const scored=occ.filter(r=>r.acuity>0).length;
@@ -1327,7 +1439,166 @@ function geoClean(nid,r){ const hh=HOME[nid]; return hh==null || hallOf(r.id)===
 /* Priority, in order: even patient COUNTS, then acuity within 0.5 hrs, then GEOGRAPHY —
    pull each nurse's rooms physically close on the real double-loaded floor (soft tiebreaker).
    Annealing search: counts stay even by construction; pins / won't-take / orienting honored. */
-function generate(){ if(!chargeMode)return; pushUndo();
+/* Shift-change fill: nurses who stayed on keep their rooms; rooms left by nurses who
+   went home (plus any unassigned) are shared out to the incoming/lighter nurses to even loads. */
+function generateGapFill(){
+  const nurseIds=new Set(nurses.map(n=>n.id));
+  // free only the orphaned + unassigned rooms
+  const free=occupied().filter(r=>!r.nurse||!nurseIds.has(r.nurse));
+  free.forEach(r=>{ r.nurse=null; });
+  // current load per on-roster nurse (from rooms they kept)
+  const loadOf=id=>occupied().filter(r=>r.nurse===id).reduce((s,r)=>s+r.acuity,0);
+  const cntOf=id=>occupied().filter(r=>r.nurse===id).length;
+  // assign each free room to the eligible nurse with the lowest load, respecting safety + won't-take
+  const order=free.slice().sort((a,b)=>b.acuity-a.acuity); // heaviest first for better balance
+  order.forEach(r=>{
+    let best=null,bestKey=Infinity;
+    nurses.forEach(n=>{
+      if(r.avoid&&r.avoid.includes(n.id)) return;
+      if(n.level==='Float'&&(r.acuity>=5||r.flags.includes('beh')||r.flags.includes('sit'))) return;
+      if(n.level==='Orienting'&&(r.acuity>=5||r.flags.includes('beh'))) return;
+      const key=loadOf(n.id)*10+cntOf(n.id); // prefer lighter hours then fewer patients
+      if(key<bestKey){ bestKey=key; best=n; }
+    });
+    if(!best){ best=nurses.slice().sort((a,b)=>loadOf(a.id)-loadOf(b.id))[0]; }
+    if(best) r.nurse=best.id;
+  });
+  // light local balancing: try swaps that reduce hour spread
+  for(let pass=0;pass<400;pass++){
+    const loads=nurses.map(n=>({id:n.id,h:loadOf(n.id)}));
+    loads.sort((a,b)=>a.h-b.h);
+    const lo=loads[0], hi=loads[loads.length-1];
+    if(hi.h-lo.h<=0.5) break;
+    const hiRooms=occupied().filter(r=>r.nurse===hi.id&&!r.lock&&!(r.avoid&&r.avoid.includes(lo.id))).sort((a,b)=>a.acuity-b.acuity);
+    let moved=false;
+    for(const r of hiRooms){
+      const loN=nurses.find(n=>n.id===lo.id);
+      if(loN.level==='Float'&&(r.acuity>=5||r.flags.includes('beh')||r.flags.includes('sit'))) continue;
+      if((hi.h - r.acuity) >= (lo.h + r.acuity) - 0.01){ r.nurse=lo.id; moved=true; break; }
+    }
+    if(!moved) break;
+  }
+  HOME={}; nurses.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
+  selectedRoom=null; renderAssign(); scheduleSave(); checkFlagViolations();
+}
+
+/* Night/day mode — remembered per device */
+function toggleDark(){ const on=!document.body.classList.contains('dark'); document.body.classList.toggle('dark',on); try{ localStorage.setItem('evenshift_dark',on?'1':'0'); }catch(e){} }
+function applyDarkPref(){ try{ if(localStorage.getItem('evenshift_dark')==='1') document.body.classList.add('dark'); }catch(e){} }
+
+/* Printable blank scoring sheet — paper backup for downtime */
+function printBlankSheet(){
+  const occ=occupied().map(r=>r.id).sort((a,b)=>a-b);
+  const allRooms=Object.keys(rooms).map(Number).sort((a,b)=>a-b);
+  const rowsHtml=allRooms.map(rn=>`<tr><td class="rm">${rn}</td><td></td><td></td><td class="flg"></td></tr>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blank scoring sheet — ${esc(FLOOR.unit||'Unit')}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;padding:14px;color:#10151D;}
+    @page{margin:11mm;}
+    h1{font-size:17px;}
+    .sub{font-size:11px;color:#5A6270;margin:2px 0 10px;}
+    table{width:100%;border-collapse:collapse;}
+    th{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#5A6270;text-align:left;border-bottom:1.5px solid #333;padding:4px 6px;}
+    td{border-bottom:1px solid #C2CAD5;padding:9px 6px;font-size:12px;}
+    td.rm{font-weight:700;width:60px;}
+    td.flg{width:42%;}
+    .note{margin-top:10px;font-size:9px;color:#9098A4;}
+  </style></head><body>
+  <h1>EvenShift — Blank Scoring Sheet</h1>
+  <div class="sub">${esc(FLOOR.unit||'Unit')} · ${shiftType} shift · ____ / ____ / ______ · Charge: __________</div>
+  <table><thead><tr><th>Room</th><th>Nurse</th><th>Acuity</th><th>Flags / notes (ISO, drip, behavioral, D/C, admit\u2026)</th></tr></thead>
+  <tbody>${rowsHtml}</tbody></table>
+  <div class="note">Paper backup for downtime — enter into EvenShift when the system is back. Room numbers only, no patient names.</div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else alert('Allow pop-ups to print the blank sheet.');
+}
+
+/* First-time walkthrough — shows once per device, for staff (not charge) */
+const INTRO_CARDS=[
+  { icon:'👋', title:'Welcome to EvenShift', body:'This is your unit\u2019s live assignment board. Here\u2019s how to use it in 3 quick steps.' },
+  { icon:'👆', title:'1. Tap your name', body:'On the board, tap your name from the list to see only your patients.' },
+  { icon:'🩺', title:'2. Score your patients', body:'Tap each of your rooms and check what the patient needs. Finish before 3am (nights) or 3pm (days).' },
+  { icon:'✓', title:'3. Tap “I\u2019m done”', body:'When all your patients are scored, tap the green “I\u2019m done” button so the charge knows you\u2019re finished. That\u2019s it!' },
+];
+let _introIdx=0;
+function maybeShowIntro(){
+  try{ if(localStorage.getItem('evenshift_intro_seen')) return; }catch(e){ return; }
+  if(chargeMode) return; // charge doesn't need the staff intro
+  _introIdx=0; renderIntro(); document.getElementById('introScrim').classList.add('on');
+}
+function renderIntro(){
+  const c=INTRO_CARDS[_introIdx]; const el=document.getElementById('introBody'); if(!el) return;
+  const last=_introIdx===INTRO_CARDS.length-1;
+  el.innerHTML=`<div class="introcard">
+    <div class="intro-ico">${c.icon}</div>
+    <div class="intro-title">${c.title}</div>
+    <div class="intro-text">${c.body}</div>
+    <div class="intro-dots">${INTRO_CARDS.map((_,i)=>`<span class="idot ${i===_introIdx?'on':''}"></span>`).join('')}</div>
+    <div class="intro-btns">
+      ${_introIdx>0?`<button class="btn" onclick="introPrev()">Back</button>`:`<button class="btn" onclick="introDone()">Skip</button>`}
+      <button class="btn primary" onclick="${last?'introDone()':'introNext()'}">${last?'Got it':'Next'}</button>
+    </div>
+  </div>`;
+}
+function introNext(){ if(_introIdx<INTRO_CARDS.length-1){ _introIdx++; renderIntro(); } }
+function introPrev(){ if(_introIdx>0){ _introIdx--; renderIntro(); } }
+function introDone(){ try{ localStorage.setItem('evenshift_intro_seen','1'); }catch(e){} document.getElementById('introScrim').classList.remove('on'); }
+
+/* Jump to a room number on the score grid */
+function jumpRoom(val){
+  const msg=document.getElementById('roomJumpMsg');
+  const rn=parseInt(String(val).trim());
+  document.querySelectorAll('.rcard.jumphi').forEach(c=>c.classList.remove('jumphi'));
+  if(!rn){ if(msg)msg.textContent=''; return; }
+  if(!rooms[rn]){ if(msg)msg.textContent='no room '+rn; return; }
+  if(msg) msg.textContent='';
+  const card=document.querySelector('.rcard[data-room="'+rn+'"]');
+  if(card){ card.scrollIntoView({behavior:'smooth',block:'center'}); card.classList.add('jumphi'); setTimeout(()=>card.classList.remove('jumphi'),2200); }
+}
+
+/* Draft vs Final: charge taps Post so staff know the board is final & safe to read */
+let boardPosted=false, lastUpdatedAt=0, lastUpdatedBy='';
+function togglePosted(){ if(!chargeMode)return; boardPosted=!boardPosted; lastUpdatedAt=Date.now(); lastUpdatedBy=chargeName||'Charge'; renderAssign(); scheduleSave(); }
+function updatePostUI(){
+  const btn=document.getElementById('postBtn');
+  if(btn){ btn.textContent=boardPosted?'📌 Posted ✓':'📌 Post'; btn.classList.toggle('posted',boardPosted); }
+  const ban=document.getElementById('postBanner');
+  if(!ban) return;
+  // staff (locked) see the draft/final status prominently
+  if(!chargeMode){
+    if(boardPosted){
+      ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
+      ban.className='postbanner final'; ban.style.display='';
+    } else {
+      ban.innerHTML=`<span class="pb-ico">✏️</span> <b>The charge is still building this assignment.</b> Check back shortly — it isn\u2019t final yet.`;
+      ban.className='postbanner draft'; ban.style.display='';
+    }
+  } else {
+    // charge sees a small status line
+    if(boardPosted){ ban.innerHTML=`<span class="pb-ico">✅</span> Posted — staff can see this is final.${lastUpdatedAt?` <span class="pb-time">${fmtAgo(lastUpdatedAt)}</span>`:''}`; ban.className='postbanner final'; ban.style.display=''; }
+    else { ban.innerHTML=`<span class="pb-ico">✏️</span> Draft — tap <b>📌 Post</b> when ready so staff know it\u2019s final.`; ban.className='postbanner draft'; ban.style.display=''; }
+  }
+}
+function fmtAgo(ts){ const m=Math.round((Date.now()-ts)/60000); if(m<1)return 'just now'; if(m<60)return m+' min ago'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m ago'; }
+
+function markScoredDone(nid){
+  const n=rosterN.find(x=>x.id===nid)||nurses.find(x=>x.id===nid); if(!n) return;
+  n.scoredDone=!n.scoredDone;
+  renderAssign(); scheduleSave();
+}
+
+function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
+  const nurseIds=new Set(nurses.map(n=>n.id));
+  const orphan=occupied().filter(r=>r.nurse&&!nurseIds.has(r.nurse));
+  const carriedNurses=nurses.filter(n=>occupied().some(r=>r.nurse===n.id));
+  // If some nurses carried over AND there are orphaned rooms, keep carried nurses' rooms and only share out the orphans + unassigned
+  if(orphan.length && carriedNurses.length && carriedNurses.length<nurses.length){
+    generateGapFill(); return;
+  }
   // nurses whose rooms are all locked to them are "kept" — don't touch them
   const keptIds=new Set(nurses.filter(n=>{ const rs=occupied().filter(r=>r.nurse===n.id); return rs.length>0&&rs.every(r=>r.lock===n.id); }).map(n=>n.id));
   // free assignments for non-kept rooms
@@ -1648,6 +1919,48 @@ function assignAllNew(){ if(!chargeMode)return;
 /* ---------- staff roster ---------- */
 let _wn=[],_wp=[],_ws=[];
 function esc(s){ return (s||'').replace(/"/g,'&quot;'); }
+/* ═══════════════════════════════════════════════════════════
+   WHO'S COMING ON — quick roster swap for the next shift
+   ═══════════════════════════════════════════════════════════ */
+function rebuildStaff(){ nurses=rosterN.filter(n=>n.on!==false); pcts=rosterP.filter(p=>p.on!==false); sitters=rosterS.filter(s=>s.on!==false); }
+function openIncoming(){ if(!chargeMode)return; renderIncoming(); document.getElementById('incScrim').classList.add('on'); }
+function closeIncoming(){ document.getElementById('incScrim').classList.remove('on'); rebuildStaff(); renderAssign(); scheduleSave(); }
+
+function renderIncoming(){
+  const el=document.getElementById('incBody'); if(!el) return;
+  const tog=(t,id,on)=>`<button class="inctog ${on?'on':''}" onclick="toggleIncoming('${t}','${id}')">${on?'On':'Off'}</button>`;
+  let h='';
+  h+=`<div class="incsec">Nurses</div>`;
+  h+=rosterN.map(n=>`<div class="incrow ${n.on!==false?'':'off'}">${tog('n',n.id,n.on!==false)}<span class="incname">${esc(n.name||'(unnamed)')}</span><span class="inclvl">${n.level==='Float'?'float':n.level==='Orienting'?'orienting':n.level==='Senior'?'senior':'RN'}</span></div>`).join('');
+  if(rosterP.length){ h+=`<div class="incsec">PCTs</div>`;
+    h+=rosterP.map(p=>`<div class="incrow ${p.on!==false?'':'off'}">${tog('p',p.id,p.on!==false)}<span class="incname">${esc(p.name||'(unnamed)')}</span></div>`).join(''); }
+  if(rosterS.length){ h+=`<div class="incsec">Sitters</div>`;
+    h+=rosterS.map(s=>`<div class="incrow ${s.on!==false?'':'off'}">${tog('s',s.id,s.on!==false)}<span class="incname">${esc(s.name||'(unnamed)')}</span><span class="inclvl">${s.room?'Rm '+s.room:''}</span></div>`).join(''); }
+  el.innerHTML=h;
+}
+
+function toggleIncoming(t,id){
+  const arr=t==='n'?rosterN:t==='p'?rosterP:rosterS;
+  const x=arr.find(o=>o.id===id); if(x){ x.on=(x.on===false); }
+  rebuildStaff(); renderIncoming();
+}
+
+function addIncoming(t){
+  const name=prompt(t==='n'?'Nurse / float name:':t==='p'?'PCT name:':'Sitter name:');
+  if(name===null) return;
+  const nm=name.trim(); if(!nm) return;
+  if(t==='n'){
+    const isFloat=confirm('Is '+nm+' a FLOAT or pool nurse from another unit?\n\nOK = Float (lighter load, kept off heavy/behavioral)\nCancel = regular RN');
+    rosterN.push({id:'n'+Date.now(),name:nm,level:isFloat?'Float':'RN',cap:1.0,on:true,vocAM:'',vocPM:'',breakTime:''});
+  } else if(t==='p'){
+    rosterP.push({id:'p'+Date.now(),name:nm,on:true,vocAM:'',vocPM:''});
+  } else {
+    rosterS.push({id:'s'+Date.now(),name:nm,room:'',on:true,vocAM:'',vocPM:''});
+  }
+  rebuildStaff(); renderIncoming(); scheduleSave();
+}
+/* ─────────────────── end incoming ─────────────────── */
+
 function openStaff(){ if(!chargeMode)return; _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); renderStaffModal(); document.getElementById('staffScrim').classList.add('on'); }
 function closeStaff(){ document.getElementById('staffScrim').classList.remove('on'); }
 function syncStaffDOM(){
@@ -1677,7 +1990,14 @@ function renderStaffModal(){
   document.getElementById('staffBody').innerHTML=h;
 }
 function addRow(t){ syncStaffDOM(); if(t==='n')_wn.push({id:newId('n'),name:'',level:'RN',cap:1.0,on:true}); else if(t==='p')_wp.push({id:newId('p'),name:'',on:true}); else _ws.push({id:newId('s'),name:'',room:'',on:true}); renderStaffModal(); }
-function rmRow(t,i){ syncStaffDOM(); if(t==='n')_wn.splice(i,1); else if(t==='p')_wp.splice(i,1); else _ws.splice(i,1); renderStaffModal(); }
+function rmRow(t,i){ syncStaffDOM();
+  const arr=t==='n'?_wn:t==='p'?_wp:_ws;
+  const person=arr[i];
+  if(person&&person.name&&person.name.trim()){
+    const role=t==='n'?'nurse':t==='p'?'PCT':'sitter';
+    if(!confirm('Remove '+person.name.trim()+' from the unit roster?\n\nUse this only when someone resigns or transfers off the floor. To just skip them for one shift, tap Cancel and use “Who’s coming on” to toggle them Off instead.')) return;
+  }
+  if(t==='n')_wn.splice(i,1); else if(t==='p')_wp.splice(i,1); else _ws.splice(i,1); renderStaffModal(); }
 /* ---- roster sharing between devices (no backend) ---- */
 const RCODE_PREFIX='EVSHIFT-ROSTER-1:';
 function rosterPayload(){ return RCODE_PREFIX+btoa(unescape(encodeURIComponent(JSON.stringify({v:1,rosterN,rosterP,rosterS})))); }
@@ -1942,7 +2262,11 @@ let chargeName='Kamryn';
 const DEFAULT_DIRECTORY="Staffing 38793 \u00b7 Monitor Room 36999 \u00b7 Staffing Sup 30398\nOps Sup 35246 \u00b7 Bed Control 30399 / 34833 \u00b7 HUC 31048\nTube #901 / Pyxis C   \u00b7   Tube #810 / Pyxis D";
 let UNITINFO={ directory:DEFAULT_DIRECTORY };
 let saveTimer=null, storageOK=true;
-function setSaved(t){ const el=document.getElementById('saveState'); if(el) el.textContent=t; }
+function setSaved(t){ const el=document.getElementById('saveState'); if(el) el.textContent=t;
+  const ob=document.getElementById('offlineBar');
+  if(ob){ const off=/offline/i.test(t); ob.style.display=(off&&cloudConfigured())?'':'none'; }
+}
+function cloudConfigured(){ return !!(CLOUD&&CLOUD.url&&CLOUD.key); }
 
 /* ---- storage adapter: window.storage in the Claude preview, localStorage on a real host ---- */
 const STORE={
@@ -2014,14 +2338,14 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||''})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,unitInfo:UNITINFO,pin:chargePin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
 function applyState(st){
   if(st.floor && st.floor.halls){ FLOOR=st.floor; applyFloor(); updateUnitTag(); }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });
-  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||''}));
+  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
   else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true}));
@@ -2032,6 +2356,7 @@ function applyState(st){
   if(st.shiftDate) shiftDate=st.shiftDate;
   if(st.shiftType) shiftType=st.shiftType;
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
+  boardPosted=!!st.boardPosted; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{}};
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
@@ -2627,10 +2952,12 @@ function buildReportHTML(ag,dateRange,n){
   </body></html>`;
 }
 function nextShift(){ if(!chargeMode)return;
-  if(!confirm('Start next shift?\n\nKeeps each patient\u2019s acuity, flags and notes as the starting point, and clears the nurse assignments and continuity locks so the oncoming charge can re-build.')) return;
+  if(!confirm('🔄 Start the next shift?\n\n✓ Tonight\u2019s board is SAVED to Manager reports first.\n✓ Each patient keeps their score, flags and notes.\n✗ Nurse assignments and locks are CLEARED so the next charge builds fresh.\n\nThis cannot be undone except with the Undo button. Continue?')) return;
   pushUndo();
   pushHistory();  // saves this shift to the cloud (or a local file if offline)
   Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null; });
+  rosterN.forEach(n=>{ n.scoredDone=false; });  // reset scoring-done for the new shift
+  boardPosted=false; lastUpdatedAt=0; lastUpdatedBy='';
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
   applyShiftUI(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); scheduleSave();
@@ -2885,7 +3212,7 @@ function renderQR(){
 }
 
 buildLegend();
-(async function init(){ let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); applyGate(); })();
+(async function init(){ applyDarkPref(); let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); applyGate(); setTimeout(maybeShowIntro,400); })();
 </script>
 </body>
 </html>
