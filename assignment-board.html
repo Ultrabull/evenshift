@@ -368,6 +368,9 @@
   .btile .btbadge{position:absolute;top:9px;right:11px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--teal);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
   .btile.on{border-color:var(--teal);background:#EAF6F6;box-shadow:0 4px 16px rgba(2,128,144,.16);}
   .btile.on .btlabel{color:var(--teal-deep);}
+  .btile.danger{border-color:#F2C9C9;}
+  .btile.danger .btlabel{color:#B42318;}
+  .btile.danger .btsub{color:#C2675C;}
   .expcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:14px;}
   .expcardh{font-size:16px;font-weight:800;color:var(--ink);font-family:var(--display);margin-bottom:11px;}
   .postfinal{width:100%;margin-top:6px;padding:18px;border-radius:16px;border:none;background:var(--teal);color:#fff;font-size:16px;font-weight:800;font-family:var(--display);cursor:pointer;box-shadow:0 4px 16px rgba(2,128,144,.25);}
@@ -530,6 +533,8 @@
   .nursepick{align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:10px 13px;margin-bottom:14px;box-shadow:var(--shadow);}
   .nursepick{flex-direction:column;gap:8px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);}
   .nursepick .npk{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);}
+  .hucvocbtn{margin-top:4px;width:100%;padding:11px;border:1.5px solid var(--teal);background:var(--teal-wash);color:var(--teal-deep);border-radius:11px;font-family:var(--display);font-weight:800;font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .hucvocbtn small{font-weight:600;font-size:10.5px;color:var(--ink-soft);}
   .whobtns{display:flex;flex-direction:column;gap:6px;}
   .wgrp{display:flex;flex-direction:column;gap:4px;}
   .wgrplbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
@@ -832,7 +837,6 @@
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
-          <button class="mitem danger chargeOnly" onclick="this.closest('.menu').removeAttribute('open');clearFloor()">Clear floor</button>
         </div>
       </details>
     </div>
@@ -893,6 +897,7 @@
     <div class="nursepick lockedOnly" id="nursePick">
       <span class="npk">Who are you?</span>
       <div class="whobtns" id="whoBtns"></div>
+      <button class="hucvocbtn" onclick="openVoceraGated()">📟 Vocera phones <small>HUC — needs code</small></button>
     </div>
     <div class="postbanner" id="postBanner2" style="display:none;"></div>
     <div class="boardstack">
@@ -916,6 +921,8 @@
         <button class="btile" onclick="closeTools(); openRubric();"><span class="btemoji">📏</span><span class="btlabel">Acuity rubric</span><span class="btsub">how scoring works</span></button>
         <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
         <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
+        <button class="btile" onclick="closeTools(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
+        <button class="btile danger" onclick="closeTools(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
       </div>
       <div class="cardsec">Board tools</div>
       <div class="btilegrid">
@@ -1141,7 +1148,7 @@
 <nav class="botnav" aria-label="Main">
   <button class="navitem on" id="navAcuity" onclick="show('acuity')" aria-label="Score">
     <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 8h6M9 12h6M9 16h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-    <span>Score</span><small class="navsub">rate patients</small>
+    <span>Score</span><small class="navsub">patient acuity</small>
   </button>
   <button class="navitem chargeOnly" id="navBuild" onclick="show('build')" aria-label="Build">
     <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 8l7-5 7 5M5 8v8l7 5 7-5V8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1324,7 +1331,7 @@ function defaultRoster(){
     // ----- Night shift nurses -----
     ['Ashlyn','Orientee','Night',false],['Ruth','RN','Night',false],['Kate','Orientee','Night',false],
     ['Geneva','RN','Night',false],['Jennifer','RN','Night',false],['Cortney','Senior','Night',false],
-    ['Celenia','RN','Night',false],['Cecilia','RN','Night',false],['Gema','Senior','Night',false],
+    ['Derek','RN','Night',false],['Celenia','RN','Night',false],['Cecilia','RN','Night',false],['Gema','Senior','Night',false],
     ['Mary','Orientee','Night',false],['Kelsey H.','Orientee','Night',false],['Anitta','Orientee','Night',false],
     ['December','RN','Night',false],['Ashley','Orientee','Night',false],['Stephanie','Orientee','Night',false],
     ['Raquel','Orientee','Night',false],['Gillian','Orientee','Night',false],['Ngan','Orientee','Night',false],
@@ -2209,7 +2216,23 @@ function refreshViewOptions(){
   if(sel.value!==cur) viewAs=sel.value;
 }
 let chargeMode=false, chargePin=null;   // chargeMode = editing unlocked; chargePin = soft gate (charge/ANM)
+let hucPin=null;                        // separate simple code so a HUC can edit Vocera without full charge access
 function pinStore(p){ try{ return btoa(unescape(encodeURIComponent(p+'::es'))); }catch(e){ return p; } }
+/* Open the Vocera editor for a HUC: charge is always allowed; otherwise ask for the HUC code (or charge PIN). */
+function openVoceraGated(){
+  if(chargeMode){ openVocera(); return; }
+  if(!hucPin){ alert('No HUC code is set yet.\n\nAsk the charge nurse to set one: 🔓 Charge → ⚙️ More Tools → HUC code.'); return; }
+  const v=(prompt('Enter the HUC code to open the Vocera phones:')||'').trim();
+  if(!v) return;
+  if(pinStore(v)===hucPin || (chargePin && pinStore(v)===chargePin)){ openVocera(); }
+  else alert('Wrong code. Ask the charge nurse if you\u2019re not sure.');
+}
+function setHucCode(){ if(!chargeMode)return;
+  const v=(prompt('Set a simple HUC code (4+ characters). The HUC uses this to open and edit the Vocera phones without the full charge PIN:', '')||'').trim();
+  if(!v) return;
+  if(v.length<4){ alert('Use at least 4 characters.'); return; }
+  hucPin=pinStore(v); scheduleSave(); alert('HUC code saved. The HUC can now tap 📟 Vocera on the board and enter this code.');
+}
 function canEdit(){ return chargeMode; }
 function roleOf(v){ if(!v||v==='charge') return null; if(v.indexOf('p:')===0) return pcts.find(p=>'p:'+p.id===v)?'pct':null; if(v.indexOf('s:')===0) return sitters.find(x=>'s:'+x.id===v)?'sitter':null; return nurses.find(n=>n.id===v)?'rn':null; }
 function lockedRole(){ return roleOf(viewAs); }
@@ -2386,8 +2409,15 @@ function renderStaffModal(){
 const VOC_STATUS=['Assigned','Returned','Lost','Repair'];
 function blankDevSet(){ return { rn:Array.from({length:8},()=>({num:'',status:'Assigned'})),
   pct:Array.from({length:4},()=>({num:'',status:'Assigned'})),
-  sit:Array.from({length:2},()=>({num:'',status:'Assigned'})) }; }
-let VOC_DEVICES={ Day:blankDevSet(), Night:blankDevSet() };
+  sit:Array.from({length:3},()=>({num:'',status:'Assigned'})) }; }
+/* Real 10 Green Vocera device numbers. AM column = Day set, PM column = Night set.
+   These persist every shift until a charge/manager edits them. */
+function defaultDevSet(nums){ const mk=arr=>arr.map(n=>({num:n||'',status:'Assigned'}));
+  return { rn:mk(nums.rn), pct:mk(nums.pct), sit:mk(nums.sit) }; }
+let VOC_DEVICES={
+  Day:  defaultDevSet({ rn:['V1','V2','V3','V4','V5','V6','V7','V8'], pct:['V9','V10','V11','V12'], sit:['V35','V30','V31'] }),
+  Night:defaultDevSet({ rn:['V14','V16','V17','V18','V19','V20','V21','V22'], pct:['V24','V25','V26','V27'], sit:['V35','V30','V31'] })
+};
 let _vocShift=null;  // which device set the Build card is showing (defaults to current shiftType)
 function vocSet(){ const t=(_vocShift||shiftType); return VOC_DEVICES[t]||(VOC_DEVICES[t]=blankDevSet()); }
 function setVocShift(t){ _vocShift=t; renderAssign(); }
@@ -3056,7 +3086,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -3085,6 +3115,7 @@ function applyState(st){
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
+  if(st.hucPin) hucPin=st.hucPin;
   if(st.rubric && Array.isArray(st.rubric.sections) && st.rubric.sections.length){ RUBRIC=st.rubric.sections; DIVISOR=st.rubric.divisor||2; ACUITY_LABEL=st.rubric.label||'nursing hours'; RUBRIC_NAME=st.rubric.name||'Custom'; rebuildRubric(); }
 }
 async function loadState(){
@@ -3698,7 +3729,9 @@ function nextShift(){ if(!chargeMode)return;
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
 }
 function clearFloor(){ if(!chargeMode)return;
-  if(!confirm('Clear the whole floor? This empties every room.')) return;
+  if(!confirm('⚠️ ERASE THE WHOLE FLOOR?\n\nThis deletes EVERY patient, acuity score, clinical flag, and assignment. It cannot be undone with the normal Undo and there is no way to get the scores back.\n\nThis is only for setting up a fresh unit — not for shift change. For shift change use “End shift & hand off” instead.\n\nTap OK only if you really want to wipe everything.')) return;
+  const typed=prompt('Last check — type the word  ERASE  to confirm wiping all patients and scores:');
+  if((typed||'').trim().toUpperCase()!=='ERASE'){ alert('Cancelled — nothing was changed.'); return; }
   pushUndo();
   Object.values(rooms).forEach(r=>{ r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;r.tags=[]; });
   renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
