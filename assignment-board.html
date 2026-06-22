@@ -30,6 +30,17 @@
     --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.4);
   }
   body.dark html, body.dark{ background:#161C26; }
+  /* ===== Accent themes (charge picks in the ⋯ menu) ===== */
+  body[data-theme="teal"]{ --teal:#028090; --teal-deep:#01616E; --teal-wash:#E1F2F4; }
+  body[data-theme="teal"].dark{ --teal:#34B3C2; --teal-deep:#5BCAD7; --teal-wash:#0F353B; }
+  body[data-theme="green"]{ --teal:#1F9D57; --teal-deep:#177A43; --teal-wash:#E3F4EA; }
+  body[data-theme="green"].dark{ --teal:#3FBE73; --teal-deep:#6BD295; --teal-wash:#123524; }
+  body[data-theme="purple"]{ --teal:#7C5CE6; --teal-deep:#6342C4; --teal-wash:#EEEAFE; }
+  body[data-theme="purple"].dark{ --teal:#9D85F0; --teal-deep:#B4A2F5; --teal-wash:#2A2449; }
+  body[data-theme="rose"]{ --teal:#D6447B; --teal-deep:#B22F63; --teal-wash:#FCE7F0; }
+  body[data-theme="rose"].dark{ --teal:#EC6E9C; --teal-deep:#F396B8; --teal-wash:#43243A; }
+  body[data-theme="slate"]{ --teal:#475569; --teal-deep:#334155; --teal-wash:#EAEEF3; }
+  body[data-theme="slate"].dark{ --teal:#8595AB; --teal-deep:#A3B1C4; --teal-wash:#2A3441; }
   *{box-sizing:border-box;} html,body{margin:0;padding:0;}
   html{background:#F6F8FB;}
   body{background:#F6F8FB;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;}
@@ -207,6 +218,179 @@
   .inclvl{font-size:11px;color:var(--ink-soft);}
   .incadd{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
   .capIn{width:46px;height:32px;border:1px solid var(--line-strong);border-radius:8px;padding:0 6px;font-size:13px;font-family:inherit;flex:none;}
+  .capWrap{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:700;color:var(--ink-soft);flex:none;}
+  .assignTop{display:flex;flex-direction:column;gap:9px;margin-bottom:8px;}
+  .atop-secondary{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+  .atop-primary{width:100%;}
+  .statusfold{background:var(--surface);border:1px solid var(--line);border-radius:11px;margin:6px 0;overflow:hidden;}
+  .statusfold>summary{list-style:none;cursor:pointer;padding:10px 13px;font-size:13px;}
+  .statusfold>summary::-webkit-details-marker{display:none;}
+  .statusfold>summary::after{content:'⌄';float:right;color:var(--ink-soft);}
+  .statusfold .staffline,.statusfold .edithint{padding:0 13px 11px;}
+  .sl-shift{font-size:11.5px;color:var(--ink-soft);margin-top:3px;}
+  .sp-fold>summary{list-style:none;cursor:pointer;font-size:13px;color:var(--ink);}
+  .sp-fold>summary::-webkit-details-marker{display:none;}
+  .sp-fold>summary::after{content:'⌄';float:right;color:var(--ink-soft);}
+  .sp-fold .sp-chips{margin-top:8px;}
+  .buildhint{font-size:12.5px;color:var(--ink-soft);background:var(--teal-wash);border-radius:10px;padding:10px 13px;margin-top:14px;line-height:1.45;}
+  .covcard{border:1px solid var(--line);border-radius:11px;margin-bottom:8px;overflow:hidden;background:var(--surface);}
+  .covcard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 14px;}
+  .covcard>summary::-webkit-details-marker{display:none;}
+  .covcard>summary::after{content:'⌄';margin-left:auto;color:var(--ink-soft);font-size:15px;transition:transform .15s;}
+  .covcard[open]>summary::after{transform:rotate(180deg);}
+  .cch-title{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .cch-badge{font-size:11px;font-weight:700;color:var(--teal-deep);background:var(--teal-wash);border-radius:20px;padding:1px 8px;}
+  .cch-sub{font-size:11px;color:var(--ink-soft);}
+  .covcardbody{padding:0 14px 13px;}
+  .staffhelp{font-size:11.5px;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin:8px 0 12px;line-height:1.5;}
+  .stafftabs{display:flex;gap:6px;margin-bottom:12px;background:var(--bg);padding:4px;border-radius:11px;}
+  .sttab{flex:1;padding:9px 6px;border:none;background:transparent;border-radius:8px;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+  .sttab.on{background:var(--surface);color:var(--teal-deep);box-shadow:var(--shadow);}
+  .shrow{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);}
+  .shrow.rowoff{opacity:.5;}
+  .shname{flex:1;font-size:14px;font-weight:600;color:var(--ink);}
+  .shlvl{font-size:11px;color:var(--ink-soft);}
+  .brow{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .bname{flex:1;min-width:90px;font-size:13.5px;font-weight:600;color:var(--ink);}
+  .bwin{width:108px;height:32px;border:1px solid var(--line-strong);border-radius:8px;padding:0 8px;font-size:13px;font-family:inherit;}
+  .bcov{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;}
+  .covsel{height:30px;border:1px solid var(--line-strong);border-radius:8px;padding:0 4px;font-size:12px;font-family:inherit;background:#fff;max-width:120px;}
+  .grpcount{font-size:11px;font-weight:600;color:var(--teal-deep);background:var(--teal-wash);border-radius:20px;padding:1px 8px;margin-left:6px;}
+  .crewwrap{display:flex;flex-wrap:wrap;gap:7px;}
+  .crewchip{display:inline-flex;align-items:center;gap:4px;padding:9px 13px;border-radius:22px;border:1.5px solid var(--line-strong);background:#fff;color:var(--ink-soft);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .crewchip.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .crewsub{font-size:10px;opacity:.8;margin-left:3px;}
+  .bdrow{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .bdname{flex:1;min-width:80px;font-size:13.5px;font-weight:600;color:var(--ink);}
+  .covselbd{height:30px;border:1px solid var(--line-strong);border-radius:8px;padding:0 4px;font-size:12px;font-family:inherit;background:#fff;max-width:115px;}
+  .rosterbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .shsel{max-width:88px;}
+  .srow2{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);}
+  .srow2 .sin{grid-column:1;}
+  .srow2 .srm{grid-column:2;grid-row:1;}
+  .srow2b{grid-column:1 / -1;display:flex;gap:7px;flex-wrap:wrap;}
+  .srow2 .vocrow{grid-column:1 / -1;}
+  .imptable{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:4px 10px;margin-top:8px;}
+  .improw{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);align-items:baseline;}
+  .improw:last-child{border-bottom:none;}
+  .impn{font-size:13.5px;font-weight:600;color:var(--ink);}
+  .impmeta{font-size:11.5px;color:var(--ink-soft);}
+  .pctbar{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap;}
+  .pctmoved{font-size:11px;font-weight:700;color:#9A6A00;background:#FFF3D6;border-radius:20px;padding:2px 9px;}
+  .rmpick{height:30px;border:1px solid var(--line-strong);border-radius:8px;padding:0 4px;font-size:12px;font-family:inherit;background:#fff;font-weight:600;color:var(--ink);}
+  .rmpick.moved{border-color:#E0A800;background:#FFF8E8;color:#9A6A00;}
+  .rmnum.moved{background:#FFF3D6;border-color:#E0A800;color:#9A6A00;}
+  .vocshift{display:flex;gap:6px;margin-bottom:10px;background:var(--bg);padding:4px;border-radius:10px;}
+  .vshbtn{flex:1;padding:8px;border:none;background:transparent;border-radius:7px;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+  .vshbtn.on{background:var(--surface);color:var(--teal-deep);box-shadow:var(--shadow);}
+  .vbcounts{font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:10px;}
+  .vgrp{margin-bottom:12px;}
+  .vgrph{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+  .vgrpctl{display:flex;gap:4px;}
+  .vmini{width:26px;height:26px;border:1px solid var(--line-strong);background:#fff;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;color:var(--ink-soft);font-family:inherit;}
+  .vdrow{display:grid;grid-template-columns:54px 1fr 1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);}
+  .vdrow.novwho{grid-template-columns:60px 1fr auto;}
+  .zvoc{font-size:11px;font-weight:700;color:var(--teal-deep);margin-left:6px;}
+  .qhelp{flex:none;width:22px;height:22px;min-width:22px;border-radius:50%;border:1.5px solid var(--teal);background:var(--teal-wash);color:var(--teal-deep);font-size:13px;font-weight:800;line-height:1;cursor:pointer;font-family:inherit;padding:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin-left:4px;}
+  .qhelp.big{width:30px;height:30px;min-width:30px;font-size:16px;}
+  .qhelp:active{background:var(--teal);color:#fff;}
+  .qinline{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--teal-wash);color:var(--teal-deep);border:1px solid var(--teal);font-weight:800;font-size:11px;align-items:center;justify-content:center;vertical-align:middle;}
+  .primrow{display:flex;align-items:center;gap:6px;width:100%;}
+  .primrow .atop-primary{flex:1;}
+  .bighint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:10px;}
+  .helpmodal{max-width:420px;}
+  .helpbody{font-size:15px;line-height:1.6;color:var(--ink);}
+  .screenbanner{background:var(--teal-wash);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.45;color:var(--ink);margin-bottom:12px;}
+  .recipe{display:flex;flex-direction:column;gap:9px;margin-bottom:12px;}
+  .rstep{display:flex;align-items:center;gap:12px;border-radius:14px;padding:14px;border:2px solid var(--line);background:var(--surface);transition:all .15s;}
+  .rstep .rnum{flex:none;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#fff;background:#C2CAD6;}
+  .rstep .rtxt{display:flex;flex-direction:column;gap:1px;}
+  .rstep .rtxt b{font-size:15.5px;color:var(--ink);}
+  .rstep .rtxt span{font-size:12.5px;color:var(--ink-soft);}
+  .rstep.wait{opacity:.5;}
+  .rstep.now{border-color:var(--teal);background:#EAF6F6;box-shadow:0 2px 10px rgba(2,128,144,.12);}
+  .rstep.now .rnum{background:var(--teal);}
+  .rstep.now .rtxt b{color:var(--teal-deep);}
+  .rstep.done .rnum{background:#1C7A46;}
+  .rstep.done{border-color:#BFE6CF;}
+  .emptybig{text-align:center;padding:38px 20px;background:var(--surface);border:2px dashed var(--line-strong);border-radius:16px;}
+  .emptyemoji{font-size:44px;margin-bottom:8px;}
+  .emptyttl{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:6px;font-family:var(--display);}
+  .emptysub{font-size:14px;color:var(--ink-soft);line-height:1.5;max-width:300px;margin:0 auto;}
+  .tilegrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:22px 12px 16px;cursor:pointer;
+    font-family:inherit;box-shadow:0 2px 10px rgba(20,30,50,.05);transition:all .15s;min-height:118px;}
+  .tile:active{transform:scale(.97);}
+  .tile .temoji{font-size:34px;line-height:1;}
+  .tile .tlabel{font-size:14.5px;font-weight:800;color:var(--ink);text-align:center;font-family:var(--display);line-height:1.2;}
+  .tile .tstatus{font-size:11.5px;color:var(--ink-soft);text-align:center;}
+  .tile .tnum{position:absolute;top:10px;left:12px;width:24px;height:24px;border-radius:50%;background:#C2CAD6;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;}
+  .tile .thelp{position:absolute;top:8px;right:10px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--teal);background:var(--teal-wash);color:var(--teal-deep);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .tile.now{border-color:var(--teal);background:#EAF6F6;box-shadow:0 4px 16px rgba(2,128,144,.16);}
+  .tile.now .tnum{background:var(--teal);}
+  .tile.now .tlabel{color:var(--teal-deep);}
+  .tile.done{border-color:#BFE6CF;}
+  .tile.done .tnum{background:#1C7A46;}
+  .tile.wait{opacity:.5;}
+  .tile.tilebig{grid-column:1 / -1;}
+  .toolrow{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px;cursor:pointer;font-family:inherit;}
+  .toolrow b{font-size:15px;color:var(--ink);}
+  .toolrow span{font-size:12px;color:var(--ink-soft);}
+  .toolrow:active{background:var(--teal-wash);}
+  .boardstack{display:flex;flex-direction:column;gap:0;}
+  .pctcard .name{font-size:15px;}
+  .pctbadge{background:#E8F3F1;color:var(--teal-deep);}
+  .pctchip{background:var(--bg);border:1.5px solid var(--line-strong);color:var(--ink);border-radius:9px;padding:7px 11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .pctchip.moved{background:#FFF3D6;border-color:#E0A800;color:#9A6A00;}
+  .pctchip.selreq{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .pctcard.targetable{border-color:var(--teal);border-style:dashed;}
+  .vocpill{background:#EAF6F6;color:var(--teal-deep);border-radius:8px;padding:2px 8px;font-size:11.5px;font-weight:700;margin-left:auto;}
+  .cardtip{font-size:11.5px;color:var(--ink-soft);margin-top:7px;}
+  .movehint{background:var(--teal-wash);border:1px solid var(--teal);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px;}
+  .sitedit{display:flex;flex-direction:column;gap:12px;}
+  .sitrow{border:1px solid var(--line);border-radius:12px;padding:11px;background:var(--bg);}
+  .sitr1{display:flex;gap:7px;align-items:center;margin-bottom:8px;}
+  .sitname{flex:1;height:38px;border:1px solid var(--line-strong);border-radius:9px;padding:0 10px;font-size:14px;font-family:inherit;}
+  .sitroom{height:38px;border:1px solid var(--line-strong);border-radius:9px;padding:0 6px;font-size:13px;font-family:inherit;background:#fff;}
+  .sitr2{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+  .sitlab{font-size:12px;color:var(--ink-soft);font-weight:700;}
+  .brsub{font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px;}
+  .coderow.editable{display:flex;align-items:center;gap:8px;justify-content:space-between;}
+  .crole small{display:block;font-size:10.5px;color:var(--ink-soft);font-weight:400;text-transform:none;letter-spacing:0;}
+  .codesel{height:34px;border:1px solid var(--line-strong);border-radius:8px;padding:0 6px;font-size:12.5px;font-family:inherit;background:#fff;max-width:55%;}
+  .pendwrap{}
+  .postfinal.posted{background:#1C7A46;box-shadow:0 4px 16px rgba(28,122,70,.25);}
+  .postfinal:active{transform:scale(.98);}
+  .cardsec{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 9px;}
+  .btilegrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:6px;}
+  .btile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:20px 12px 15px;cursor:pointer;font-family:inherit;box-shadow:0 2px 10px rgba(20,30,50,.05);min-height:108px;}
+  .btile:active{transform:scale(.97);}
+  .btile .btemoji{font-size:32px;line-height:1;}
+  .btile .btlabel{font-size:15px;font-weight:800;color:var(--ink);font-family:var(--display);text-align:center;line-height:1.15;}
+  .btile .btsub{font-size:11.5px;color:var(--ink-soft);text-align:center;}
+  .btile .btbadge{position:absolute;top:9px;right:11px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--teal);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .btile.on{border-color:var(--teal);background:#EAF6F6;box-shadow:0 4px 16px rgba(2,128,144,.16);}
+  .btile.on .btlabel{color:var(--teal-deep);}
+  .expcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:14px;}
+  .expcardh{font-size:16px;font-weight:800;color:var(--ink);font-family:var(--display);margin-bottom:11px;}
+  .postfinal{width:100%;margin-top:6px;padding:18px;border-radius:16px;border:none;background:var(--teal);color:#fff;font-size:16px;font-weight:800;font-family:var(--display);cursor:pointer;box-shadow:0 4px 16px rgba(2,128,144,.25);}
+  .postedrow{margin-top:8px;background:#E3F4EA;border:1px solid #BFE6CF;border-radius:14px;padding:14px;}
+  .postedmsg{font-size:14.5px;font-weight:700;color:#1C7A46;margin-bottom:10px;}
+  .postedbtns{display:flex;gap:8px;}
+  .postedbtns .ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);}
+  .vslot{font-size:12px;font-weight:700;color:var(--teal-deep);}
+  .vnum{height:30px;border:1px solid var(--line-strong);border-radius:7px;padding:0 6px;font-size:12px;font-family:inherit;width:100%;}
+  .vwho{font-size:12.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .vempty{color:var(--ink-soft);}
+  .vstat{height:30px;border:1px solid var(--line-strong);border-radius:7px;padding:0 2px;font-size:11.5px;font-family:inherit;background:#fff;}
+  .vs-returned .vwho,.vs-returned .vslot{color:var(--good);}
+  .vs-lost{background:#FDECEC;border-radius:7px;}
+  .vs-lost .vstat{color:#B42318;font-weight:700;}
+  .vs-repair{background:#FFF6E5;border-radius:7px;}
+  .vs-repair .vstat{color:#9A6A00;font-weight:700;}
+  b.vs-ret{color:var(--good);} b.vs-lost{color:#B42318;} b.vs-rep{color:#9A6A00;}
+  .vbbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .meetSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
   .meetRow{font-size:13px;padding:6px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;margin-bottom:4px;line-height:1.5;}
   .meetRow b{color:var(--ink);}
@@ -513,18 +697,29 @@
   .mitem.danger{color:var(--bad);}
   .mitem.danger:hover{background:#FCEBEC;color:var(--bad);}
   .msep{height:1px;background:var(--line);margin:5px 4px;}
+  .mlab2{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:6px 4px 7px;}
+  .moderow{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:11px;margin:0 4px 9px;}
+  .moderow button{flex:1;padding:8px;border:none;background:transparent;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+  .moderow button.on{background:var(--surface);color:var(--teal-deep);box-shadow:var(--shadow);}
+  .themerow{display:flex;gap:10px;justify-content:space-between;margin:0 6px 6px;}
+  .swdot{width:30px;height:30px;border-radius:50%;background:var(--sw);border:2px solid transparent;cursor:pointer;position:relative;}
+  .swdot.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset;}
+  .swdot.on::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;}
 
   .botnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
-    background:rgba(255,255,255,.9);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);
-    border-top:1px solid var(--line);padding:6px 10px calc(6px + env(safe-area-inset-bottom));}
-  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
-    background:none;border:none;padding:7px 4px 5px;border-radius:13px;cursor:pointer;
-    color:var(--ink-soft);font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.01em;transition:color .14s;
-    max-width:220px;margin:0 auto;}
-  .navitem svg{width:23px;height:23px;}
-  .navitem.on{color:var(--teal-deep);}
+    background:rgba(255,255,255,.95);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);
+    border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+    background:none;border:none;padding:12px 4px 9px;border-radius:16px;cursor:pointer;
+    color:var(--ink-soft);font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.01em;transition:color .14s,background .14s;
+    max-width:260px;margin:0 auto;}
+  .navitem svg{width:30px;height:30px;}
+  .navitem.on{color:var(--teal-deep);background:var(--teal-wash);}
+  .navitem.on svg{stroke-width:2;}
   .navitem:active{transform:scale(.96);}
-  @media(min-width:900px){ .botnav{justify-content:center;gap:40px;} .navitem{flex:none;width:120px;} }
+  .navsub{font-size:10px;font-weight:600;color:var(--ink-soft);opacity:.85;margin-top:-1px;}
+  .navitem.on .navsub{color:var(--teal-deep);opacity:.9;}
+  @media(min-width:900px){ .botnav{justify-content:center;gap:40px;} .navitem{flex:none;width:150px;} }
 
   /* ---- component polish ---- */
   .help{border-radius:14px;margin-bottom:16px;}
@@ -624,19 +819,22 @@
         </summary>
         <div class="menupop">
           <div class="mrow chargeOnly"><span class="mlab">View as</span><select id="viewAs" onchange="setViewAs(this.value)"></select></div>
-          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openShare()">📤 Print / share</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openUnitQR()">Unit link &amp; QR</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFloor()">Floor &amp; beds setup</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openRubric()">Edit acuity rubric</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');changePin()">Change charge PIN</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openFlagEditor()">🏷 Edit clinical flags</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openMeetingPrep()">📋 Meeting prep</button>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager reports &amp; analysis</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openImpact()">Impact &amp; savings</button>
+          <div class="msep"></div>
+          <div class="mlab2">Appearance</div>
+          <div class="moderow" id="modeRow"><button data-mode="light" onclick="setMode('light')">☀️ Light</button><button data-mode="dark" onclick="setMode('dark')">🌙 Dark</button></div>
+          <div class="themerow" id="themeRow">
+            <button class="swdot" data-theme="default" style="--sw:#2E6BE6" onclick="setTheme('default')" title="Blue"></button>
+            <button class="swdot" data-theme="teal" style="--sw:#028090" onclick="setTheme('teal')" title="Teal"></button>
+            <button class="swdot" data-theme="green" style="--sw:#1F9D57" onclick="setTheme('green')" title="Green"></button>
+            <button class="swdot" data-theme="purple" style="--sw:#7C5CE6" onclick="setTheme('purple')" title="Purple"></button>
+            <button class="swdot" data-theme="rose" style="--sw:#D6447B" onclick="setTheme('rose')" title="Rose"></button>
+            <button class="swdot" data-theme="slate" style="--sw:#475569" onclick="setTheme('slate')" title="Slate"></button>
+          </div>
           <div class="msep chargeOnly"></div>
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 Start new shift</button>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <button class="mitem danger chargeOnly" onclick="this.closest('.menu').removeAttribute('open');clearFloor()">Clear floor</button>
         </div>
       </details>
@@ -665,59 +863,99 @@
     <div id="halls"></div>
   </div>
 
+  <!-- BUILD: charge work area — clean tile menu only -->
+  <div class="view" id="v-build">
+    <div class="postbanner" id="postBanner" style="display:none;"></div>
+    <div class="screenbanner chargeOnly">🛠️ <b>Build</b> — tap the tiles in order, top to bottom.</div>
+    <div class="acureview chargeOnly" id="acuReview" style="display:none;"></div>
+    <div class="acureview chargeOnly" id="capReview" style="display:none;"></div>
+    <div class="acureview chargeOnly" id="flagViol" style="display:none;"></div>
+    <div class="scoreprog chargeOnly" id="scoreProg" style="display:none;"></div>
+    <div class="tilegrid chargeOnly" id="buildTiles"></div>
+    <div class="bighint chargeOnly">New here? Tap any <span class="qinline">?</span> for a quick plain-English explanation.</div>
+    <!-- hidden status elements kept so the rest of the app keeps working -->
+    <div style="display:none;">
+      <span class="verdict" id="verdict">—</span><b id="ptCount">0</b><b id="hrTotal">0</b><span id="unWrap"><b id="unCount">0</b></span>
+      <div class="staffline" id="staffLine"></div><div class="edithint" id="editHint"></div>
+      <div class="recipe" id="recipe"></div><div class="stepguide" id="stepGuide"></div><div class="statusfold" id="statusFold"></div>
+      <button id="undoBtn" onclick="undo()">Undo</button><button id="postBtn" onclick="togglePosted()"></button>
+    </div>
+  </div>
+
+  <!-- VOCERA popup (opened from the Build tile) -->
+  <div class="scrim" id="vocScrim" onclick="if(event.target===this)closeVocera()">
+    <div class="modal">
+      <div class="mhead"><span class="rt">📟 Vocera phones</span><button class="btn" onclick="closeVocera()">Done</button></div>
+      <div class="mbody"><div id="vocCardBody"></div></div>
+    </div>
+  </div>
+
+  <!-- BOARD: the finished assignment everyone reads -->
   <div class="view" id="v-assign">
+    <div class="screenbanner chargeOnly">📋 <b>Board</b> — tap a tile to see Nurses, PCTs, Sitters or HUC. Review, tweak, then <b>Post</b> at the bottom.</div>
     <div class="nursepick lockedOnly" id="nursePick">
       <span class="npk">Who are you?</span>
       <div class="whobtns" id="whoBtns"></div>
     </div>
-    <div class="postbanner" id="postBanner" style="display:none;"></div>
-    <div class="assignTop chargeOnly">
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn sm" onclick="openStaff()">👥 Staff</button>
-        <details class="tools"><summary class="btn sm">Options ▾</summary>
-          <div class="toolspop">
-          <div class="hint" style="margin:0;font-size:11px;line-height:1.45;">Generate gives everyone an <b>even patient count</b> and <b>acuity within 0.5 hrs</b>, then pulls each nurse's rooms <b>physically close</b> on the floor (two rows per hall, corner in the middle). Pin or lock a patient to override.</div>
-            <button class="linkx" onclick="resetBoard()">Clear all assignments</button>
-            <button class="linkx" onclick="toggleDark()">🌙 Night / day mode</button>
-            <button class="linkx" onclick="printBlankSheet()">🖨 Print blank scoring sheet</button>
-          </div>
-        </details>
-        <button class="btn sm" id="undoBtn" onclick="undo()" style="display:none;">↶ Undo</button>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn sm" onclick="openIncoming()">🔄 Who's coming on</button>
-        <button class="btn primary big" onclick="generate()">✨ Make assignment</button>
-        <button class="btn sm" id="postBtn" onclick="togglePosted()">📌 Post</button>
-      </div>
-    </div>
-    <div class="stepguide chargeOnly" id="stepGuide"></div>
-    <div class="balline chargeOnly" id="balline"><span class="verdict" id="verdict">—</span><span class="balcounts"> · <b id="ptCount">0</b> patients · <b id="hrTotal">0</b> hrs<span id="unWrap"> · <b id="unCount">0</b> unassigned</span></span></div>
-    <div class="staffline chargeOnly" id="staffLine"></div>
-    <div class="edithint chargeOnly" id="editHint"></div>
-    <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
-    <div class="acureview chargeOnly" id="acuReview" style="display:none;"></div>
-    <div class="scoreprog chargeOnly" id="scoreProg" style="display:none;"></div>
-    <div class="acureview chargeOnly" id="flagViol" style="display:none;"></div>
-    <div class="cols">
+    <div class="postbanner" id="postBanner2" style="display:none;"></div>
+    <div class="boardstack">
+      <div id="cardStack"></div>
       <div class="nurses" id="nurses"></div>
-      <div class="side chargeOnly">
-        <div class="panel pool" id="poolPanel" ondragover="allowDrop(event,'pool')" ondragleave="leaveDrop(event)" ondrop="dropTo(event,null)" onclick="placeHere(null)">
-          <h3>Unassigned</h3><div class="chips" id="pool"></div>
-          <div class="hint" id="poolHint" style="margin-top:8px;">Tap a room, then tap a nurse. On a laptop you can also drag.</div>
-          <button class="btn sm" style="margin-top:9px;width:100%;" onclick="event.stopPropagation(); assignAllNew()">Place new admits →</button>
-        </div>
-        <details class="panel supportwrap" open><summary>Who covers who (breaks, buddies, PCTs)</summary><div id="supportPanel" style="margin-top:10px;"></div></details>
+      <div class="chargeOnly" id="postFinalWrap"></div>
+    </div>
+    <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
+    <footer class="note">Make assignment evens patient counts first, then nursing hours, keeps each nurse close on the floor, spreads the heavy patients, and protects new grads. PCTs cover zones; sitters cover 1:1.</footer>
+  </div>
+</div>
+
+<div class="scrim" id="toolsScrim" onclick="if(event.target===this)closeTools()">
+  <div class="modal">
+    <div class="mhead"><span class="rt">⚙️ More tools</span><button class="btn" onclick="closeTools()">Close</button></div>
+    <div class="mbody">
+      <div class="cardsec">Set up your unit</div>
+      <div class="btilegrid">
+        <button class="btile" onclick="closeTools(); openUnitQR();"><span class="btemoji">🔗</span><span class="btlabel">Unit link &amp; QR</span><span class="btsub">share access</span></button>
+        <button class="btile" onclick="closeTools(); openFloor();"><span class="btemoji">🏥</span><span class="btlabel">Floor &amp; beds</span><span class="btsub">rooms &amp; halls</span></button>
+        <button class="btile" onclick="closeTools(); openRubric();"><span class="btemoji">📏</span><span class="btlabel">Acuity rubric</span><span class="btsub">how scoring works</span></button>
+        <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
+        <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
+      </div>
+      <div class="cardsec">Board tools</div>
+      <div class="btilegrid">
+        <button class="btile" onclick="closeTools(); undo();"><span class="btemoji">↶</span><span class="btlabel">Undo</span><span class="btsub">last change</span></button>
+        <button class="btile" onclick="closeTools(); resetBoard();"><span class="btemoji">🧹</span><span class="btlabel">Clear board</span><span class="btsub">start over</span></button>
+        <button class="btile" onclick="closeTools(); printBlankSheet();"><span class="btemoji">🖨️</span><span class="btlabel">Blank sheet</span><span class="btsub">paper backup</span></button>
       </div>
     </div>
-    <footer class="note">Generate evens patient counts first, then nursing hours to within half an hour, keeps each nurse in one hall (or two on the same wing), spreads feeds, draws, drips and discharges, and protects new grads. PCTs cover zones; sitters cover 1:1.</footer>
+  </div>
+</div>
+
+<div class="scrim" id="helpScrim" onclick="if(event.target===this)closeHelp()">
+  <div class="modal helpmodal">
+    <div class="mhead"><span class="rt" id="helpTitle">Help</span><button class="btn" onclick="closeHelp()">Got it</button></div>
+    <div class="mbody"><div id="helpBody" class="helpbody"></div></div>
   </div>
 </div>
 
 <div class="scrim" id="staffScrim" onclick="if(event.target===this)closeStaff()">
   <div class="modal">
-    <div class="mhead"><span class="rt">Staff this shift</span><button class="btn" onclick="closeStaff()">Cancel</button></div>
+    <div class="mhead"><span class="rt">👥 Staff &amp; teams</span><button class="btn" onclick="closeStaff()">Cancel</button></div>
     <div class="mbody" id="staffBody"></div>
-    <div class="mfoot"><button class="btn" onclick="openRShare()">Share / import roster</button><button class="btn primary" onclick="saveStaff()">Save staff</button></div>
+    <div class="mfoot"><button class="btn" onclick="openRShare()">Share roster</button><button class="btn primary" onclick="saveStaff()">Save staff</button></div>
+  </div>
+</div>
+
+<div class="scrim" id="importScrim" onclick="if(event.target===this)closeImport()">
+  <div class="modal">
+    <div class="mhead"><span class="rt">📥 Import staff list</span><button class="btn" onclick="closeImport()">Cancel</button></div>
+    <div class="mbody">
+      <p class="covnote">Upload an <b>Excel (.xlsx)</b> or <b>CSV</b> file with these columns (in any order): <b>Name, Role, Level, Shift, Vocera AM, Vocera PM</b>. Extra columns are ignored. Need the format? Tap <b>Blank template</b> on the roster screen.</p>
+      <div class="rsharebtns" style="margin:12px 0;">
+        <label class="btn primary" style="cursor:pointer;">📂 Choose file<input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleImportFile(event)"></label>
+      </div>
+      <div id="importPreview"></div>
+      <div id="importMsg" class="rmsg"></div>
+    </div>
   </div>
 </div>
 
@@ -767,21 +1005,6 @@
   </div>
 </div>
 
-<div class="scrim" id="incScrim" onclick="if(event.target===this)closeIncoming()">
-  <div class="modal wide">
-    <div class="mhead"><span class="rt">🔄 Who's coming on next shift</span><button class="btn" onclick="closeIncoming()">Done</button></div>
-    <div class="mbody">
-      <p class="covnote">Turn <b>on</b> the staff working the next shift, turn <b>off</b> anyone going home. Patients and their scores stay — only the nurses change. Add a float or pool staff with the buttons at the bottom.</p>
-      <div id="incBody"></div>
-      <div class="incadd">
-        <button class="btn sm" onclick="addIncoming('n')">+ Add nurse / float</button>
-        <button class="btn sm" onclick="addIncoming('p')">+ Add PCT</button>
-        <button class="btn sm" onclick="addIncoming('s')">+ Add sitter</button>
-      </div>
-      <p class="covnote" style="margin-top:10px;">When you tap <b>✨ Make assignment</b>, nurses staying on keep their rooms where possible — only rooms from nurses who left get shared out to the new crew.</p>
-    </div>
-  </div>
-</div>
 
 <div class="scrim" id="flagScrim" onclick="if(event.target===this)closeFlagEditor()">
   <div class="modal wide">
@@ -921,11 +1144,15 @@
 <nav class="botnav" aria-label="Main">
   <button class="navitem on" id="navAcuity" onclick="show('acuity')" aria-label="Score">
     <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 8h6M9 12h6M9 16h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-    <span>Score</span>
+    <span>Score</span><small class="navsub">rate patients</small>
+  </button>
+  <button class="navitem chargeOnly" id="navBuild" onclick="show('build')" aria-label="Build">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 8l7-5 7 5M5 8v8l7 5 7-5V8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Build</span><small class="navsub">make it</small>
   </button>
   <button class="navitem" id="navAssign" onclick="show('assign')" aria-label="Board">
     <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="3.5" y="14" width="7" height="6" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="14" width="7" height="6" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
-    <span>Board</span>
+    <span>Board</span><small class="navsub">see &amp; share</small>
   </button>
 </nav>
 
@@ -987,8 +1214,23 @@ let UNIT_FLAG_CONFIG={
   rules:{}            // {code:{mode:'spread'|'cap'|'none', cap:N}} — how the engine balances this flag
 };
 // Default balance rules baked from 10 Green convention (engine already handles beh/conf/heavy internally)
-const DEFAULT_FLAG_RULES={beh:{mode:'cap',cap:1},gtt:{mode:'spread'},ins:{mode:'spread'},cvl:{mode:'spread'},trach:{mode:'cap',cap:1},tot:{mode:'spread'},sit:{mode:'spread'},conf:{mode:'spread'},dc:{mode:'spread'},adm:{mode:'spread'}};
+const DEFAULT_FLAG_RULES={beh:{mode:'cap',cap:1},gtt:{mode:'spread'},ins:{mode:'ratiocap',ratio:3},cvl:{mode:'spread'},trach:{mode:'cap',cap:1},tot:{mode:'spread'},sit:{mode:'spread'},conf:{mode:'spread'},dc:{mode:'spread'},adm:{mode:'spread'}};
 function flagRule(code){ const r=(UNIT_FLAG_CONFIG.rules||{})[code]; if(r) return r; return DEFAULT_FLAG_RULES[code]||{mode:'none'}; }
+/* The tightest total-patient cap a nurse is allowed, given the flags on their rooms.
+   Unit base ratio is the default; any 'ratiocap' flag on a room tightens it for that nurse. */
+function nurseRatioCap(nid){
+  const base=(FLOOR.ratio||4);
+  let cap=base;
+  occupied().filter(r=>r.nurse===nid).forEach(r=>{
+    getActiveFlags().forEach(([code])=>{
+      const rule=flagRule(code);
+      if(rule.mode==='ratiocap' && ((r.flags||[]).includes(code)||(r.tags||[]).includes(code))){
+        cap=Math.min(cap, Math.max(1, rule.ratio||base));
+      }
+    });
+  });
+  return cap;
+}
 function getActiveFlags(){
   const base=FLAGS.filter(([code])=>!UNIT_FLAG_CONFIG.hidden.includes(code)||ENGINE_FLAG_CODES.has(code));
   const renamed=base.map(([code,label,full])=>{ const r=UNIT_FLAG_CONFIG.renames[code]; return r?[code,r.label||label,r.full||full]:[code,label,full]; });
@@ -1056,26 +1298,58 @@ seedRoom(41,'n6',3.5); seedRoom(54,'n6',3.0); seedRoom(56,'n6',3.0); seedRoom(58
 seedRoom(52,'n7',2.5); seedRoom(60,'n7',3.0,['wound']); seedRoom(62,'n7',4.0,['gtt','foley','wound']); seedRoom(64,'n7',3.0);
 seedRoom(53,'n8',3.0); seedRoom(55,'n8',3.5); seedRoom(59,'n8',3.5,['wound']); seedRoom(63,'n8',2.5);
 
-let nurses=[], pcts=[], sitters=[];          // the working set for TODAY — what the engine assigns
-let rosterN=[], rosterP=[], rosterS=[];      // the master unit roster — everyone, with an "on today" flag
+let nurses=[], pcts=[], sitters=[], hucs=[];          // the working set for TODAY — what the engine assigns
+let rosterN=[], rosterP=[], rosterS=[], rosterH=[];   // the master unit roster — everyone, with an "on today" flag
 function syncWorking(){                       // pull today's working set out of the master roster
   nurses  = rosterN.filter(n=>n.on!==false);
   pcts    = rosterP.filter(p=>p.on!==false);
   sitters = rosterS.filter(s=>s.on!==false);
+  hucs    = rosterH.filter(x=>x.on!==false);
 }
 let _uid=200; const newId=p=>p+(_uid++);
 function defaultRoster(){
-  rosterN=[
-    ['Amith','RN','V1','V14'],['Geneva','RN','V2','V16'],['Cortney','RN','V3','V17'],
-    ['Gema (w/ Shante)','RN','V4','V18'],['Kelsey','RN','V5','V19'],['Ngan','RN','V6','V20'],
-    ['Kristie','RN','V7','V21'],['Cecilia','RN','V8','V22']
-  ].map(([name,level,vocAM,vocPM],i)=>({id:'n'+(i+1),name,level,cap:1.0,on:true,vocAM,vocPM}));
-  rosterP=[
-    ['Michelle','V9','V24'],['Angelina','V10','V25'],['Mia','V11','V26'],['Joshna','V12','V27']
-  ].map(([name,vocAM,vocPM],i)=>({id:'p'+(i+1),name,on:true,vocAM,vocPM}));
+  // Full 10 Green roster (first names), tagged Day/Night. A starter day crew is ON so the board isn't empty;
+  // the charge taps the real crew from the Day/Night tabs. Manager can edit/remove/import any time.
+  // [name, level, shift, on]
+  const N=[
+    // ----- Day shift nurses -----  (Senior = charge-capable, Orientee = RN Resident)
+    ['Anna','Senior','Day',true],['Briana','Senior','Day',true],['Jordan','Senior','Day',true],
+    ['Gracy','RN','Day',true],['Jillian','RN','Day',true],['Suja','RN','Day',true],
+    ['Dhanya','RN','Day',true],['Kathy','RN','Day',true],
+    ['Mia','Orientee','Day',false],['Joses','Orientee','Day',false],['Theresa','Orientee','Day',false],
+    ['Derek','RN','Day',false],['Kaitlyn','RN','Day',false],['Grace','Orientee','Day',false],
+    ['Kayla','Orientee','Day',false],['Lindsay','Orientee','Day',false],['Sarah','Orientee','Day',false],
+    ['Taylor','Orientee','Day',false],['Ally','Orientee','Day',false],['Hyun','RN','Day',false],
+    ['Juan','Orientee','Day',false],['Cara','Orientee','Day',false],['Kelsey','RN','Day',false],
+    ['Diana','Orientee','Day',false],['Gabriela','Orientee','Day',false],['Bharti','RN','Day',false],
+    ['Anne Marie','Orientee','Day',false],['Macy','RN','Day',false],['Crystal','RN','Day',false],
+    ['Eskinder','RN','Day',false],['Makayla','Orientee','Day',false],
+    // ----- Night shift nurses -----
+    ['Ashlyn','Orientee','Night',false],['Ruth','RN','Night',false],['Kate','Orientee','Night',false],
+    ['Geneva','RN','Night',false],['Jennifer','RN','Night',false],['Cortney','Senior','Night',false],
+    ['Celenia','RN','Night',false],['Cecilia','RN','Night',false],['Gema','Senior','Night',false],
+    ['Mary','Orientee','Night',false],['Kelsey H.','Orientee','Night',false],['Anitta','Orientee','Night',false],
+    ['December','RN','Night',false],['Ashley','Orientee','Night',false],['Stephanie','Orientee','Night',false],
+    ['Raquel','Orientee','Night',false],['Gillian','Orientee','Night',false],['Ngan','Orientee','Night',false],
+    ['Kristie','Senior','Night',false],['Krystle','RN','Night',false],['Alex','Senior','Night',false],
+    ['Dini','RN','Night',false],['Samuel','Orientee','Night',false],['Rachel','RN','Night',false],
+    ['Amith','Senior','Night',false],['Bindhya','Orientee','Night',false]
+  ];
+  rosterN=N.map(([name,level,shift,on],i)=>({id:'n'+(i+1),name,level,cap:1.0,on,shift,vocAM:'',vocPM:''}));
+  const P=[
+    ['Blessy','Day',true],['Dennis','Day',true],['Hannah','Day',true],['Samantha','Day',true],
+    ['Marie','Day',false],['Eric','Day',false],['Mia P.','Day',false],['Ivon','Day',false],
+    ['Carina','Day',false],['Tamara','Day',false],['Dasia','Day',false],
+    ['Briana C.','Night',false],['Jenifer','Night',false],['Corina','Night',false],['Carina G.','Night',false],
+    ['Carson','Night',false],['Joshna','Night',false],['Cynthia','Night',false],['Carina S.','Night',false]
+  ];
+  rosterP=P.map(([name,shift,on],i)=>({id:'p'+(i+1),name,on,shift,vocAM:'',vocPM:''}));
   rosterS=[
-    ['Mawut C. (ED)','V35'],['Janice F. (11B)','V30']
-  ].map(([name,vocAM],i)=>({id:'s'+(i+1),name,room:'',on:true,vocAM,vocPM:''}));
+    ['Mawut C. (ED)','Day'],['Janice F. (11B)','Night']
+  ].map(([name,shift],i)=>({id:'s'+(i+1),name,room:'',on:false,shift,vocAM:'',vocPM:''}));
+  rosterH=[
+    ['Siby','Day'],['Jackie','Day'],['Imelda','Night']
+  ].map(([name,shift],i)=>({id:'h'+(i+1),name,on:false,shift,vocAM:'',vocPM:''}));
   syncWorking();
 }
 defaultRoster();
@@ -1087,14 +1361,36 @@ let viewAs='charge';              // 'charge' sees everything; a nurse id sees o
 function acuClass(h){if(h<2.5)return'L';if(h<3.5)return'M';if(h<5)return'H';return'X';}
 function acuLabel(h){return{L:'Low',M:'Moderate',H:'High',X:'Intensive'}[acuClass(h)];}
 
+function assignVisible(){ const b=document.getElementById('v-build'), a=document.getElementById('v-assign'); return (b&&b.classList.contains('on'))||(a&&a.classList.contains('on')); }
+/* ===== Tap-a-? help popups — plain language, written for a brand-new nurse ===== */
+const HELP={
+  make:['✨ Make assignment','Tap this and the app splits all the patients between your nurses for you. It tries to give everyone about the same amount of work, keeps each nurse\u2019s rooms close together, and spreads out the busy patients. You can always move a room afterward.'],
+  post:['📌 Post','While you\u2019re still setting things up, staff see a “still being built” note. When you tap Post, it tells everyone “this is final” so they know they can trust it. Tap it again to un-post.'],
+  staff:['👥 Staff','This is where you pick who\u2019s working. Open it, tap the names of the nurses, PCTs and sitters who are here this shift. You can also keep your whole unit list here so you never retype names.'],
+  status:['The status line','This little line tells you how even the assignment is. Green means everyone has about the same workload. It also shows how many patients and how many nurses you have.'],
+  step:['The colored step box','This box always tells you the ONE thing to do next — Step 1, 2, or 3. Just follow it in order and you\u2019ll have a finished board.'],
+  vocera:['📟 Vocera devices','Type each Vocera phone number into its slot (RN 1, RN 2, and so on). After you make the assignment, the first nurse on the board becomes RN 1, the next is RN 2, and each nurse\u2019s number shows up on their card. You don\u2019t have to match them by hand.'],
+  vocreturn:['Vocera return tracking','At the end of the shift, tap each device as it comes back so you know nothing is missing. If one is lost or broken, mark it Lost or Repair — that warning stays on for the next charge until someone fixes it.'],
+  unassigned:['Unassigned patients','These are patients no nurse has yet. Tap one, then tap a nurse to give it to them. “Place new admits” drops them in automatically.'],
+  move:['Moving a room','Tap a room, then tap the nurse you want to have it. The workload numbers update by themselves. Use this to fix anything the app got not-quite-right.'],
+  keep:['Keep / lock a nurse','If a nurse is staying and you don\u2019t want their patients reshuffled, tap “keep.” When you make a new assignment, their rooms stay put and only the others move around.'],
+  cover:['Who covers who','Tap any card here to open it. It shows break times, who covers whose patients, which rooms each PCT has, the code team, and a quick clinical list. Everything you\u2019d write on the whiteboard.'],
+  acuity:['The acuity number','This number is how many hours of nursing care a patient needs. Higher = more work. A 5 is a heavy patient, a 2 is a light one. The app uses it to keep nurses even.'],
+  pctzone:['PCT zones','Each PCT gets a group of rooms. If a room changes mid-shift, tap it and pick a different PCT. The ⚖️ button re-splits everything evenly if a PCT comes or goes.']
+};
+function showHelp(key){ const h=HELP[key]; if(!h)return; document.getElementById('helpTitle').textContent=h[0]; document.getElementById('helpBody').textContent=h[1]; document.getElementById('helpScrim').classList.add('on'); }
+function closeHelp(){ document.getElementById('helpScrim').classList.remove('on'); }
+function qbtn(key){ return `<button class="qhelp" onclick="event.stopPropagation(); showHelp('${key}')" title="What\u2019s this?">?</button>`; }
 function show(v){
   document.getElementById('v-acuity').classList.toggle('on',v==='acuity');
+  document.getElementById('v-build').classList.toggle('on',v==='build');
   document.getElementById('v-assign').classList.toggle('on',v==='assign');
-  var na=document.getElementById('navAcuity'),nb=document.getElementById('navAssign');
+  var na=document.getElementById('navAcuity'),nbd=document.getElementById('navBuild'),nb=document.getElementById('navAssign');
   if(na)na.classList.toggle('on',v==='acuity');
+  if(nbd)nbd.classList.toggle('on',v==='build');
   if(nb)nb.classList.toggle('on',v==='assign');
   window.scrollTo(0,0);
-  if(v==='assign') renderAssign();
+  if(v==='build'||v==='assign') renderAssign();
 }
 function renderAcuity(){
   updateRubricTag();
@@ -1208,10 +1504,11 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   const am=document.getElementById('admTimeIn'); r.admTime=am?am.value.trim():'';
   if(!r.flags.includes('adm')) r.admTime='';
   r.avoid=modalAvoid.slice(); r.lock=modalPin||null; if(modalPin){ r.nurse=modalPin; r.avoid=r.avoid.filter(x=>x!==modalPin); }
+  r.capCarried=false;  // re-scoring this room acknowledges the ratio-cap reminder
   if(hrs>0){ r.occupied=true; r.acuity=Math.round(hrs*100)/100; r.scoredBy=chargeMode?'charge':(viewAs||'rn'); }
-  closeModal(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
+  closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
 }
-function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom]; r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null; closeModal(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); scheduleSave(); }
+function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom]; r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null; closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
 function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
@@ -1249,7 +1546,7 @@ function renderMyPCT(){
     `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); return `<div class="zroom"><span class="rmnum">${r}</span>${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
     (nnames.length?`<div class="sitline">Nurses in your zone: <b>${nnames.map(esc).join(', ')}</b></div>`:'')+
     (buddy.length?`<div class="sitline">\ud83e\udd1d Break buddy: <b>${buddy.map(esc).join(', ')}</b></div>`:'')+
-    ((p&&(p.vocAM||p.vocPM))?`<div class="sitline">📟 Vocera: <b>${esc(shiftType==='Day'?(p.vocAM||'—'):(p.vocPM||'—'))}</b> (${shiftType})</div>`:'')+
+    ((()=>{ const v=vocForPct(id); const slot=pcts.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · PCT ${slot}</div>`:''; })())+
     `</div>`;
 }
 function renderMySitter(){
@@ -1261,7 +1558,7 @@ function renderMySitter(){
     const cov=sitterCoverage().find(x=>x.room===+s.room);
     body=`<div class="zonerooms"><span class="rmnum">${s.room}</span></div><div class="sitline">Your 1:1 patient</div>`+(cov?`<div class="sitline">Break <b>${cov.window}</b> → covered by <b>${esc(cov.cover.name)}</b>${cov.cover.role?' · '+cov.cover.role:''}</div>`:'');
   } else body='<div class="sitline">No room set yet — ask charge to assign your 1:1.</div>';
-  c.innerHTML=`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(s.vocAM||s.vocPM)?`<div class="sitline">📟 Vocera: <b>${esc(shiftType==='Day'?(s.vocAM||'—'):(s.vocPM||'—'))}</b> (${shiftType})</div>`:''}</div>`;
+  c.innerHTML=`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(()=>{ const v=vocForSitter(id); const slot=sitters.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · Sitter ${slot}</div>`:''; })()}</div>`;
 }
 function renderAssign(){
   if(!chargeMode){
@@ -1277,6 +1574,18 @@ function renderAssign(){
   const selfRN = !chargeMode && lockedRole()==='rn';
   const breaks = selfRN ? nurseBreaks() : {};
   const shown = viewAs==='charge' ? nurses : nurses.filter(n=>n.id===viewAs);
+  const anyAssignedNow=occupied().some(r=>r.nurse);
+  if(chargeMode && viewAs==='charge' && !anyAssignedNow){
+    const noStaff=nurses.length===0;
+    const scoredAll=occupied().length>0 && occupied().every(r=>r.acuity>0);
+    document.getElementById('nurses').innerHTML=`<div class="emptybig">`+
+      `<div class="emptyemoji">🪄</div>`+
+      `<div class="emptyttl">No assignment yet</div>`+
+      `<div class="emptysub">${noStaff?'First tap <b>👥 Who\u2019s Working</b> and pick today\u2019s team.':scoredAll?'You\u2019re ready! Tap <b>✨ Make Assignment</b> on the Build tab.':'Score your patients on the <b>Score</b> tab first, then tap <b>✨ Make Assignment</b>.'}</div>`+
+      `</div>`;
+    const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
+    const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
+  } else {
   document.getElementById('nurses').innerHTML=shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,(L.adj/top)*100);
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id));
@@ -1290,12 +1599,12 @@ function renderAssign(){
     const b=nurseBurdens(n.id); const bparts=BURDEN_ORDER.filter(k=>b[k]).map(k=>b[k]+' '+BURDEN_LAB[k]);
     const kept = rs.length>0 && rs.every(r=>r.lock===n.id);
     return `<div class="nurse" id="nz-${n.id}" ondragover="allowDrop(event,'${n.id}')" ondragleave="leaveDrop(event)" ondrop="dropTo(event,'${n.id}')" onclick="placeHere('${n.id}')">
-      <div class="nhead"><span class="name">${n.name}</span><span class="badge ${bcls}">${n.level}</span><button class="keepbtn ${kept?'on':''}" onclick="event.stopPropagation(); keepGroup('${n.id}')" title="${kept?'Releasing — let re-generate reshuffle':'Keep this nurse\u2019s patients across re-generate (returning nurse)'}">${kept?'🔒 kept':'keep'}</button></div>
+      <div class="nhead"><span class="name">${n.name}</span><span class="badge ${bcls}">${n.level}</span><button class="keepbtn ${kept?'on':''}" onclick="event.stopPropagation(); keepGroup('${n.id}')" title="${kept?'Releasing — let re-generate reshuffle':'Keep this nurse\u2019s patients across re-generate (returning nurse)'}">${kept?'🔒 kept':'keep'}</button>${chargeMode?`<button class="qhelp" onclick="event.stopPropagation(); showHelp('keep')" title="What's this?">?</button>`:''}</div>
       <div class="hcov ${wings.length>1?'warn':''}">${hcov}</div>
       ${bud.length?`<div class="buddyline">🤝 Buddy: ${bud.map(esc).join(', ')}</div>`:''}
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${selfRN&&myBreak?`<div class="buddyline">🍽 Your break ~${myBreak.window}${myBreak.cover.length?` · ${myBreak.cover.map(esc).join(', ')} covers`:''}</div>`:''}
-      ${selfRN&&(n.vocAM||n.vocPM)?`<div class="buddyline">📟 Vocera: <b>${esc(shiftType==='Day'?(n.vocAM||'—'):(n.vocPM||'—'))}</b> (${shiftType})</div>`:''}
+      ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
       <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${L.hrs.toFixed(1)}</b> hrs · ${L.count} pt</span></div>
       ${bparts.length?`<div class="burds">${bparts.join(' · ')}</div>`:''}
@@ -1305,12 +1614,10 @@ function renderAssign(){
       <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
   }).join('');
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
-  document.getElementById('pool').innerHTML=pool.length? pool.map(roomChip).join('') : '<span class="empty2">All rooms assigned</span>';
-  document.getElementById('ptCount').textContent=occupied().length;
-  document.getElementById('hrTotal').textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
-  document.getElementById('unCount').textContent=pool.length;
-  const pp=document.getElementById('poolPanel'); if(pp) pp.style.display=(pool.length||selectedRoom)?'':'none';
-  const uw=document.getElementById('unWrap'); if(uw) uw.style.display=pool.length?'':'none';
+  const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
+  const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
+  const ucEl=document.getElementById('unCount'); if(ucEl) ucEl.textContent=pool.length;
+  }
   const eh=document.getElementById('editHint');
   if(eh){
     if(selectedRoom){ eh.className='edithint armed chargeOnly'; eh.innerHTML=`<b>Room ${selectedRoom} selected</b> — tap a nurse to move it there, tap Unassigned to free it, or tap ${selectedRoom} again to cancel.`; }
@@ -1319,16 +1626,33 @@ function renderAssign(){
   const sl=document.getElementById('staffLine');
   if(sl){ const census=occupied().length, M=nurses.length; const ratio=FLOOR.ratio||4;
     const cap=M?Math.ceil(census/M):0; const short=Math.max(0,Math.ceil(census/ratio)-M);
+    const names=nurses.map(n=>esc(n.name)).join(', ');
     const roster=`${M} nurse${M!==1?'s':''}`+(pcts.length?` · ${pcts.length} PCT`:'')+(sitters.length?` · ${sitters.length} sitter${sitters.length>1?'s':''}`:'');
     const lead = census===0 ? `<b>Add nurses &amp; score rooms to begin</b>`
       : short>0 ? `<b class="sl-warn">⚠ Short for 1:${ratio} — add ${short} more nurse${short>1?'s':''}</b>`
       : `<b class="sl-ok">✓ Staffing covers 1:${ratio}</b>`;
-    sl.innerHTML = census===0 ? lead : `${lead} · ${roster} for ${census} patients (~1:${cap})`;
+    sl.innerHTML = (census===0 ? lead : `${lead} · ${roster} for ${census} patients (~1:${cap})`)
+      + `<div class="sl-shift">${shiftType} shift${M?` · working: ${names}`:''}</div>`;
   }
   const roseRooms=occupied().filter(r=>r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25);
   const reviewBanner=document.getElementById('acuReview');
   if(reviewBanner){ if(chargeMode&&roseRooms.length){ const list=roseRooms.sort((a,b)=>b.acuity-a.acuity).map(r=>`<b>${r.id}</b> <span style="color:var(--ink-soft)">${r.prevAcuity.toFixed(1)}\u2192${r.acuity.toFixed(1)}</span>`).join(' · '); reviewBanner.innerHTML=`<span class="rose-icon">\u2191</span> <b>${roseRooms.length} room${roseRooms.length>1?'s':''} with acuity up since last shift — review:</b> ${list}`; reviewBanner.style.display=''; } else reviewBanner.style.display='none'; }
+  // Ratio-cap still-active reminder: rooms that carried a ratio-tightening flag from last shift
+  const capBanner=document.getElementById('capReview');
+  if(capBanner){
+    const rcCodes=getActiveFlags().filter(([c])=>flagRule(c).mode==='ratiocap');
+    const carried=occupied().filter(r=>r.capCarried && rcCodes.some(([c])=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)));
+    if(chargeMode&&carried.length){
+      const list=carried.sort((a,b)=>a.id-b.id).map(r=>{
+        const lab=rcCodes.filter(([c])=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(([,l])=>l).join(', ');
+        return `<b>${r.id}</b> <span style="color:var(--ink-soft)">${esc(lab)}</span>`;
+      }).join(' · ');
+      capBanner.innerHTML=`<span class="rose-icon">\u23f1</span> <b>Still limiting a nurse\u2019s load from last shift — confirm the treatment is still going:</b> ${list}<br><span style="font-size:11px;color:var(--ink-soft)">If it ended, re-score the room and remove the flag so the nurse can take a normal load.</span>`;
+      capBanner.style.display='';
+    } else capBanner.style.display='none';
+  }
   renderSupport();
+  const vcb=document.getElementById('vocCardBody'); if(vcb) vcb.innerHTML=renderVoceraCard();
   updateBalance();
 }
 function updateBalance(){
@@ -1368,7 +1692,9 @@ function updateScoreProgress(){
     return `<span class="spchip ${cls}">${esc(r.name)} <b>${tag}</b></span>`;
   }).join('');
   const need=rows.filter(r=>r.status==='none'||r.status==='partial').map(r=>r.name);
-  el.innerHTML=`<div class="sp-head">🩺 Scoring progress${need.length?` — still waiting on <b>${need.map(esc).join(', ')}</b>`:' — all scored, waiting for “done”'}</div><div class="sp-chips">${chips}</div>`;
+  const doneCount=rows.filter(r=>r.status==='done').length;
+  const summary=need.length?`🩺 Scoring — waiting on <b>${need.map(esc).join(', ')}</b>`:`🩺 Scoring — all scored, waiting for “done” (${doneCount}/${rows.length})`;
+  el.innerHTML=`<details class="sp-fold"><summary>${summary}</summary><div class="sp-chips">${chips}</div></details>`;
   el.className='scoreprog chargeOnly'; el.style.display='';
 }
 
@@ -1376,27 +1702,89 @@ function updateScoreProgress(){
 function updateStepGuide(){
   updateScoreProgress();
   updatePostUI();
-  const g=document.getElementById('stepGuide'); if(!g||!chargeMode){ if(g)g.style.display='none'; return; }
+  renderRecipe();
+  renderBuildTiles();
+  const g=document.getElementById('stepGuide'); if(g) g.style.display='none';
+}
+/* Big tappable tiles — the whole Build tab. Names chosen so a brand-new nurse knows each one. */
+function renderBuildTiles(){
+  const el=document.getElementById('buildTiles'); if(!el||!chargeMode){ if(el)el.style.display='none'; return; }
   const occ=occupied();
-  const scored=occ.filter(r=>r.acuity>0).length;
-  const total=occ.length;
+  const total=occ.length, scored=occ.filter(r=>r.acuity>0).length;
+  const haveStaff=nurses.length>0;
   const anyAssigned=occ.some(r=>r.nurse);
-  let step, txt, cls;
-  if(total===0){ step='1'; cls='wait'; txt='Add patients first — go to the <b>Score</b> tab and tap each room your unit has a patient in.'; }
-  else if(scored<total){ step='1'; cls='wait'; txt=`Score your patients — <b>${scored} of ${total}</b> done. Tap the <b>Score</b> tab and finish the rest, then come back here.`; }
-  else if(!anyAssigned){ step='2'; cls='go'; txt='All patients scored ✓ — now tap <b>✨ Make assignment</b> below to build a fair board.'; }
-  else { step='3'; cls='done'; txt='Assignment ready ✓ — tap <b>⋯</b> then <b>Print / share</b> to send it out. To set up the next shift, tap <b>⋯ → Start new shift</b>.'; }
-  g.innerHTML=`<span class="stepnum">${step}</span><span class="steptxt">${txt}</span>`;
-  g.className=`stepguide chargeOnly ${cls}`; g.style.display='';
+  const readyToMake = haveStaff && total>0 && scored===total;
+  // states: done(✓ green) · now(glow) · wait(dim) · util(plain, always tappable)
+  const s1 = (haveStaff && (total===0 || scored===total)) ? 'done' : 'now';
+  const s2 = !readyToMake ? 'wait' : (anyAssigned ? 'done' : 'now');
+  const s3 = 'util';
+  const s4 = !anyAssigned ? 'wait' : 'now';
+  const s6 = !anyAssigned ? 'wait' : 'util';
+  const staffStatus = haveStaff ? `${nurses.length} on` : 'tap to pick';
+  const makeStatus = s2==='wait' ? 'score first' : s2==='done' ? 'tap to redo' : 'tap me';
+  const vocStatus = 'phone numbers';
+  const checkStatus = s4==='wait' ? 'make it first' : (boardPosted?'posted ✓':'review & post');
+  const shareStatus = s6==='wait' ? 'make it first' : (boardPosted?'send it':'post first');
+  const tile=(state,emoji,num,label,status,onclick,helpKey)=>
+    `<button class="tile ${state}" onclick="${onclick}">`+
+      (num?`<span class="tnum">${state==='done'?'✓':num}</span>`:'')+
+      `<span class="temoji">${emoji}</span>`+
+      `<span class="tlabel">${label}</span>`+
+      `<span class="tstatus">${status}</span>`+
+      (helpKey?`<span class="thelp" onclick="event.stopPropagation(); showHelp('${helpKey}')">?</span>`:'')+
+    `</button>`;
+  let h='';
+  h+=tile(s1,'👥','1',"Who's Working",staffStatus,'openStaff()','staff');
+  h+=tile(s2,'✨','2','Make Assignment',makeStatus, s2==='wait'?'showHelp(\'make\')':'generate()','make');
+  h+=tile(s3,'📟','3','Vocera Phones',vocStatus,'openVocera()','vocera');
+  h+=tile(s4,'🔎','4','Check & Post',checkStatus, s4==='wait'?'showHelp(\'make\')':'show(\'assign\')','post');
+  h+=tile('util','⚙️','','More Tools','settings','openTools()','');
+  el.innerHTML=h; el.style.display='';
+}
+function openVocera(){ const b=document.getElementById('vocCardBody'); if(b) b.innerHTML=renderVoceraCard(); document.getElementById('vocScrim').classList.add('on'); }
+function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); }
+function goShare(){ if(typeof openShare==='function') openShare(); else show('assign'); }
+function openTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.add('on'); }
+function closeTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.remove('on'); }
+/* Three big numbered cards — like a recipe. The current step glows; finished steps get a ✓. */
+function renderRecipe(){
+  const r=document.getElementById('recipe'); if(!r||!chargeMode){ if(r)r.style.display='none'; return; }
+  const occ=occupied();
+  const total=occ.length;
+  const scored=occ.filter(x=>x.acuity>0).length;
+  const haveStaff=nurses.length>0;
+  const anyAssigned=occ.some(x=>x.nurse);
+  // decide each step's state: done / now / wait
+  let s1,s2,s3;
+  if(!haveStaff||total===0||scored<total){ s1='now'; s2='wait'; s3='wait'; }
+  else if(!anyAssigned){ s1='done'; s2='now'; s3='wait'; }
+  else { s1='done'; s2='done'; s3='now'; }
+  const sub1 = !haveStaff ? 'Tap 👥 Staff and pick who\u2019s working.'
+    : total===0 ? 'Go to the Score tab and tap each room with a patient.'
+    : scored<total ? `Score the rest — ${scored} of ${total} done.`
+    : 'All set ✓';
+  const sub2 = s2==='wait' ? 'Finish Step 1 first.'
+    : s2==='now' ? 'Tap the big blue button below.'
+    : 'Done ✓';
+  const sub3 = s3==='wait' ? 'Finish Step 2 first.'
+    : 'Tap ⋯ → Print / share to send it out.';
+  const card=(n,state,title,sub)=>{
+    const icon = state==='done' ? '✓' : n;
+    return `<div class="rstep ${state}"><span class="rnum">${icon}</span><div class="rtxt"><b>${title}</b><span>${sub}</span></div></div>`;
+  };
+  r.innerHTML = card(1,s1,'Pick who & score patients',sub1)
+    + card(2,s2,'Make the assignment',sub2)
+    + card(3,s3,'Share it',sub3);
+  r.style.display='';
 }
 /* ---------- undo: one tap back for the charge ---------- */
 let undoStack=[];
 function snapRooms(){ const s={}; Object.values(rooms).forEach(r=>{ s[r.id]={acuity:r.acuity,occupied:r.occupied,tally:JSON.parse(JSON.stringify(r.tally||{})),flags:[...(r.flags||[])],note:r.note,lock:r.lock,nurse:r.nurse,tags:[...(r.tags||[])],avoid:[...(r.avoid||[])]}; }); return s; }
 function pushUndo(){ undoStack.push(snapRooms()); if(undoStack.length>25) undoStack.shift(); updateUndoBtn(); }
-function undo(){ if(!chargeMode||!undoStack.length)return; const s=undoStack.pop(); Object.values(rooms).forEach(r=>{ const d=s[r.id]; if(d) Object.assign(r,d); }); selectedRoom=null; updateUndoBtn(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); if(cloudOn()&&chargeMode) pushMeta(); else scheduleSave(); }
+function undo(){ if(!chargeMode||!undoStack.length)return; const s=undoStack.pop(); Object.values(rooms).forEach(r=>{ const d=s[r.id]; if(d) Object.assign(r,d); }); selectedRoom=null; updateUndoBtn(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()&&chargeMode) pushMeta(); else scheduleSave(); }
 function updateUndoBtn(){ const b=document.getElementById('undoBtn'); if(b) b.style.display=(chargeMode&&undoStack.length)?'':'none'; }
-function selectRoom(id){ if(!chargeMode)return; selectedRoom=(selectedRoom===id)?null:id; renderAssign(); document.getElementById('poolHint').textContent=selectedRoom?`Selected ${selectedRoom}. Tap a nurse to assign, or tap Unassigned to release.`:'Tap a room, then tap a nurse. On a laptop you can also drag.'; }
-function placeHere(nid){ if(!chargeMode)return; if(!selectedRoom)return; pushUndo(); const r=rooms[selectedRoom]; if(r.lock&&r.lock!==nid)r.lock=null; r.nurse=nid; selectedRoom=null; document.getElementById('poolHint').textContent='Tap a room, then tap a nurse. On a laptop you can also drag.'; renderAssign();  scheduleSave(); }
+function selectRoom(id){ if(!chargeMode)return; selectedRoom=(selectedRoom===id)?null:id; renderAssign(); const ph=document.getElementById('poolHint'); if(ph) ph.textContent=selectedRoom?`Selected ${selectedRoom}. Tap a nurse to assign, or tap Unassigned to release.`:'Tap a room, then tap a nurse. On a laptop you can also drag.'; }
+function placeHere(nid){ if(!chargeMode)return; if(!selectedRoom)return; pushUndo(); const r=rooms[selectedRoom]; if(r.lock&&r.lock!==nid)r.lock=null; r.nurse=nid; selectedRoom=null; renderAssign(); scheduleSave(); }
 function dragStart(e,id){ if(!chargeMode)return;dragId=id;e.dataTransfer.effectAllowed='move';}
 function allowDrop(e,t){e.preventDefault();const el=t==='pool'?document.getElementById('poolPanel'):document.getElementById('nz-'+t);if(el)el.classList.add('drop');}
 function leaveDrop(){document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));}
@@ -1483,8 +1871,30 @@ function generateGapFill(){
 }
 
 /* Night/day mode — remembered per device */
-function toggleDark(){ const on=!document.body.classList.contains('dark'); document.body.classList.toggle('dark',on); try{ localStorage.setItem('evenshift_dark',on?'1':'0'); }catch(e){} }
-function applyDarkPref(){ try{ if(localStorage.getItem('evenshift_dark')==='1') document.body.classList.add('dark'); }catch(e){} }
+function toggleDark(){ const on=!document.body.classList.contains('dark'); setMode(on?'dark':'light'); }
+function setMode(m){ // 'light' | 'dark'
+  document.body.classList.toggle('dark', m==='dark');
+  try{ localStorage.setItem('evenshift_dark', m==='dark'?'1':'0'); }catch(e){}
+  updateThemeUI();
+}
+const THEMES=[['default','Blue','#2E6BE6'],['teal','Teal','#028090'],['green','Green','#1F9D57'],['purple','Purple','#7C5CE6'],['rose','Rose','#D6447B'],['slate','Slate','#475569']];
+function setTheme(t){
+  if(t==='default') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme',t);
+  try{ localStorage.setItem('evenshift_theme', t); }catch(e){}
+  updateThemeUI();
+}
+function loadTheme(){
+  try{ const t=localStorage.getItem('evenshift_theme'); if(t&&t!=='default') document.body.setAttribute('data-theme',t);
+    if(localStorage.getItem('evenshift_dark')==='1') document.body.classList.add('dark'); }catch(e){}
+}
+loadTheme();
+function updateThemeUI(){
+  const dark=document.body.classList.contains('dark');
+  const cur=document.body.getAttribute('data-theme')||'default';
+  const md=document.getElementById('modeRow'); if(md) md.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.mode===(dark?'dark':'light')));
+  const sw=document.getElementById('themeRow'); if(sw) sw.querySelectorAll('.swdot').forEach(b=>b.classList.toggle('on', b.dataset.theme===cur));
+}
+function applyDarkPref(){ try{ if(localStorage.getItem('evenshift_dark')==='1') document.body.classList.add('dark'); }catch(e){} updateThemeUI(); }
 
 /* Printable blank scoring sheet — paper backup for downtime */
 function printBlankSheet(){
@@ -1566,22 +1976,21 @@ function togglePosted(){ if(!chargeMode)return; boardPosted=!boardPosted; lastUp
 function updatePostUI(){
   const btn=document.getElementById('postBtn');
   if(btn){ btn.textContent=boardPosted?'📌 Posted ✓':'📌 Post'; btn.classList.toggle('posted',boardPosted); }
-  const ban=document.getElementById('postBanner');
-  if(!ban) return;
-  // staff (locked) see the draft/final status prominently
-  if(!chargeMode){
-    if(boardPosted){
-      ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
-      ban.className='postbanner final'; ban.style.display='';
+  ['postBanner','postBanner2'].forEach(id=>{
+    const ban=document.getElementById(id); if(!ban) return;
+    if(!chargeMode){
+      if(boardPosted){
+        ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
+        ban.className='postbanner final'; ban.style.display='';
+      } else {
+        ban.innerHTML=`<span class="pb-ico">✏️</span> <b>The charge is still building this assignment.</b> Check back shortly — it isn\u2019t final yet.`;
+        ban.className='postbanner draft'; ban.style.display='';
+      }
     } else {
-      ban.innerHTML=`<span class="pb-ico">✏️</span> <b>The charge is still building this assignment.</b> Check back shortly — it isn\u2019t final yet.`;
-      ban.className='postbanner draft'; ban.style.display='';
+      if(boardPosted){ ban.innerHTML=`<span class="pb-ico">✅</span> Posted — staff can see this is final.${lastUpdatedAt?` <span class="pb-time">${fmtAgo(lastUpdatedAt)}</span>`:''}`; ban.className='postbanner final'; ban.style.display=''; }
+      else { ban.innerHTML=`<span class="pb-ico">✏️</span> Draft — tap <b>📌 Post</b> when ready so staff know it\u2019s final.`; ban.className='postbanner draft'; ban.style.display=''; }
     }
-  } else {
-    // charge sees a small status line
-    if(boardPosted){ ban.innerHTML=`<span class="pb-ico">✅</span> Posted — staff can see this is final.${lastUpdatedAt?` <span class="pb-time">${fmtAgo(lastUpdatedAt)}</span>`:''}`; ban.className='postbanner final'; ban.style.display=''; }
-    else { ban.innerHTML=`<span class="pb-ico">✏️</span> Draft — tap <b>📌 Post</b> when ready so staff know it\u2019s final.`; ban.className='postbanner draft'; ban.style.display=''; }
-  }
+  });
 }
 function fmtAgo(ts){ const m=Math.round((Date.now()-ts)/60000); if(m<1)return 'just now'; if(m<60)return m+' min ago'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m ago'; }
 
@@ -1633,6 +2042,11 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   // per-unit flag rules: spread (penalize clustering) or cap (penalize exceeding max)
   const ruleCodes=getActiveFlags().map(x=>x[0]).filter(c=>{ const r=flagRule(c); return r.mode==='spread'||r.mode==='cap'; });
   const ruleTotals={}; ruleCodes.forEach(c=>{ ruleTotals[c]=occ.filter(r=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).length; });
+  // ratiocap flags: a flagged patient tightens that nurse's TOTAL patient count
+  const ratiocapCodes=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
+  function groupRatioCap(g){ const base=(FLOOR.ratio||4); let cap=base;
+    for(const r of g){ for(const code of ratiocapCodes){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)){ const rr=flagRule(code); cap=Math.min(cap,Math.max(1,rr.ratio||base)); } } }
+    return cap; }
   function flagRuleCost(){ let c=0;
     for(const code of ruleCodes){ const rule=flagRule(code); const total=ruleTotals[code]; if(!total) continue;
       if(rule.mode==='cap'){ const cap=Math.max(1,rule.cap||1);
@@ -1640,7 +2054,10 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
       } else if(rule.mode==='spread'){ const fair=Math.ceil(total/M);
         for(const g of G){ let k=0; for(const r of g){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)) k++; } if(k>fair) c+=(k-fair)*(k-fair)*30; }
       }
-    } return c;
+    }
+    // ratio caps: penalize any nurse holding more patients than a ratiocap flag allows
+    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*150; } }
+    return c;
   }
   let cur=cost(), bestC=cur, best=G.map(g=>g.slice()), sinceBest=0, T=8;
   for(let it=0; it<22000; it++){
@@ -1682,6 +2099,7 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   selectedRoom=null; renderAssign(); scheduleSave();
   checkFlagViolations();
+  show('assign');  // jump to the finished Board so the charge sees the result
 }
 /* After generate: detect cap/spread rule violations and tell the charge */
 function checkFlagViolations(){
@@ -1694,6 +2112,14 @@ function checkFlagViolations(){
     const overs=[];
     nurses.forEach(n=>{ const k=occ.filter(r=>r.nurse===n.id&&((r.flags||[]).includes(code)||(r.tags||[]).includes(code))).length; if(k>cap) overs.push(`${n.name} (${k})`); });
     if(overs.length) msgs.push(`<b>${esc(label)}</b>: ${rule.mode==='cap'?'max '+cap+'/nurse':'aim '+cap+'/nurse'} — exceeded by ${overs.map(esc).join(', ')}`);
+  });
+  // ratio-cap violations: a nurse holding more total patients than a flagged patient allows
+  getActiveFlags().forEach(([code,label])=>{
+    const rule=flagRule(code); if(rule.mode!=='ratiocap') return;
+    const cap=Math.max(1,rule.ratio||(FLOOR.ratio||4));
+    const overs=[];
+    nurses.forEach(n=>{ const rs=occ.filter(r=>r.nurse===n.id); const hasFlag=rs.some(r=>(r.flags||[]).includes(code)||(r.tags||[]).includes(code)); if(hasFlag && rs.length>cap) overs.push(`${n.name} (${rs.length} pts)`); });
+    if(overs.length) msgs.push(`<b>${esc(label)} ratio 1:${cap}</b> — over the limit: ${overs.map(esc).join(', ')}`);
   });
   const banner=document.getElementById('flagViol');
   if(banner){
@@ -1917,87 +2343,229 @@ function assignAllNew(){ if(!chargeMode)return;
 }
 
 /* ---------- staff roster ---------- */
-let _wn=[],_wp=[],_ws=[];
+let _wn=[],_wp=[],_ws=[],_wh=[];
 function esc(s){ return (s||'').replace(/"/g,'&quot;'); }
 /* ═══════════════════════════════════════════════════════════
    WHO'S COMING ON — quick roster swap for the next shift
    ═══════════════════════════════════════════════════════════ */
-function rebuildStaff(){ nurses=rosterN.filter(n=>n.on!==false); pcts=rosterP.filter(p=>p.on!==false); sitters=rosterS.filter(s=>s.on!==false); }
-function openIncoming(){ if(!chargeMode)return; renderIncoming(); document.getElementById('incScrim').classList.add('on'); }
-function closeIncoming(){ document.getElementById('incScrim').classList.remove('on'); rebuildStaff(); renderAssign(); scheduleSave(); }
-
-function renderIncoming(){
-  const el=document.getElementById('incBody'); if(!el) return;
-  const tog=(t,id,on)=>`<button class="inctog ${on?'on':''}" onclick="toggleIncoming('${t}','${id}')">${on?'On':'Off'}</button>`;
-  let h='';
-  h+=`<div class="incsec">Nurses</div>`;
-  h+=rosterN.map(n=>`<div class="incrow ${n.on!==false?'':'off'}">${tog('n',n.id,n.on!==false)}<span class="incname">${esc(n.name||'(unnamed)')}</span><span class="inclvl">${n.level==='Float'?'float':n.level==='Orienting'?'orienting':n.level==='Senior'?'senior':'RN'}</span></div>`).join('');
-  if(rosterP.length){ h+=`<div class="incsec">PCTs</div>`;
-    h+=rosterP.map(p=>`<div class="incrow ${p.on!==false?'':'off'}">${tog('p',p.id,p.on!==false)}<span class="incname">${esc(p.name||'(unnamed)')}</span></div>`).join(''); }
-  if(rosterS.length){ h+=`<div class="incsec">Sitters</div>`;
-    h+=rosterS.map(s=>`<div class="incrow ${s.on!==false?'':'off'}">${tog('s',s.id,s.on!==false)}<span class="incname">${esc(s.name||'(unnamed)')}</span><span class="inclvl">${s.room?'Rm '+s.room:''}</span></div>`).join(''); }
-  el.innerHTML=h;
-}
-
-function toggleIncoming(t,id){
-  const arr=t==='n'?rosterN:t==='p'?rosterP:rosterS;
-  const x=arr.find(o=>o.id===id); if(x){ x.on=(x.on===false); }
-  rebuildStaff(); renderIncoming();
-}
-
-function addIncoming(t){
-  const name=prompt(t==='n'?'Nurse / float name:':t==='p'?'PCT name:':'Sitter name:');
-  if(name===null) return;
-  const nm=name.trim(); if(!nm) return;
-  if(t==='n'){
-    const isFloat=confirm('Is '+nm+' a FLOAT or pool nurse from another unit?\n\nOK = Float (lighter load, kept off heavy/behavioral)\nCancel = regular RN');
-    rosterN.push({id:'n'+Date.now(),name:nm,level:isFloat?'Float':'RN',cap:1.0,on:true,vocAM:'',vocPM:'',breakTime:''});
-  } else if(t==='p'){
-    rosterP.push({id:'p'+Date.now(),name:nm,on:true,vocAM:'',vocPM:''});
-  } else {
-    rosterS.push({id:'s'+Date.now(),name:nm,room:'',on:true,vocAM:'',vocPM:''});
-  }
-  rebuildStaff(); renderIncoming(); scheduleSave();
-}
+function rebuildStaff(){ nurses=rosterN.filter(n=>n.on!==false); pcts=rosterP.filter(p=>p.on!==false); sitters=rosterS.filter(s=>s.on!==false); hucs=rosterH.filter(x=>x.on!==false); }
+/* "Who's coming on" is now merged into the Staff screen (On/Off toggles + add/remove). */
+function openIncoming(){ openStaff(); }
 /* ─────────────────── end incoming ─────────────────── */
 
-function openStaff(){ if(!chargeMode)return; _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); renderStaffModal(); document.getElementById('staffScrim').classList.add('on'); }
+function openStaff(){ if(!chargeMode)return; _staffTab=shiftType==='Night'?'night':'day'; _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); _wh=rosterH.map(x=>({...x})); renderStaffModal(); document.getElementById('staffScrim').classList.add('on'); }
 function closeStaff(){ document.getElementById('staffScrim').classList.remove('on'); }
 function syncStaffDOM(){
   const gv=(t,i,k,o)=>{ const a=document.getElementById((k==='am'?'va-':'vp-')+t+'-'+i); if(a)o[k==='am'?'vocAM':'vocPM']=a.value; };
-  const gb=(i,o)=>{ const a=document.getElementById('vb-n-'+i); if(a)o.breakTime=a.value.trim(); };
-  _wn.forEach((n,i)=>{ const a=document.getElementById('sn-'+i),b=document.getElementById('sl-'+i); if(a)n.name=a.value; if(b)n.level=b.value; gv('n',i,'am',n); gv('n',i,'pm',n); gb(i,n); });
-  _wp.forEach((p,i)=>{ const a=document.getElementById('pp-'+i); if(a)p.name=a.value; gv('p',i,'am',p); gv('p',i,'pm',p); });
-  _ws.forEach((s,i)=>{ const a=document.getElementById('ss-'+i),b=document.getElementById('sr-'+i); if(a)s.name=a.value; if(b)s.room=b.value; gv('s',i,'am',s); gv('s',i,'pm',s); });
+  const gsh=(t,i,o)=>{ const a=document.getElementById('ss-shift-'+t+'-'+i); if(a)o.shift=a.value; };
+  _wn.forEach((n,i)=>{ const a=document.getElementById('sn-'+i),b=document.getElementById('sl-'+i); if(a)n.name=a.value; if(b)n.level=b.value; gv('n',i,'am',n); gv('n',i,'pm',n); gsh('n',i,n); });
+  _wp.forEach((p,i)=>{ const a=document.getElementById('pp-'+i); if(a)p.name=a.value; gv('p',i,'am',p); gv('p',i,'pm',p); gsh('p',i,p); });
+  _ws.forEach((s,i)=>{ const a=document.getElementById('ss-'+i),b=document.getElementById('sr-'+i); if(a)s.name=a.value; if(b)s.room=b.value; gv('s',i,'am',s); gv('s',i,'pm',s); gsh('s',i,s); });
+  _wh.forEach((x,i)=>{ const a=document.getElementById('hh-'+i); if(a)x.name=a.value; gv('h',i,'am',x); gv('h',i,'pm',x); gsh('h',i,x); });
 }
-function togOn(t,i){ syncStaffDOM(); const arr=t==='n'?_wn:t==='p'?_wp:_ws; arr[i].on = (arr[i].on===false); renderStaffModal(); }
-function allOn(){ syncStaffDOM(); [..._wn,..._wp,..._ws].forEach(x=>x.on=true); renderStaffModal(); }
+let _staffTab='day';
+function setStaffTab(t){ syncStaffDOM(); _staffTab=t; renderStaffModal(); }
 function renderStaffModal(){
   const occRooms=occupied().map(r=>r.id).sort((a,b)=>posOf(a)-posOf(b));
-  const onc=arr=>arr.filter(x=>x.on!==false).length;
-  const tog=(t,i,on)=>`<button class="ontog ${on?'on':''}" onclick="togOn('${t}',${i})" title="Working today">${on?'On':'Off'}</button>`;
-  const vocLine=(t,i,x)=>`<div class="vocrow"><span class="voclab">Voc</span><input id="va-${t}-${i}" class="vin" value="${esc(x.vocAM||'')}" placeholder="AM"><input id="vp-${t}-${i}" class="vin" value="${esc(x.vocPM||'')}" placeholder="PM">${t==='n'?`<span class="voclab" style="margin-left:6px;">Break</span><input id="vb-${t}-${i}" class="vin" style="width:88px;" value="${esc(x.breakTime||'')}" placeholder="e.g. 1130-1200">`:''}</div>`;
-  let h=`<div class="staffsum">Working today: <b>${onc(_wn)}</b>/${_wn.length} nurses · <b>${onc(_wp)}</b>/${_wp.length} PCT · <b>${onc(_ws)}</b>/${_ws.length} sitter<button class="allon" onclick="allOn()">All on</button></div>`;
-  h+='<div class="grp"><h4>Nurses</h4>';
-  _wn.forEach((n,i)=>{ const on=n.on!==false; h+=`<div class="srow ${on?'':'rowoff'}">${tog('n',i,on)}<input id="sn-${i}" class="sin" value="${esc(n.name)}" placeholder="Nurse name"><select id="sl-${i}" class="ssel">${['RN','Senior','Float','Orienting'].map(l=>`<option ${n.level===l?'selected':''}>${l}</option>`).join('')}</select><button class="srm" onclick="rmRow('n',${i})">✕</button>${vocLine('n',i,n)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'n\')">+ Add nurse</button></div>';
-  h+='<div class="grp"><h4>PCTs</h4>';
-  _wp.forEach((p,i)=>{ const on=p.on!==false; h+=`<div class="srow ${on?'':'rowoff'}">${tog('p',i,on)}<input id="pp-${i}" class="sin" value="${esc(p.name)}" placeholder="PCT name"><button class="srm" onclick="rmRow('p',${i})">✕</button>${vocLine('p',i,p)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'p\')">+ Add PCT</button></div>';
-  h+='<div class="grp"><h4>Sitters (1:1)</h4>';
-  _ws.forEach((s,i)=>{ const on=s.on!==false; h+=`<div class="srow ${on?'':'rowoff'}">${tog('s',i,on)}<input id="ss-${i}" class="sin" value="${esc(s.name)}" placeholder="Sitter name"><select id="sr-${i}" class="ssel"><option value="">room…</option>${occRooms.map(rm=>`<option value="${rm}" ${String(s.room)===String(rm)?'selected':''}>${rm}</option>`).join('')}</select><button class="srm" onclick="rmRow('s',${i})">✕</button>${vocLine('s',i,s)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'s\')">+ Add sitter</button></div>';
+  let h=`<div class="stafftabs">`+
+    `<button class="sttab ${_staffTab==='day'?'on':''}" onclick="setStaffTab('day')">Day team</button>`+
+    `<button class="sttab ${_staffTab==='night'?'on':''}" onclick="setStaffTab('night')">Night team</button>`+
+    `<button class="sttab ${_staffTab==='roster'?'on':''}" onclick="setStaffTab('roster')">Master roster</button>`+
+    `</div>`;
+  if(_staffTab==='roster') h+=renderRosterTab(occRooms);
+  else h+=renderTeamTab(_staffTab==='night'?'Night':'Day');
   document.getElementById('staffBody').innerHTML=h;
 }
-function addRow(t){ syncStaffDOM(); if(t==='n')_wn.push({id:newId('n'),name:'',level:'RN',cap:1.0,on:true}); else if(t==='p')_wp.push({id:newId('p'),name:'',on:true}); else _ws.push({id:newId('s'),name:'',room:'',on:true}); renderStaffModal(); }
+
+/* ===== VOCERA DEVICES — fixed slots (RN1-8, PCT1-4, Sitters), separate Day/Night sets ===== */
+const VOC_STATUS=['Assigned','Returned','Lost','Repair'];
+function blankDevSet(){ return { rn:Array.from({length:8},()=>({num:'',status:'Assigned'})),
+  pct:Array.from({length:4},()=>({num:'',status:'Assigned'})),
+  sit:Array.from({length:2},()=>({num:'',status:'Assigned'})) }; }
+let VOC_DEVICES={ Day:blankDevSet(), Night:blankDevSet() };
+let _vocShift=null;  // which device set the Build card is showing (defaults to current shiftType)
+function vocSet(){ const t=(_vocShift||shiftType); return VOC_DEVICES[t]||(VOC_DEVICES[t]=blankDevSet()); }
+function setVocShift(t){ _vocShift=t; renderAssign(); }
+function setDevNum(grp,i,val){ const s=vocSet(); if(s[grp]&&s[grp][i]){ s[grp][i].num=val.trim(); scheduleSave(); } }
+function setDevStatus(grp,i,st){ const s=vocSet(); if(s[grp]&&s[grp][i]){ s[grp][i].status=st; scheduleSave(); renderAssign(); } }
+function addDevSlot(grp){ const s=vocSet(); if(s[grp]&&s[grp].length<16){ s[grp].push({num:'',status:'Assigned'}); scheduleSave(); renderAssign(); } }
+function rmDevSlot(grp){ const s=vocSet(); if(s[grp]&&s[grp].length>0){ s[grp].pop(); scheduleSave(); renderAssign(); } }
+function markAllReturned(){ const s=vocSet(); ['rn','pct','sit'].forEach(g=>s[g].forEach(d=>{ if(d.num&&d.status!=='Lost'&&d.status!=='Repair') d.status='Returned'; })); scheduleSave(); renderAssign(); }
+function resetVocReturns(){ if(!confirm('Start a fresh Vocera check-in for this shift? Devices marked Lost or Repair stay flagged; everyone else resets to Assigned.')) return;
+  const s=vocSet(); ['rn','pct','sit'].forEach(g=>s[g].forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); scheduleSave(); renderAssign(); }
+/* the on-shift staff in slot order, to show who carries each device */
+function vocAssignee(grp,i){ const arr=grp==='rn'?nurses:grp==='pct'?pcts:sitters; const p=arr[i]; return p?p.name:''; }
+/* the Vocera number for a person, by their slot index — cards always use the CURRENT shift's set */
+function curVocSet(){ return VOC_DEVICES[shiftType]||(VOC_DEVICES[shiftType]=blankDevSet()); }
+function vocForNurse(nid){ const i=nurses.findIndex(n=>n.id===nid); if(i<0)return''; const d=curVocSet().rn[i]; return d?d.num:''; }
+function vocForPct(pid){ const i=pcts.findIndex(p=>p.id===pid); if(i<0)return''; const d=curVocSet().pct[i]; return d?d.num:''; }
+function vocForSitter(sid){ const i=sitters.findIndex(x=>x.id===sid); if(i<0)return''; const d=curVocSet().sit[i]; return d?d.num:''; }
+function vocForHuc(hid){ const i=hucs.findIndex(x=>x.id===hid); if(i<0)return''; const d=curVocSet().rn; return ''; }
+/* live sitter editing straight from the Board card */
+function setSitterName(id,val){ const s=rosterS.find(x=>x.id===id); if(s){ s.name=val.trim(); scheduleSave(); renderAssign(); } }
+function setSitterRoom(id,val){ const s=rosterS.find(x=>x.id===id); if(s){ s.room=val; scheduleSave(); renderAssign(); } }
+function removeSitter(id){ const s=rosterS.find(x=>x.id===id); if(s&&s.name&&!confirm('Remove sitter '+s.name+' from this shift?')) return; rosterS=rosterS.filter(x=>x.id!==id); syncWorking(); scheduleSave(); renderAssign(); }
+function addSitterLive(){ const team=shiftType; rosterS.push({id:newId('s'),name:'',room:'',on:true,shift:team,vocAM:'',vocPM:''}); syncWorking(); scheduleSave(); renderAssign(); }
+/* Build-tab card */
+function renderVoceraCard(){
+  const set=vocSet(); const shown=(_vocShift||shiftType);
+  const counts=g=>{ const a=set[g]; return {ret:a.filter(d=>d.status==='Returned').length, lost:a.filter(d=>d.status==='Lost').length, rep:a.filter(d=>d.status==='Repair').length, out:a.filter(d=>d.num&&d.status==='Assigned').length}; };
+  const tot={ret:0,lost:0,rep:0,out:0}; ['rn','pct','sit'].forEach(g=>{ const c=counts(g); tot.ret+=c.ret;tot.lost+=c.lost;tot.rep+=c.rep;tot.out+=c.out; });
+  let h=`<div class="vocshift"><button class="vshbtn ${shown==='Day'?'on':''}" onclick="setVocShift('Day')">Day set</button><button class="vshbtn ${shown==='Night'?'on':''}" onclick="setVocShift('Night')">Night set</button></div>`;
+  h+=`<div class="staffhelp" style="margin:0 0 10px;">Just the device numbers per slot. After you <b>Make assignment</b>, the top nurse becomes <b>RN 1</b>, the next <b>RN 2</b>, and so on — each person\u2019s number shows on their card automatically. Same for PCTs and sitters.</div>`;
+  h+=`<div class="vbcounts">${tot.out} out · <b class="vs-ret">${tot.ret}</b> returned${tot.lost?` · <b class="vs-lost">${tot.lost}</b> lost`:''}${tot.rep?` · <b class="vs-rep">${tot.rep}</b> repair`:''}</div>`;
+  const block=(grp,label,prefix)=>{
+    const a=set[grp]; let s=`<div class="vgrp"><div class="vgrph"><span>${label}</span><span class="vgrpctl"><button class="vmini" onclick="rmDevSlot('${grp}')">−</button><button class="vmini" onclick="addDevSlot('${grp}')">+</button></span></div>`;
+    a.forEach((d,i)=>{ const st=d.status||'Assigned';
+      s+=`<div class="vdrow novwho vs-${st.toLowerCase()}"><span class="vslot">${prefix}${i+1}</span>`+
+        `<input class="vnum" value="${esc(d.num||'')}" placeholder="Vocera #" onchange="setDevNum('${grp}',${i},this.value)">`+
+        `<select class="vstat" onchange="setDevStatus('${grp}',${i},this.value)">${VOC_STATUS.map(x=>`<option ${st===x?'selected':''}>${x}</option>`).join('')}</select></div>`;
+    });
+    return s+'</div>';
+  };
+  h+=block('rn','Nurses (RN)','RN ')+block('pct','PCTs','PCT ')+block('sit','Sitters','Sitter ');
+  h+=`<div class="vbbar"><button class="btn sm" onclick="markAllReturned()">✓ All returned</button><button class="btn sm" onclick="resetVocReturns()">Reset for new shift</button><button class="qhelp" onclick="showHelp('vocreturn')" title="What's this?">?</button></div>`;
+  return h;
+}
+
+/* a person belongs to the team matching their shift tag (defaults to Day if unset) */
+function inTeam(x,team){ return (x.shift||'Day')===team; }
+
+/* TAB — Day/Night team: tap names (filtered to this team) to set who's working the next shift. */
+function renderTeamTab(team){
+  const fN=_wn.filter(x=>inTeam(x,team)), fP=_wp.filter(x=>inTeam(x,team)), fS=_ws.filter(x=>inTeam(x,team)), fH=_wh.filter(x=>inTeam(x,team));
+  const onN=fN.filter(x=>x.on!==false).length, onP=fP.filter(x=>x.on!==false).length, onS=fS.filter(x=>x.on!==false).length, onH=fH.filter(x=>x.on!==false).length;
+  let h=`<div class="staffsum">${team} team working: <b>${onN}</b> nurses · <b>${onP}</b> PCT · <b>${onS}</b> sitter · <b>${onH}</b> HUC<button class="allon" onclick="clearTeam('${team}')">Clear</button></div>`;
+  h+=`<div class="staffhelp">Tap a name to toggle who\u2019s working the <b>${team.toLowerCase()}</b> shift. Names come from the Master roster. Returning staff keep their patients automatically.</div>`;
+  const chiprow=(arr,t,label,extra)=>{
+    if(!arr.length) return `<div class="grp"><h4>${label}</h4><div class="hint" style="margin:0;">No ${team.toLowerCase()} ${label.toLowerCase()} in the roster. Add them on <b>Master roster</b> and set Shift to ${team}.</div></div>`;
+    let s=`<div class="grp"><h4>${label} <span class="grpcount">${arr.filter(x=>x.on!==false).length} on</span></h4><div class="crewwrap">`;
+    arr.forEach(x=>{ const on=x.on!==false; const sub=extra?extra(x):'';
+      s+=`<button class="crewchip ${on?'on':''}" onclick="togCrew('${t}','${x.id}')">${on?'✓ ':''}${esc(x.name||'(unnamed)')}${sub?`<span class="crewsub">${sub}</span>`:''}</button>`; });
+    return s+'</div></div>';
+  };
+  h+=chiprow(fN,'n','Nurses',x=>x.level&&x.level!=='RN'?x.level.toLowerCase():'');
+  h+=chiprow(fP,'p','PCTs');
+  h+=chiprow(fS,'s','Sitters',x=>x.room?'Rm '+x.room:'');
+  h+=chiprow(fH,'h','HUCs (desk)');
+  return h;
+}
+
+/* TAB — Master roster: full editable list + Excel/CSV import. Each person tagged Day/Night/Both. */
+function renderRosterTab(occRooms){
+  const shiftSel=(t,i,x)=>`<select id="ss-shift-${t}-${i}" class="ssel shsel">${['Day','Night'].map(s=>`<option ${ (x.shift||'Day')===s?'selected':''}>${s}</option>`).join('')}</select>`;
+  const vocLine=(t,i,x)=>`<div class="vocrow"><span class="voclab">Voc</span><input id="va-${t}-${i}" class="vin" value="${esc(x.vocAM||'')}" placeholder="AM"><input id="vp-${t}-${i}" class="vin" value="${esc(x.vocPM||'')}" placeholder="PM"></div>`;
+  let h=`<div class="rosterbar"><button class="btn sm" onclick="openImport()">📥 Import Excel / CSV</button><button class="btn sm" onclick="downloadTemplate()">📄 Blank template</button></div>`;
+  h+=`<div class="staffhelp">The full unit roster. Set each person\u2019s <b>Shift</b> (Day or Night) — that decides which team tab they appear in. Import a spreadsheet or add people by hand. <b>✕</b> only when someone leaves for good.</div>`;
+  h+='<div class="grp"><h4>Nurses</h4>';
+  _wn.forEach((n,i)=>{ h+=`<div class="srow2"><input id="sn-${i}" class="sin" value="${esc(n.name)}" placeholder="Nurse name"><button class="srm" onclick="rmRow('n',${i})">✕</button><div class="srow2b"><select id="sl-${i}" class="ssel">${['RN','Senior','Float','Orientee'].map(l=>`<option ${n.level===l?'selected':''}>${l}</option>`).join('')}</select>${shiftSel('n',i,n)}</div>${vocLine('n',i,n)}</div>`; });
+  h+='<button class="addrow" onclick="addRow(\'n\')">+ Add nurse</button></div>';
+  h+='<div class="grp"><h4>PCTs</h4>';
+  _wp.forEach((p,i)=>{ h+=`<div class="srow2"><input id="pp-${i}" class="sin" value="${esc(p.name)}" placeholder="PCT name"><button class="srm" onclick="rmRow('p',${i})">✕</button><div class="srow2b">${shiftSel('p',i,p)}</div>${vocLine('p',i,p)}</div>`; });
+  h+='<button class="addrow" onclick="addRow(\'p\')">+ Add PCT</button></div>';
+  h+='<div class="grp"><h4>Sitters (1:1)</h4>';
+  _ws.forEach((s,i)=>{ h+=`<div class="srow2"><input id="ss-${i}" class="sin" value="${esc(s.name)}" placeholder="Sitter name"><button class="srm" onclick="rmRow('s',${i})">✕</button><div class="srow2b"><select id="sr-${i}" class="ssel"><option value="">room…</option>${occRooms.map(rm=>`<option value="${rm}" ${String(s.room)===String(rm)?'selected':''}>${rm}</option>`).join('')}</select>${shiftSel('s',i,s)}</div>${vocLine('s',i,s)}</div>`; });
+  h+='<button class="addrow" onclick="addRow(\'s\')">+ Add sitter</button></div>';
+  h+='<div class="grp"><h4>HUCs (desk / unit coordinator)</h4>';
+  _wh.forEach((x,i)=>{ h+=`<div class="srow2"><input id="hh-${i}" class="sin" value="${esc(x.name)}" placeholder="HUC name"><button class="srm" onclick="rmRow('h',${i})">✕</button><div class="srow2b">${shiftSel('h',i,x)}</div>${vocLine('h',i,x)}</div>`; });
+  h+='<button class="addrow" onclick="addRow(\'h\')">+ Add HUC</button></div>';
+  return h;
+}
+/* tap a name to add/remove from the working crew */
+function togCrew(t,id){ syncStaffDOM(); const arr=t==='n'?_wn:t==='p'?_wp:t==='s'?_ws:_wh; const x=arr.find(o=>o.id===id); if(x) x.on=(x.on===false); renderStaffModal(); }
+function clearTeam(team){ syncStaffDOM(); if(!confirm('Clear who\u2019s working the '+team.toLowerCase()+' shift? The roster is kept — just re-tap who\u2019s on.')) return; [..._wn,..._wp,..._ws,..._wh].forEach(x=>{ if(inTeam(x,team)) x.on=false; }); renderStaffModal(); }
+function addRow(t){ syncStaffDOM(); const team=_staffTab==='night'?'Night':'Day'; if(t==='n')_wn.push({id:newId('n'),name:'',level:'RN',cap:1.0,on:true,shift:team}); else if(t==='p')_wp.push({id:newId('p'),name:'',on:true,shift:team}); else if(t==='s')_ws.push({id:newId('s'),name:'',room:'',on:true,shift:team}); else _wh.push({id:newId('h'),name:'',on:true,shift:team}); renderStaffModal(); }
 function rmRow(t,i){ syncStaffDOM();
-  const arr=t==='n'?_wn:t==='p'?_wp:_ws;
+  const arr=t==='n'?_wn:t==='p'?_wp:t==='s'?_ws:_wh;
   const person=arr[i];
   if(person&&person.name&&person.name.trim()){
-    const role=t==='n'?'nurse':t==='p'?'PCT':'sitter';
-    if(!confirm('Remove '+person.name.trim()+' from the unit roster?\n\nUse this only when someone resigns or transfers off the floor. To just skip them for one shift, tap Cancel and use “Who’s coming on” to toggle them Off instead.')) return;
+    if(!confirm('Remove '+person.name.trim()+' from the master roster?\n\nUse this only when someone leaves the unit for good. To skip them for one shift, just leave them toggled off on the team tab.')) return;
   }
-  if(t==='n')_wn.splice(i,1); else if(t==='p')_wp.splice(i,1); else _ws.splice(i,1); renderStaffModal(); }
+  if(t==='n')_wn.splice(i,1); else if(t==='p')_wp.splice(i,1); else if(t==='s')_ws.splice(i,1); else _wh.splice(i,1); renderStaffModal(); }
+/* ============ MASTER ROSTER IMPORT (Excel / CSV) ============ */
+let _importParsed=null;
+function openImport(){ syncStaffDOM(); _importParsed=null; const pv=document.getElementById('importPreview'); if(pv)pv.innerHTML=''; const m=document.getElementById('importMsg'); if(m)m.textContent=''; document.getElementById('importScrim').classList.add('on'); }
+function closeImport(){ document.getElementById('importScrim').classList.remove('on'); }
+function downloadTemplate(){
+  const rows=[['Name','Role','Level','Shift','Vocera AM','Vocera PM'],
+    ['Amith','Nurse','RN','Day','V1','V14'],
+    ['Kelsey','Nurse','Senior','Night','V5','V19'],
+    ['Michelle','PCT','','Day','',''],
+    ['Mawut','Sitter','','Day','','']];
+  const csv=rows.map(r=>r.map(c=>/[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='evenshift-staff-template.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+/* forgiving CSV parser (handles quotes) */
+function parseCSV(text){
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(c==='\r'){} else cur+=c; }
+  }
+  if(cur.length||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.some(c=>String(c).trim()!==''));
+}
+/* map header names → our fields, forgivingly */
+function mapRows(rows){
+  if(!rows.length) return [];
+  const head=rows[0].map(h=>String(h||'').trim().toLowerCase());
+  const find=(...keys)=>head.findIndex(h=>keys.some(k=>h.includes(k)));
+  const iName=find('name'), iRole=find('role'), iLevel=find('level','title'), iShift=find('shift','team'), iAM=find('vocera am','voc am','am'), iPM=find('vocera pm','voc pm','pm');
+  if(iName<0) return null; // need at least a name column
+  const out=[];
+  for(let r=1;r<rows.length;r++){ const cells=rows[r]; const name=String(cells[iName]||'').trim(); if(!name) continue;
+    const roleRaw=(iRole>=0?String(cells[iRole]||''):'').toLowerCase();
+    let role='Nurse'; if(/pct|tech|aide|cna/.test(roleRaw))role='PCT'; else if(/sit/.test(roleRaw))role='Sitter';
+    const lvlRaw=(iLevel>=0?String(cells[iLevel]||''):'').toLowerCase();
+    let level='RN'; if(/sr|senior/.test(lvlRaw))level='Senior'; else if(/float|pool/.test(lvlRaw))level='Float'; else if(/orient/.test(lvlRaw))level='Orientee';
+    const shRaw=(iShift>=0?String(cells[iShift]||''):'').toLowerCase();
+    let shift='Day'; if(/night|noc|pm/.test(shRaw)&&!/day/.test(shRaw))shift='Night';
+    out.push({name,role,level,shift,vocAM:iAM>=0?String(cells[iAM]||'').trim():'',vocPM:iPM>=0?String(cells[iPM]||'').trim():''});
+  }
+  return out;
+}
+function handleImportFile(e){
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  const msg=document.getElementById('importMsg'); if(msg)msg.textContent='Reading…';
+  const name=(f.name||'').toLowerCase();
+  if(name.endsWith('.csv')){ const rd=new FileReader(); rd.onload=()=>{ finishParse(mapRows(parseCSV(String(rd.result||'')))); }; rd.readAsText(f); }
+  else { // Excel — load SheetJS on demand
+    ensureXLSX().then(XLSX=>{ const rd=new FileReader(); rd.onload=()=>{ try{ const wb=XLSX.read(new Uint8Array(rd.result),{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false}); finishParse(mapRows(rows)); }catch(err){ if(msg)msg.textContent='Could not read that Excel file. Try saving it as CSV.'; } }; rd.readAsArrayBuffer(f); })
+      .catch(()=>{ if(msg)msg.textContent='Excel reader needs internet. Save the file as CSV and try again.'; });
+  }
+  e.target.value='';
+}
+function ensureXLSX(){ return new Promise((res,rej)=>{ if(window.XLSX)return res(window.XLSX);
+  const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=()=>res(window.XLSX); s.onerror=rej; document.head.appendChild(s); }); }
+function finishParse(people){
+  const msg=document.getElementById('importMsg'), pv=document.getElementById('importPreview');
+  if(people===null){ if(msg)msg.textContent='Couldn\u2019t find a “Name” column. Use the blank template.'; return; }
+  if(!people.length){ if(msg)msg.textContent='No staff rows found in that file.'; return; }
+  _importParsed=people; if(msg)msg.textContent='';
+  const n=people.filter(p=>p.role==='Nurse').length, pc=people.filter(p=>p.role==='PCT').length, si=people.filter(p=>p.role==='Sitter').length;
+  let h=`<div class="staffsum">Found <b>${people.length}</b>: ${n} nurses · ${pc} PCT · ${si} sitter</div><div class="imptable">`;
+  people.slice(0,40).forEach(p=>{ h+=`<div class="improw"><span class="impn">${esc(p.name)}</span><span class="impmeta">${p.role}${p.role==='Nurse'?' · '+p.level:''} · ${p.shift}${p.vocAM?' · '+esc(p.vocAM):''}</span></div>`; });
+  if(people.length>40) h+=`<div class="impmeta" style="padding:6px 0;">…and ${people.length-40} more</div>`;
+  h+='</div><div class="rsharebtns" style="margin-top:12px;gap:8px;"><button class="btn" onclick="applyImport(\'merge\')">Add to roster</button><button class="btn primary" onclick="applyImport(\'replace\')">Replace roster</button></div>';
+  if(pv)pv.innerHTML=h;
+}
+function applyImport(mode){
+  if(!_importParsed)return;
+  if(mode==='replace'&&!confirm('Replace the whole roster with these '+_importParsed.length+' people? Anyone not in the file is removed.')) return;
+  const toN=[], toP=[], toS=[];
+  _importParsed.forEach(p=>{ if(p.role==='PCT')toP.push({id:newId('p'),name:p.name,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
+    else if(p.role==='Sitter')toS.push({id:newId('s'),name:p.name,room:'',on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
+    else toN.push({id:newId('n'),name:p.name,level:p.level,cap:1.0,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM}); });
+  if(mode==='replace'){ _wn=toN; _wp=toP; _ws=toS; }
+  else { // merge: update existing by name, add new
+    const merge=(arr,incoming)=>{ incoming.forEach(inp=>{ const ex=arr.find(x=>x.name.trim().toLowerCase()===inp.name.trim().toLowerCase()); if(ex){ Object.assign(ex,{level:inp.level||ex.level,shift:inp.shift,vocAM:inp.vocAM||ex.vocAM,vocPM:inp.vocPM||ex.vocPM}); } else arr.push(inp); }); };
+    merge(_wn,toN); merge(_wp,toP); merge(_ws,toS);
+  }
+  closeImport(); _staffTab='roster'; renderStaffModal();
+  const m=document.getElementById('importMsg'); if(m)m.textContent='';
+}
 /* ---- roster sharing between devices (no backend) ---- */
 const RCODE_PREFIX='EVSHIFT-ROSTER-1:';
 function rosterPayload(){ return RCODE_PREFIX+btoa(unescape(encodeURIComponent(JSON.stringify({v:1,rosterN,rosterP,rosterS})))); }
@@ -2022,17 +2590,18 @@ function loadRoster(){
   occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });
   if(viewAs!=='charge'&&!nurses.find(x=>x.id===viewAs))viewAs='charge';
   closeRShare();
-  if(document.getElementById('staffScrim').classList.contains('on')){ _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); renderStaffModal(); }
+  if(document.getElementById('staffScrim').classList.contains('on')){ _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); _wh=rosterH.map(x=>({...x})); renderStaffModal(); }
   refreshViewOptions(); applyAccessUI(); renderAcuity(); renderAssign(); scheduleSave();
 }
 function saveStaff(){
   syncStaffDOM();
-  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||''}));
+  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:n.level||'RN',cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||''}));
   if(cleanN.length<1){ alert('Add at least one nurse.'); return; }
   if(!cleanN.some(n=>n.on!==false)){ alert('Mark at least one nurse “On” for today.'); return; }
   rosterN=cleanN;
-  rosterP=_wp.filter(p=>p.name.trim()).map(p=>({id:p.id,name:p.name.trim(),on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
-  rosterS=_ws.filter(s=>s.name.trim()).map(s=>({id:s.id,name:s.name.trim(),room:s.room||'',on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''}));
+  rosterP=_wp.filter(p=>p.name.trim()).map(p=>({id:p.id,name:p.name.trim(),on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''}));
+  rosterS=_ws.filter(s=>s.name.trim()).map(s=>({id:s.id,name:s.name.trim(),room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''}));
+  rosterH=_wh.filter(x=>x.name.trim()).map(x=>({id:x.id,name:x.name.trim(),on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
   syncWorking();
   occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });   // free anyone not on today
   if(viewAs!=='charge'&&!nurses.find(x=>x.id===viewAs))viewAs='charge';
@@ -2080,13 +2649,26 @@ function partitionEven(items, k){
   while(rem>0){ sizes[lo]++; rem--; if(rem>0 && hi!==lo){ sizes[hi]++; rem--; } lo++; hi--; if(lo>hi){ lo=0; hi=k-1; } }
   const out=[]; let idx=0; for(let i=0;i<k;i++){ out.push(items.slice(idx,idx+sizes[i])); idx+=sizes[i]; } return out;
 }
+/* manual mid-shift overrides: room id -> pct id. Auto-zones apply to everything not overridden. */
+let PCT_OVERRIDE={};
+let CODE_OVERRIDE={};   // role -> staff name chosen by charge (overrides auto-fill; e.g. swap out someone who can't do CPR)
+function setCodeRole(role,name){ if(name) CODE_OVERRIDE[role]=name; else delete CODE_OVERRIDE[role]; scheduleSave(); renderAssign(); }
 function pctZones(){
   const k=pcts.length; if(!k) return [];
   const sit=sitteredRooms();
   const occ=occupied().map(r=>r.id).filter(rn=>!sit.has(rn)).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);  // 1:1 rooms belong to the sitter
-  const chunks=partitionEven(occ, k);   // contiguous runs along the floor walk; a center zone may span the station, as on the unit
-  return chunks.map((rms,i)=>({ pct:pcts[i], rooms:rms, halls:[...new Set(rms.map(rn=>RHALL[rn]))].sort((a,b)=>a-b) }));
+  // pull out manually-assigned rooms; auto-split only the rest
+  const valid=new Set(pcts.map(p=>p.id));
+  const overridden=occ.filter(rn=>PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn]));
+  const autoPool=occ.filter(rn=>!(PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn])));
+  const chunks=partitionEven(autoPool, k);   // contiguous runs along the floor walk
+  const byPct={}; pcts.forEach((p,i)=>{ byPct[p.id]=(chunks[i]||[]).slice(); });
+  overridden.forEach(rn=>{ byPct[PCT_OVERRIDE[rn]].push(rn); });
+  return pcts.map(p=>{ const rms=(byPct[p.id]||[]).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);
+    return { pct:p, rooms:rms, halls:[...new Set(rms.map(rn=>RHALL[rn]))].sort((a,b)=>a-b) }; });
 }
+function setPctRoom(room,pctId){ if(pctId) PCT_OVERRIDE[+room]=pctId; else delete PCT_OVERRIDE[+room]; scheduleSave(); renderAssign(); }
+function rebalancePct(){ if(!confirm('Re-split all PCT zones evenly across the PCTs on now? This clears any manual room moves.')) return; PCT_OVERRIDE={}; scheduleSave(); renderAssign(); }
 /* tidy label: lead with the main hall, note any stray corner room */
 function zoneLabel(rms){
   if(!rms.length) return '—';
@@ -2138,20 +2720,40 @@ function sitterCoverage(){
   // assign nearest available reliever, balancing how many breaks each one covers
   return list.slice().sort((a,b)=>WALKPOS[+a.room]-WALKPOS[+b.room]).map((s,i)=>{
     const rp=WALKPOS[+s.room]; let cover={name:'Charge',role:''};
-    if(cands.length){
+    const stored=rosterS.find(x=>x.id===s.id)||{};
+    if(stored.coverBy){ const nm=coverNameFor(stored.coverBy); if(nm){ cover={name:nm,role:''}; } }
+    else if(cands.length){
       let pick=null;
       cands.forEach(c=>{ const score=c.load*1000+Math.abs(c.pos-rp); if(!pick||score<pick.score) pick={c,score}; });
       pick.c.load++; cover={name:pick.c.name, role:pick.c.role};
     }
     const t=new Date(2000,0,1,startH%24,0); t.setMinutes(t.getMinutes()+i*30);
     const e=new Date(t.getTime()+30*60000);
-    return {sitter:s.name, room:+s.room, cover, window:fmt(t)+'–'+fmt(e)};
+    const win=(stored.breakTime&&stored.breakTime.trim())?stored.breakTime.trim():fmt(t)+'–'+fmt(e);
+    return {sitter:s.name, room:+s.room, cover, window:win};
   });
 }
 /* suggested staggered break windows — your buddy covers your patients */
 function setBreakTime(nid,val){
-  const n=rosterN.find(x=>x.id===nid); if(!n) return;
-  n.breakTime=val.trim(); scheduleSave();
+  const n=rosterN.find(x=>x.id===nid); if(n) n.breakTime=val.trim();
+  const w=(_wn||[]).find(x=>x.id===nid); if(w) w.breakTime=val.trim();
+  scheduleSave();
+}
+function setBreakTimeP(pid,val){ const p=rosterP.find(x=>x.id===pid); if(p)p.breakTime=val.trim(); const w=(_wp||[]).find(x=>x.id===pid); if(w)w.breakTime=val.trim(); scheduleSave(); }
+function setBreakTimeS(sid,val){ const s=rosterS.find(x=>x.id===sid); if(s)s.breakTime=val.trim(); const w=(_ws||[]).find(x=>x.id===sid); if(w)w.breakTime=val.trim(); scheduleSave(); }
+/* override who covers someone's break (auto when blank) */
+function setCover(t,id,coverId){
+  const arr=t==='n'?rosterN:t==='p'?rosterP:rosterS;
+  const warr=t==='n'?_wn:t==='p'?_wp:_ws;
+  const x=arr.find(o=>o.id===id); if(x) x.coverBy=coverId||'';
+  const w=(warr||[]).find(o=>o.id===id); if(w) w.coverBy=coverId||'';
+  scheduleSave(); renderStaffModal(); renderAssign();
+}
+function coverNameFor(coverId){
+  if(!coverId) return '';
+  const n=rosterN.find(x=>x.id===coverId); if(n) return n.name;
+  const p=rosterP.find(x=>x.id===coverId); if(p) return p.name;
+  return '';
 }
 function nurseBreaks(){
   const pairs=buddyPairs(); const startH=shiftType==='Night'?23:11;
@@ -2159,10 +2761,13 @@ function nurseBreaks(){
   const res={};
   pairs.forEach((g,gi)=>{ g.forEach((n,idx)=>{
     const stored=rosterN.find(x=>x.id===n.id);
-    if(stored&&stored.breakTime&&stored.breakTime.trim()){ res[n.id]={window:stored.breakTime.trim(),cover:g.filter(x=>x.id!==n.id).map(x=>x.name)}; return; }
+    const manualCover=stored&&stored.coverBy?[coverNameFor(stored.coverBy)].filter(Boolean):null;
+    const autoCover=g.filter(x=>x.id!==n.id).map(x=>x.name);
+    const cover=manualCover&&manualCover.length?manualCover:autoCover;
+    if(stored&&stored.breakTime&&stored.breakTime.trim()){ res[n.id]={window:stored.breakTime.trim(),cover}; return; }
     const t=new Date(2000,0,1,startH%24,0); t.setMinutes(t.getMinutes()+gi*30+idx*45);
     const e=new Date(t.getTime()+30*60000);
-    res[n.id]={window:fmt(t)+'\u2013'+fmt(e), cover:g.filter(x=>x.id!==n.id).map(x=>x.name)};
+    res[n.id]={window:fmt(t)+'\u2013'+fmt(e), cover};
   }); });
   return res;
 }
@@ -2180,7 +2785,7 @@ function codeTeam(){
   const leader=takeRN('senior'), meds=takeRN('senior'), airway=takeRN(),
         recorder=takeRN('orienting')||takeRN(), comp1=takePCT()||takeRN(),
         runner=takePCT()||takeRN(), comp2=takePCT()||takeRN();
-  return [
+  const base=[
     {role:'Code leader',        who:leader,   hint:'runs the code'},
     {role:'Compressions',       who:comp1,    hint:'CPR, swap q2min'},
     {role:'Airway / BVM',       who:airway,   hint:'bag + suction'},
@@ -2189,70 +2794,178 @@ function codeTeam(){
     {role:'Crash cart / runner',who:runner,   hint:'cart & supplies'},
     {role:'Backup compressions',who:comp2,    hint:'relieves CPR'},
   ];
+  // charge can override any seat (e.g. someone not strong enough for compressions)
+  return base.map(r=> CODE_OVERRIDE[r.role]!==undefined ? {...r, who:CODE_OVERRIDE[r.role]} : r);
 }
 
+/* ===== BOARD CARD STACK — tiles that expand to editable cards ===== */
+let selectedPctRoom=null;   // tap a room in a PCT card, then tap a PCT card to move it
+let boardCard='pct';        // which support card is expanded under the tiles
+function selectPctRoom(rm){ if(!chargeMode)return; selectedPctRoom=(selectedPctRoom===rm)?null:rm; renderAssign(); }
+function movePctRoom(pid){ if(!chargeMode||selectedPctRoom==null)return; setPctRoom(selectedPctRoom,pid); selectedPctRoom=null; }
+function showBoardCard(k){ boardCard=(boardCard===k)?'':k; const sp=document.getElementById('cardStack'); if(sp) sp.dataset.userPicked='1'; renderAssign(); }
 function renderSupport(){
-  const sp=document.getElementById('supportPanel'); if(!sp) return;
+  const sp=document.getElementById('cardStack'); if(!sp) return;
   const assigned=occupied().some(r=>r.nurse);
-  let h='';
-  // ---- PCT zones ----
+  const _covers=[...nurses.map(n=>({id:n.id,name:n.name,role:'RN'})),...pcts.map(p=>({id:p.id,name:p.name,role:'PCT'}))];
+  const coverSel=(t,id,curId)=>{ const opts=`<option value="">auto</option>`+_covers.filter(c=>c.id!==id).map(c=>`<option value="${c.id}" ${curId===c.id?'selected':''}>${esc(c.name)}${c.role==='PCT'?' (PCT)':''}</option>`).join('');
+    return `<select class="covselbd" onchange="setCover('${t}','${id}',this.value)">${opts}</select>`; };
+
+  // ---- build each card's inner HTML + a count badge ----
+  // PCT cards
+  let pctInner='';
   if(pcts.length){
     const zones=pctZones();
-    h+='<div class="covsec"><div class="covh"><span class="covtitle">PCT zones</span><span class="covsub">actual room numbers · 1:1 rooms excluded</span></div>'+
-      zones.map(z=>{
-        const rms=z.rooms.slice().sort((a,b)=>a-b);
-        return `<div class="zoneblock"><div class="zonehd"><span class="covname">${esc(z.pct.name)}</span><span class="zoneqty">${z.rooms.length} rooms</span></div>`+
-          `<div class="zonerooms">${rms.length? rms.map(r=>`<span class="rmnum">${r}</span>`).join('') : '<span class="covsub">—</span>'}</div></div>`;
-      }).join('')+'</div>';
+    const hasOverride=Object.keys(PCT_OVERRIDE).some(rn=>occupied().some(r=>r.id===+rn));
+    if(chargeMode){
+      pctInner+=`<div class="pctbar"><button class="btn sm" onclick="rebalancePct()">⚖️ Re-balance</button>${hasOverride?'<span class="pctmoved">manual moves active</span>':''}</div>`;
+      if(selectedPctRoom!=null) pctInner+=`<div class="movehint armed">Room <b>${selectedPctRoom}</b> picked — tap a PCT below to move it.</div>`;
+    }
+    pctInner+=zones.map(z=>{
+      const rms=z.rooms.slice().sort((a,b)=>WALKPOS[a]-WALKPOS[b]); const voc=vocForPct(z.pct.id);
+      const tapNurse = chargeMode ? ` onclick="movePctRoom('${z.pct.id}')"` : '';
+      return `<div class="nurse pctcard${chargeMode&&selectedPctRoom!=null?' targetable':''}"${tapNurse}>`+
+        `<div class="nhead"><span class="name">${esc(z.pct.name)}</span><span class="badge pctbadge">PCT</span>${voc?`<span class="vocpill">📟 ${esc(voc)}</span>`:''}</div>`+
+        `<div class="chips">${rms.length? rms.map(r=>{ const moved=PCT_OVERRIDE[r]?' moved':''; const sel=(selectedPctRoom===r)?' selreq':'';
+          return chargeMode
+            ? `<button class="chip pctchip${moved}${sel}" onclick="event.stopPropagation(); selectPctRoom(${r})">${r}</button>`
+            : `<span class="chip pctchip${moved}">${r}</span>`; }).join('') : '<span class="empty2">No rooms</span>'}</div>`+
+      `</div>`;
+    }).join('');
+  } else pctInner='<div class="covsub">No PCTs on this shift.</div>';
+
+  // Sitter
+  let sitInner='';
+  if(chargeMode){
+    sitInner='<div class="sitedit">'+(sitters.length?sitters.map(s=>{ const occRooms=occupied().map(r=>r.id).sort((a,b)=>posOf(a)-posOf(b));
+      const stored=rosterS.find(x=>x.id===s.id)||{}; const cov=sitterCoverage().find(c=>String(c.room)===String(s.room));
+      const val=esc(stored.breakTime||(cov&&cov.window)||''); const voc=vocForSitter(s.id);
+      return `<div class="sitrow"><div class="sitr1"><input class="sitname" value="${esc(s.name)}" placeholder="Sitter name" onchange="setSitterName('${s.id}',this.value)">`+
+        `<select class="sitroom" onchange="setSitterRoom('${s.id}',this.value)"><option value="">1:1 room…</option>${occRooms.map(rm=>`<option value="${rm}" ${String(s.room)===String(rm)?'selected':''}>Rm ${rm}</option>`).join('')}</select>`+
+        `<button class="srm" onclick="removeSitter('${s.id}')">✕</button></div>`+
+        `<div class="sitr2"><span class="sitlab">Break</span><input class="bwin" value="${val}" placeholder="staggered" onchange="setBreakTimeS('${s.id}',this.value)">${coverSel('s',s.id,stored.coverBy)}${voc?`<span class="vocpill">📟 ${esc(voc)}</span>`:''}</div></div>`; }).join(''):'')+
+      `<button class="addrow" onclick="addSitterLive()">+ Add sitter</button></div>`;
+  } else {
+    const cov=sitterCoverage();
+    sitInner='<div class="covtable">'+(sitters.length? sitters.map(s=>{ const c=cov.find(x=>String(x.room)===String(s.room));
+      return `<div class="covtr"><span class="covname">${esc(s.name)}${s.room?' · Rm '+s.room:''}</span><span class="covval">${c?c.window:''}</span><span class="covqty">${c?esc(c.cover.name):''}</span></div>`; }).join('')
+      : '<div class="covsub">No 1:1 sitters this shift.</div>')+'</div>';
   }
-  // ---- Buddies ----
+
+  // HUC
+  let hucInner = hucs.length
+    ? '<div class="covtable">'+hucs.map(x=>`<div class="covtr"><span class="covname">${esc(x.name)}</span><span class="covqty">desk / unit coordinator</span></div>`).join('')+'</div>'
+    : '<div class="covsub">No HUC on this shift. Add one in 👥 Who\u2019s Working → Master roster.</div>';
+
+  // Buddies
   const nbPairs=buddyPairs(), pbPairs=buddyPairsPCT();
-  const showNB=assigned&&nbPairs.length, showPB=pbPairs.length;
-  if(showNB||showPB){
-    h+='<div class="covsec"><div class="covh"><span class="covtitle">Buddies</span><span class="covsub">cover each other for breaks</span></div>';
-    if(showNB){
-      h+='<div class="buddygrp"><div class="buddyrole">Nurses</div><div class="covtable">'+
-        nbPairs.map(g=>`<div class="covtr"><span class="covname wide">${g.map(n=>esc(n.name)).join('  ⇄  ')}</span></div>`).join('')+'</div></div>';
-    }
-    if(showPB){
-      h+='<div class="buddygrp"><div class="buddyrole">PCTs</div><div class="covtable">'+
-        pbPairs.map(g=>`<div class="covtr"><span class="covname wide">${g.map(p=>esc(p.name)).join('  ⇄  ')}</span></div>`).join('')+'</div></div>';
-    }
-    h+='</div>';
-  }
-  // ---- Nurse breaks ----
+  let budInner='';
+  if(assigned&&nbPairs.length){ budInner+='<div class="buddygrp"><div class="buddyrole">Nurses</div><div class="covtable">'+
+    nbPairs.map(g=>`<div class="covtr"><span class="covname wide">${g.map(n=>esc(n.name)).join('  ⇄  ')}</span></div>`).join('')+'</div></div>'; }
+  if(pbPairs.length){ budInner+='<div class="buddygrp"><div class="buddyrole">PCTs</div><div class="covtable">'+
+    pbPairs.map(g=>`<div class="covtr"><span class="covname wide">${g.map(p=>esc(p.name)).join('  ⇄  ')}</span></div>`).join('')+'</div></div>'; }
+  if(!budInner) budInner='<div class="covsub">Buddies appear once the assignment is made.</div>';
+
+  // Break times
+  let brInner='';
   if(assigned && nurses.length){
     const bk=nurseBreaks();
-    const rows=nurses.filter(n=>roomsByNurse(n.id).length>0).map(n=>{ const b=bk[n.id]; if(!b) return '';
+    const nrows=nurses.filter(n=>roomsByNurse(n.id).length>0).map(n=>{ const b=bk[n.id]; if(!b) return '';
       const stored=rosterN.find(x=>x.id===n.id); const val=esc((stored&&stored.breakTime)||b.window||'');
       return chargeMode
-        ? `<div class="covtr"><span class="covname">${esc(n.name)}</span><input class="brkInput" value="${val}" placeholder="e.g. 1130-1200" onchange="setBreakTime('${n.id}',this.value)"><span class="covqty">${b.cover.length?esc(b.cover.join(', ')):'\u2014'}</span></div>`
+        ? `<div class="bdrow"><span class="bdname">${esc(n.name)}</span><input class="bwin" value="${val}" placeholder="e.g. 1130-1200" onchange="setBreakTime('${n.id}',this.value)">${coverSel('n',n.id,stored&&stored.coverBy)}</div>`
         : `<div class="covtr"><span class="covname">${esc(n.name)}</span><span class="covval">${val}</span><span class="covqty">${b.cover.length?esc(b.cover.join(', ')):'\u2014'}</span></div>`; }).join('');
-    if(rows) h+='<div class="covsec"><div class="covh"><span class="covtitle">Nurse breaks</span><span class="covsub">'+(chargeMode?'tap to edit · ':'')+'buddy covers</span></div><div class="covtable">'+rows+'</div></div>';
+    if(nrows) brInner+='<div class="brsub">Nurses</div><div class="covtable">'+nrows+'</div>';
   }
-  // ---- Sitter break coverage ----
-  if(sitters.length){
-    const cov=sitterCoverage();
-    h+='<div class="covsec"><div class="covh"><span class="covtitle">1:1 sitter breaks</span><span class="covsub">who relieves, staggered</span></div><div class="covtable">'+
-      (cov.length? cov.map(c=>`<div class="covtr"><span class="covname">Rm ${c.room} · ${esc(c.sitter)}</span><span class="covval">${c.window}</span><span class="covqty">${esc(c.cover.name)}${c.cover.role?' · '+c.cover.role:''}</span></div>`).join('')
-        : sitters.map(s=>`<div class="covtr"><span class="covname">${esc(s.name)}</span><span class="covval">set a room under Staff…</span></div>`).join(''))+
-      '</div>'+(cov.length?'<div class="covnote">Relief spread evenly across PCTs (then nurses) and staggered 30 min apart, so no one covers two 1:1 breaks at once.</div>':'')+'</div>';
+  if(assigned && pcts.length){
+    const prows=pcts.map(p=>{ const stored=rosterP.find(x=>x.id===p.id)||{};
+      return chargeMode
+        ? `<div class="bdrow"><span class="bdname">${esc(p.name)}</span><input class="bwin" value="${esc(stored.breakTime||'')}" placeholder="auto-stagger" onchange="setBreakTimeP('${p.id}',this.value)">${coverSel('p',p.id,stored.coverBy)}</div>`
+        : `<div class="covtr"><span class="covname">${esc(p.name)}</span><span class="covval">${esc(stored.breakTime||'auto')}</span><span class="covqty">${esc(coverNameFor(stored.coverBy)||'\u2014')}</span></div>`; }).join('');
+    if(prows) brInner+='<div class="brsub">PCTs</div><div class="covtable">'+prows+'</div>';
   }
-  // ---- Code blue team ----
+  if(!brInner) brInner='<div class="covsub">Break times appear once the assignment is made.</div>';
+
+  // Code team (editable)
+  let codeInner='';
   if(nurses.length){
-    h+='<div class="covsec"><div class="covh"><span class="covtitle">Code blue team</span><span class="covsub">auto-filled from roster</span></div><div class="covgrid">'+
-      codeTeam().map(r=>`<div class="coderow"><span class="crole">${r.role}</span><span class="cwho ${r.who?'':'gap'}">${r.who?esc(r.who):'unfilled'}</span></div>`).join('')+
-      '</div></div>';
-  }
-  // ---- Clinical reference ----
+    const allStaff=[...nurses.map(n=>({name:n.name,role:n.level})),...pcts.map(p=>({name:p.name,role:'PCT'}))];
+    codeInner='<div class="covgrid">'+codeTeam().map(r=>{
+      if(chargeMode){
+        const opts=`<option value="">auto: ${esc(r.who||'unfilled')}</option>`+allStaff.map(s=>`<option value="${esc(s.name)}" ${CODE_OVERRIDE[r.role]===s.name?'selected':''}>${esc(s.name)}${s.role&&s.role!=='RN'?' ('+s.role+')':''}</option>`).join('')+(CODE_OVERRIDE[r.role]!==undefined?`<option value="__clear">↺ back to auto</option>`:'');
+        return `<div class="coderow editable"><span class="crole">${r.role}<small>${r.hint}</small></span><select class="codesel" onchange="setCodeRole('${r.role}', this.value==='__clear'?'':this.value)">${opts}</select></div>`;
+      }
+      return `<div class="coderow"><span class="crole">${r.role}<small>${r.hint}</small></span><span class="cwho ${r.who?'':'gap'}">${r.who?esc(r.who):'unfilled'}</span></div>`;
+    }).join('')+'</div>';
+    if(chargeMode) codeInner+='<div class="cardtip">Swap anyone who shouldn\u2019t do compressions or run the code.</div>';
+  } else codeInner='<div class="covsub">Add nurses to see the code team.</div>';
+
+  // Clinical
   const cg=clinicalGrid();
-  if(cg.length){
-    h+='<div class="covsec"><div class="covh"><span class="covtitle">Clinical reference</span><span class="covsub">by room · from flags</span></div><div class="clingrid">'+
-      cg.map(x=>`<div class="clinrow"><span class="clinlab">${esc(x.label)}</span><span class="clinrooms">${x.rooms.join(', ')}</span></div>`).join('')+
-      '</div></div>';
+  let clinInner = cg.length
+    ? '<div class="clingrid">'+cg.map(x=>`<div class="clinrow"><span class="clinlab">${esc(x.label)}</span><span class="clinrooms">${x.rooms.join(', ')}</span></div>`).join('')+'</div>'
+    : '<div class="covsub">No clinical flags on the board.</div>';
+
+  // Pending admissions (the pool)
+  const pend=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
+  let pendInner='';
+  if(chargeMode){
+    pendInner=`<div class="pendwrap" ondragover="allowDrop(event,'pool')" ondragleave="leaveDrop(event)" ondrop="dropTo(event,null)" onclick="placeHere(null)" id="poolPanel">`+
+      `<div class="chips" id="pool">${pend.length? pend.map(roomChip).join('') : '<span class="empty2">No pending admits — every patient has a nurse.</span>'}</div>`+
+      `<div class="hint" id="poolHint" style="margin-top:8px;">${selectedRoom?`Room ${selectedRoom} picked — tap a nurse card to place it.`:'No nurse yet. Tap one, then tap a nurse card to place it.'}</div>`+
+      (pend.length?`<button class="btn sm" style="margin-top:9px;width:100%;" onclick="event.stopPropagation(); assignAllNew()">✨ Place all pending</button>`:'')+
+    `</div>`;
+  } else {
+    pendInner=`<div class="chips" id="pool">${pend.length? pend.map(roomChip).join('') : '<span class="empty2">None — every patient has a nurse.</span>'}</div>`;
   }
-  if(!pcts.length&&!sitters.length&&!nurses.length) h+='<div class="hint">Add staff under the ⋯ menu → Staff to see zones, buddies and the code team.</div>';
+
+  // ---- the tiles (selector), grouped under titles, big like the Build tab ----
+  const nurseCount=nurses.length;
+  const staffDefs=[
+    ['nurses','👩‍⚕️','Nurses','the assignment',nurseCount,null],
+    ['pct','🧑‍⚕️','PCTs','zones & moves',pcts.length,pctInner],
+    ['sitters','👤','Sitters','1:1 coverage',sitters.length,sitInner],
+    ['huc','🗂️','HUC','desk coverage',hucs.length,hucInner],
+  ];
+  const covDefs=[
+    ['buddies','🤝','Buddies','break partners',(nbPairs.length+pbPairs.length)||'',budInner],
+    ['breaks','🍽','Breaks','times & cover','',brInner],
+    ['code','🚨','Code team','who runs a code','',codeInner],
+    ['clinical','📋','Clinical','flags by room',cg.length||'',clinInner],
+    ['pending','🆕','Pending','waiting for a nurse',pend.length||'',pendInner],
+  ];
+  const allDefs=[...staffDefs,...covDefs];
+  if(!allDefs.some(d=>d[0]===boardCard)) boardCard='nurses';
+  const bigtile=([k,emoji,label,sub,badge])=>{
+    const on=boardCard===k;
+    return `<button class="btile ${on?'on':''}" onclick="showBoardCard('${k}')">`+
+      (badge!==''&&badge!=null?`<span class="btbadge">${badge}</span>`:'')+
+      `<span class="btemoji">${emoji}</span><span class="btlabel">${label}</span><span class="btsub">${sub}</span></button>`;
+  };
+  let h='<div class="cardsec">Staff assignments</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
+  h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+'</div>';
+  const sel=allDefs.find(d=>d[0]===boardCard);
+  if(sel && sel[0]!=='nurses' && sel[5]){ h+=`<div class="expcard"><div class="expcardh">${sel[1]} ${sel[2]}</div><div class="expcardbody">${sel[5]}</div></div>`; }
   sp.innerHTML=h;
+  // nurse cards show only when the Nurses tile is active (charge view); staff always see their own card
+  const nz=document.getElementById('nurses'); if(nz) nz.style.display=(!chargeMode||boardCard==='nurses')?'':'none';
+
+  // Post + after-final actions at the very bottom (finalize lives on the Board)
+  const pf=document.getElementById('postFinalWrap');
+  if(pf){
+    if(chargeMode && assigned){
+      const afterTiles=`<div class="cardsec">After it\u2019s final</div><div class="btilegrid">`+
+        `<button class="btile" onclick="goShare()"><span class="btemoji">📤</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`+
+        `<button class="btile" onclick="nextShift()"><span class="btemoji">🔄</span><span class="btlabel">End Shift &amp; Hand Off</span><span class="btsub">save &amp; pass to next crew</span></button>`+
+        `<button class="btile" onclick="openHistory()"><span class="btemoji">📊</span><span class="btlabel">Manager analysis</span><span class="btsub">reports &amp; equity</span></button>`+
+        `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">📋</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`+
+      `</div>`;
+      pf.innerHTML = (boardPosted
+        ? `<div class="postedrow"><div class="postedmsg">✓ Posted — staff can see the final assignment.</div><div class="postedbtns"><button class="btn ghost" onclick="togglePosted()">Unpost</button></div></div>`
+        : `<button class="postfinal" onclick="togglePosted()">📌 Post final assignment — let everyone see it</button>`)
+        + afterTiles;
+    } else pf.innerHTML='';
+  }
 }
 function buildLegend(){ if(!document.getElementById('legend'))return; const rows=[['L','Low','< 2.5 hrs'],['M','Moderate','2.5–3.5'],['H','High','3.5–5'],['X','Intensive','5+']]; document.getElementById('legend').innerHTML=rows.map(([c,l,r])=>`<div class="legrow"><span class="swatch p${c}"></span><b>${l}</b>&nbsp;<span style="color:var(--ink-soft)">${r}</span></div>`).join(''); }
 /* ---------- persistence + shift ---------- */
@@ -2337,20 +3050,21 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried}; });
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
 function applyState(st){
   if(st.floor && st.floor.halls){ FLOOR=st.floor; applyFloor(); updateUnitTag(); }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });
-  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||'',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone}));
-  else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true}));   // legacy save
-  if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
-  else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true}));
-  if(Array.isArray(st.rosterS)) rosterS=st.rosterS.map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''}));
-  else if(Array.isArray(st.sitters)) rosterS=st.sitters.map(s=>({id:s.id,name:s.name,room:s.room||'',on:true}));
+  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone}));
+  else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
+  if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''}));
+  else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true,shift:'Day'}));
+  if(Array.isArray(st.rosterS)) rosterS=st.rosterS.map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''}));
+  else if(Array.isArray(st.sitters)) rosterS=st.sitters.map(s=>({id:s.id,name:s.name,room:s.room||'',on:true,shift:'Day'}));
+  if(Array.isArray(st.rosterH)) rosterH=st.rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
   syncWorking();
   if(st.priority) balancePriority=st.priority;
   if(st.shiftDate) shiftDate=st.shiftDate;
@@ -2359,6 +3073,10 @@ function applyState(st){
   boardPosted=!!st.boardPosted; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{}};
+  PCT_OVERRIDE=(st.pctOverride&&typeof st.pctOverride==='object')?st.pctOverride:{};
+  CODE_OVERRIDE=(st.codeOverride&&typeof st.codeOverride==='object')?st.codeOverride:{};
+  if(st.vocDevices&&st.vocDevices.Day&&st.vocDevices.Night){ VOC_DEVICES=st.vocDevices;
+    ['Day','Night'].forEach(t=>['rn','pct','sit'].forEach(g=>{ if(!Array.isArray(VOC_DEVICES[t][g])) VOC_DEVICES[t][g]=[]; VOC_DEVICES[t][g]=VOC_DEVICES[t][g].map(d=>({num:d.num||'',status:d.status||'Assigned'})); })); }
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
@@ -2415,18 +3133,21 @@ function renderFlagEditor(){
 }
 
 function ruleSelector(code){
-  const r=flagRule(code); const mode=r.mode||'none'; const cap=r.cap||2;
+  const r=flagRule(code); const mode=r.mode||'none'; const cap=r.cap||2; const ratio=r.ratio||(FLOOR.ratio||4);
   return `<select class="ruleSel" onchange="setFlagRule('${code}',this.value)">`+
     `<option value="none" ${mode==='none'?'selected':''}>Don't balance</option>`+
     `<option value="spread" ${mode==='spread'?'selected':''}>Spread evenly</option>`+
     `<option value="cap" ${mode==='cap'?'selected':''}>Cap per nurse…</option>`+
+    `<option value="ratiocap" ${mode==='ratiocap'?'selected':''}>Tighten nurse ratio…</option>`+
     `</select>`+
-    (mode==='cap'?`<input class="capIn" type="number" min="1" max="9" value="${cap}" onchange="setFlagCap('${code}',this.value)" title="Max per nurse">`:'');
+    (mode==='cap'?`<input class="capIn" type="number" min="1" max="9" value="${cap}" onchange="setFlagCap('${code}',this.value)" title="Max of this flag per nurse">`:'')+
+    (mode==='ratiocap'?`<span class="capWrap">1:<input class="capIn" type="number" min="1" max="9" value="${ratio}" onchange="setFlagRatio('${code}',this.value)" title="Max TOTAL patients for a nurse who has this"></span>`:'');
 }
 function setFlagRule(code,mode){
   if(!UNIT_FLAG_CONFIG.rules) UNIT_FLAG_CONFIG.rules={};
   if(mode==='none') UNIT_FLAG_CONFIG.rules[code]={mode:'none'};
   else if(mode==='spread') UNIT_FLAG_CONFIG.rules[code]={mode:'spread'};
+  else if(mode==='ratiocap') UNIT_FLAG_CONFIG.rules[code]={mode:'ratiocap',ratio:(UNIT_FLAG_CONFIG.rules[code]&&UNIT_FLAG_CONFIG.rules[code].ratio)||flagRule(code).ratio||(FLOOR.ratio||4)};
   else UNIT_FLAG_CONFIG.rules[code]={mode:'cap',cap:(UNIT_FLAG_CONFIG.rules[code]&&UNIT_FLAG_CONFIG.rules[code].cap)||flagRule(code).cap||2};
   scheduleSave(); renderFlagEditor();
 }
@@ -2434,6 +3155,11 @@ function setFlagCap(code,val){
   if(!UNIT_FLAG_CONFIG.rules) UNIT_FLAG_CONFIG.rules={};
   const cap=Math.max(1,parseInt(val)||1);
   UNIT_FLAG_CONFIG.rules[code]={mode:'cap',cap}; scheduleSave();
+}
+function setFlagRatio(code,val){
+  if(!UNIT_FLAG_CONFIG.rules) UNIT_FLAG_CONFIG.rules={};
+  const ratio=Math.max(1,parseInt(val)||1);
+  UNIT_FLAG_CONFIG.rules[code]={mode:'ratiocap',ratio}; scheduleSave();
 }
 function setFlagRename(code,key,val){
   if(!UNIT_FLAG_CONFIG.renames[code]) UNIT_FLAG_CONFIG.renames[code]={};
@@ -2955,18 +3681,22 @@ function nextShift(){ if(!chargeMode)return;
   if(!confirm('🔄 Start the next shift?\n\n✓ Tonight\u2019s board is SAVED to Manager reports first.\n✓ Each patient keeps their score, flags and notes.\n✗ Nurse assignments and locks are CLEARED so the next charge builds fresh.\n\nThis cannot be undone except with the Undo button. Continue?')) return;
   pushUndo();
   pushHistory();  // saves this shift to the cloud (or a local file if offline)
-  Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null; });
+  const rcCodes=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
+  Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null;
+    r.capCarried = rcCodes.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)); });
   rosterN.forEach(n=>{ n.scoredDone=false; });  // reset scoring-done for the new shift
+  // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
+  ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
   boardPosted=false; lastUpdatedAt=0; lastUpdatedBy='';
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
-  applyShiftUI(); renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); scheduleSave();
+  applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
 }
 function clearFloor(){ if(!chargeMode)return;
   if(!confirm('Clear the whole floor? This empties every room.')) return;
   pushUndo();
   Object.values(rooms).forEach(r=>{ r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;r.tags=[]; });
-  renderAcuity(); if(document.getElementById('v-assign').classList.contains('on')) renderAssign(); scheduleSave();
+  renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
 }
 
 /* ---------- share: print / copy / qr ---------- */
