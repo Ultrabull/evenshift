@@ -922,7 +922,7 @@
         <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
         <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
         <button class="btile" onclick="closeTools(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
-        <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload day/night roster</span></button>
+        <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload roster + Vocera</span></button>
         <button class="btile danger" onclick="closeTools(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
       </div>
       <div class="cardsec">Board tools</div>
@@ -2229,11 +2229,12 @@ function openVoceraGated(){
   else alert('Wrong code. Ask the charge nurse if you\u2019re not sure.');
 }
 function resetRosterDefault(){ if(!chargeMode)return;
-  if(!confirm('Reload the built-in 10 Green day & night teams?\n\nThis replaces the current staff list (names + day/night tags) with the unit default. Patients and scores are NOT touched. Use this if the teams look out of date.')) return;
+  if(!confirm('Reload the built-in 10 Green defaults?\n\nThis replaces the staff list (names + day/night tags) AND the Vocera phone numbers with the unit default. Patients and scores are NOT touched. Use this if the teams or Vocera list look out of date.')) return;
   defaultRoster(); rebuildStaff();
+  VOC_DEVICES=defaultVocDevices(); _vocShift=null;
   occupied().forEach(r=>{ if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; });
   scheduleSave(); refreshViewOptions(); applyAccessUI(); renderAcuity(); renderAssign();
-  alert('Day & night teams reloaded from the unit default. Open 👥 Who\u2019s Working to pick today\u2019s crew.');
+  alert('Day & night teams and Vocera numbers reloaded from the unit default. Open 👥 Who\u2019s Working to pick today\u2019s crew.');
 }
 function setHucCode(){ if(!chargeMode)return;
   const v=(prompt('Set a simple HUC code (4+ characters). The HUC uses this to open and edit the Vocera phones without the full charge PIN:', '')||'').trim();
@@ -2422,10 +2423,11 @@ function blankDevSet(){ return { rn:Array.from({length:8},()=>({num:'',status:'A
    These persist every shift until a charge/manager edits them. */
 function defaultDevSet(nums){ const mk=arr=>arr.map(n=>({num:n||'',status:'Assigned'}));
   return { rn:mk(nums.rn), pct:mk(nums.pct), sit:mk(nums.sit) }; }
-let VOC_DEVICES={
+function defaultVocDevices(){ return {
   Day:  defaultDevSet({ rn:['V1','V2','V3','V4','V5','V6','V7','V8'], pct:['V9','V10','V11','V12'], sit:['V35','V30','V31'] }),
   Night:defaultDevSet({ rn:['V14','V16','V17','V18','V19','V20','V21','V22'], pct:['V24','V25','V26','V27'], sit:['V35','V30','V31'] })
-};
+}; }
+let VOC_DEVICES=defaultVocDevices();
 let _vocShift=null;  // which device set the Build card is showing (defaults to current shiftType)
 function vocSet(){ const t=(_vocShift||shiftType); return VOC_DEVICES[t]||(VOC_DEVICES[t]=blankDevSet()); }
 function setVocShift(t){ _vocShift=t; renderAssign(); }
