@@ -922,6 +922,7 @@
         <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
         <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
         <button class="btile" onclick="closeTools(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
+        <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload day/night roster</span></button>
         <button class="btile danger" onclick="closeTools(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
       </div>
       <div class="cardsec">Board tools</div>
@@ -2111,7 +2112,7 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   selectedRoom=null; renderAssign(); scheduleSave();
   checkFlagViolations();
-  show('assign');  // jump to the finished Board so the charge sees the result
+  openVocera();  // assignment done → open Vocera so the charge confirms phones, then they go to Check & Post
 }
 /* After generate: detect cap/spread rule violations and tell the charge */
 function checkFlagViolations(){
@@ -2226,6 +2227,13 @@ function openVoceraGated(){
   if(!v) return;
   if(pinStore(v)===hucPin || (chargePin && pinStore(v)===chargePin)){ openVocera(); }
   else alert('Wrong code. Ask the charge nurse if you\u2019re not sure.');
+}
+function resetRosterDefault(){ if(!chargeMode)return;
+  if(!confirm('Reload the built-in 10 Green day & night teams?\n\nThis replaces the current staff list (names + day/night tags) with the unit default. Patients and scores are NOT touched. Use this if the teams look out of date.')) return;
+  defaultRoster(); rebuildStaff();
+  occupied().forEach(r=>{ if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; });
+  scheduleSave(); refreshViewOptions(); applyAccessUI(); renderAcuity(); renderAssign();
+  alert('Day & night teams reloaded from the unit default. Open 👥 Who\u2019s Working to pick today\u2019s crew.');
 }
 function setHucCode(){ if(!chargeMode)return;
   const v=(prompt('Set a simple HUC code (4+ characters). The HUC uses this to open and edit the Vocera phones without the full charge PIN:', '')||'').trim();
