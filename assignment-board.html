@@ -30,17 +30,13 @@
     --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.4);
   }
   body.dark html, body.dark{ background:#161C26; }
-  /* ===== Accent themes (charge picks in the ⋯ menu) ===== */
-  body[data-theme="teal"]{ --teal:#028090; --teal-deep:#01616E; --teal-wash:#E1F2F4; }
-  body[data-theme="teal"].dark{ --teal:#34B3C2; --teal-deep:#5BCAD7; --teal-wash:#0F353B; }
-  body[data-theme="green"]{ --teal:#1F9D57; --teal-deep:#177A43; --teal-wash:#E3F4EA; }
-  body[data-theme="green"].dark{ --teal:#3FBE73; --teal-deep:#6BD295; --teal-wash:#123524; }
-  body[data-theme="purple"]{ --teal:#7C5CE6; --teal-deep:#6342C4; --teal-wash:#EEEAFE; }
-  body[data-theme="purple"].dark{ --teal:#9D85F0; --teal-deep:#B4A2F5; --teal-wash:#2A2449; }
-  body[data-theme="rose"]{ --teal:#D6447B; --teal-deep:#B22F63; --teal-wash:#FCE7F0; }
-  body[data-theme="rose"].dark{ --teal:#EC6E9C; --teal-deep:#F396B8; --teal-wash:#43243A; }
-  body[data-theme="slate"]{ --teal:#475569; --teal-deep:#334155; --teal-wash:#EAEEF3; }
-  body[data-theme="slate"].dark{ --teal:#8595AB; --teal-deep:#A3B1C4; --teal-wash:#2A3441; }
+  /* ===== Named looks (charge picks in the ⋯ menu) ===== */
+  /* Premium — deep teal, clinical & trustworthy */
+  body[data-theme="premium"]{ --teal:#03707E; --teal-deep:#024E58; --teal-wash:#E0F0F2; }
+  body[data-theme="premium"].dark{ --teal:#36AFBE; --teal-deep:#5FC8D5; --teal-wash:#0E3338; }
+  /* Friendly — coral / peach, warm & human */
+  body[data-theme="friendly"]{ --teal:#F2683C; --teal-deep:#D24E26; --teal-wash:#FDECE4; }
+  body[data-theme="friendly"].dark{ --teal:#FB8A63; --teal-deep:#FCA585; --teal-wash:#3F2419; }
   *{box-sizing:border-box;} html,body{margin:0;padding:0;}
   html{background:#F6F8FB;}
   body{background:#F6F8FB;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;}
@@ -701,25 +697,28 @@
   .moderow{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:11px;margin:0 4px 9px;}
   .moderow button{flex:1;padding:8px;border:none;background:transparent;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
   .moderow button.on{background:var(--surface);color:var(--teal-deep);box-shadow:var(--shadow);}
-  .themerow{display:flex;gap:10px;justify-content:space-between;margin:0 6px 6px;}
-  .swdot{width:30px;height:30px;border-radius:50%;background:var(--sw);border:2px solid transparent;cursor:pointer;position:relative;}
-  .swdot.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset;}
-  .swdot.on::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;}
+  .lookrow{display:flex;gap:8px;margin:0 4px 6px;}
+  .lookcard{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 4px 9px;border:2px solid var(--line);border-radius:13px;background:var(--surface);cursor:pointer;font-family:inherit;}
+  .lookcard .looksw{width:26px;height:26px;border-radius:50%;margin-bottom:1px;}
+  .lookcard b{font-size:12.5px;color:var(--ink);font-family:var(--display);}
+  .lookcard small{font-size:10px;color:var(--ink-soft);}
+  .lookcard.on{border-color:var(--teal);background:var(--teal-wash);}
+  .lookcard:active{transform:scale(.96);}
 
   .botnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
     background:rgba(255,255,255,.95);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);
-    border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));}
-  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
-    background:none;border:none;padding:12px 4px 9px;border-radius:16px;cursor:pointer;
-    color:var(--ink-soft);font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.01em;transition:color .14s,background .14s;
-    max-width:260px;margin:0 auto;}
-  .navitem svg{width:30px;height:30px;}
+    border-top:1px solid var(--line);padding:5px 8px calc(5px + env(safe-area-inset-bottom));}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;padding:7px 4px 5px;border-radius:13px;cursor:pointer;
+    color:var(--ink-soft);font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.01em;transition:color .14s,background .14s;
+    max-width:240px;margin:0 auto;}
+  .navitem svg{width:22px;height:22px;}
   .navitem.on{color:var(--teal-deep);background:var(--teal-wash);}
   .navitem.on svg{stroke-width:2;}
   .navitem:active{transform:scale(.96);}
-  .navsub{font-size:10px;font-weight:600;color:var(--ink-soft);opacity:.85;margin-top:-1px;}
+  .navsub{font-size:9px;font-weight:600;color:var(--ink-soft);opacity:.85;margin-top:-1px;}
   .navitem.on .navsub{color:var(--teal-deep);opacity:.9;}
-  @media(min-width:900px){ .botnav{justify-content:center;gap:40px;} .navitem{flex:none;width:150px;} }
+  @media(min-width:900px){ .botnav{justify-content:center;gap:40px;} .navitem{flex:none;width:130px;} }
 
   /* ---- component polish ---- */
   .help{border-radius:14px;margin-bottom:16px;}
@@ -822,14 +821,12 @@
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openImpact()">Impact &amp; savings</button>
           <div class="msep"></div>
           <div class="mlab2">Appearance</div>
-          <div class="moderow" id="modeRow"><button data-mode="light" onclick="setMode('light')">☀️ Light</button><button data-mode="dark" onclick="setMode('dark')">🌙 Dark</button></div>
-          <div class="themerow" id="themeRow">
-            <button class="swdot" data-theme="default" style="--sw:#2E6BE6" onclick="setTheme('default')" title="Blue"></button>
-            <button class="swdot" data-theme="teal" style="--sw:#028090" onclick="setTheme('teal')" title="Teal"></button>
-            <button class="swdot" data-theme="green" style="--sw:#1F9D57" onclick="setTheme('green')" title="Green"></button>
-            <button class="swdot" data-theme="purple" style="--sw:#7C5CE6" onclick="setTheme('purple')" title="Purple"></button>
-            <button class="swdot" data-theme="rose" style="--sw:#D6447B" onclick="setTheme('rose')" title="Rose"></button>
-            <button class="swdot" data-theme="slate" style="--sw:#475569" onclick="setTheme('slate')" title="Slate"></button>
+          <div class="moderow" id="modeRow"><button data-mode="light" onclick="setColorMode('light')">☀️ Light</button><button data-mode="dark" onclick="setColorMode('dark')">🌙 Dark</button></div>
+          <div class="mlab2">Look</div>
+          <div class="lookrow" id="themeRow">
+            <button class="lookcard" data-theme="default" onclick="setTheme('default')"><span class="looksw" style="background:#2E6BE6"></span><b>Classic</b><small>clean blue</small></button>
+            <button class="lookcard" data-theme="premium" onclick="setTheme('premium')"><span class="looksw" style="background:#03707E"></span><b>Premium</b><small>deep teal</small></button>
+            <button class="lookcard" data-theme="friendly" onclick="setTheme('friendly')"><span class="looksw" style="background:#F2683C"></span><b>Friendly</b><small>warm coral</small></button>
           </div>
           <div class="msep chargeOnly"></div>
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
@@ -1381,7 +1378,15 @@ const HELP={
 function showHelp(key){ const h=HELP[key]; if(!h)return; document.getElementById('helpTitle').textContent=h[0]; document.getElementById('helpBody').textContent=h[1]; document.getElementById('helpScrim').classList.add('on'); }
 function closeHelp(){ document.getElementById('helpScrim').classList.remove('on'); }
 function qbtn(key){ return `<button class="qhelp" onclick="event.stopPropagation(); showHelp('${key}')" title="What\u2019s this?">?</button>`; }
+function closeOverlays(){
+  // close the ⋯ dropdown
+  document.querySelectorAll('details.menu[open]').forEach(d=>d.removeAttribute('open'));
+  document.querySelectorAll('details.tools[open]').forEach(d=>d.removeAttribute('open'));
+  // close any open popup scrims
+  document.querySelectorAll('.scrim.on').forEach(s=>s.classList.remove('on'));
+}
 function show(v){
+  closeOverlays();
   document.getElementById('v-acuity').classList.toggle('on',v==='acuity');
   document.getElementById('v-build').classList.toggle('on',v==='build');
   document.getElementById('v-assign').classList.toggle('on',v==='assign');
@@ -1871,13 +1876,13 @@ function generateGapFill(){
 }
 
 /* Night/day mode — remembered per device */
-function toggleDark(){ const on=!document.body.classList.contains('dark'); setMode(on?'dark':'light'); }
-function setMode(m){ // 'light' | 'dark'
+function toggleDark(){ const on=!document.body.classList.contains('dark'); setColorMode(on?'dark':'light'); }
+function setColorMode(m){ // 'light' | 'dark'
   document.body.classList.toggle('dark', m==='dark');
   try{ localStorage.setItem('evenshift_dark', m==='dark'?'1':'0'); }catch(e){}
   updateThemeUI();
 }
-const THEMES=[['default','Blue','#2E6BE6'],['teal','Teal','#028090'],['green','Green','#1F9D57'],['purple','Purple','#7C5CE6'],['rose','Rose','#D6447B'],['slate','Slate','#475569']];
+const THEMES=[['default','Classic','#2E6BE6'],['premium','Premium','#03707E'],['friendly','Friendly','#F2683C']];
 function setTheme(t){
   if(t==='default') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme',t);
   try{ localStorage.setItem('evenshift_theme', t); }catch(e){}
@@ -1892,7 +1897,7 @@ function updateThemeUI(){
   const dark=document.body.classList.contains('dark');
   const cur=document.body.getAttribute('data-theme')||'default';
   const md=document.getElementById('modeRow'); if(md) md.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.mode===(dark?'dark':'light')));
-  const sw=document.getElementById('themeRow'); if(sw) sw.querySelectorAll('.swdot').forEach(b=>b.classList.toggle('on', b.dataset.theme===cur));
+  const sw=document.getElementById('themeRow'); if(sw) sw.querySelectorAll('.lookcard').forEach(b=>b.classList.toggle('on', b.dataset.theme===cur));
 }
 function applyDarkPref(){ try{ if(localStorage.getItem('evenshift_dark')==='1') document.body.classList.add('dark'); }catch(e){} updateThemeUI(); }
 
@@ -3943,6 +3948,10 @@ function renderQR(){
 
 buildLegend();
 (async function init(){ applyDarkPref(); let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); applyGate(); setTimeout(maybeShowIntro,400); })();
+// Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
+document.addEventListener('click',function(e){
+  document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
+},true);
 </script>
 </body>
 </html>
