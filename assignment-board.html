@@ -2130,19 +2130,34 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   if(orphan.length && carriedNurses.length && carriedNurses.length<nurses.length){
     generateGapFill(); return;
   }
-  // nurses whose rooms are all locked to them are "kept" — don't touch them
-  const keptIds=new Set(nurses.filter(n=>{ const rs=occupied().filter(r=>r.nurse===n.id); return rs.length>0&&rs.every(r=>r.lock===n.id); }).map(n=>n.id));
-  // free assignments for non-kept rooms
-  occupied().forEach(r=>{ if(!keptIds.has(r.lock)) r.nurse=null; });
-  const freeNurses=nurses.filter(n=>!keptIds.has(n.id));
-  const occ=occupied().filter(r=>!keptIds.has(r.lock));
+  // Returning/kept nurses keep their LOCKED rooms but always stay in the distribution, so they fill up to a
+  // fair load like everyone else (locked rooms anchor their group; the engine adds free rooms around them).
+  const keptIds=new Set();   // no full exclusion — keeping "some" must never freeze a nurse at only her kept rooms
+  occupied().forEach(r=>{ if(!r.lock) r.nurse=null; });   // clear only the free rooms; locked rooms stay put
+  const freeNurses=nurses.slice();
+  const occ=occupied().slice();
   const M=freeNurses.length, N=occ.length;
   if(!M||!N){ selectedRoom=null; renderAssign(); scheduleSave(); return; }
   const nurses_orig=nurses; // keep reference; generate uses freeNurses from here
   const base=Math.floor(N/M), rem=N%M;
-  const sizes=[]; for(let s=0;s<M;s++) sizes.push(base+(s<rem?1:0));
   const order=occ.slice().sort((a,b)=>(RHALL[a.id]-RHALL[b.id])||(RD[a.id]-RD[b.id]));
-  let G=[],idx=0; for(let s=0;s<M;s++){ G.push(order.slice(idx,idx+sizes[s])); idx+=sizes[s]; }
+  // Lock-aware seeding: each nurse's group starts with her locked (kept) rooms; then all remaining
+  // free rooms are dealt out to keep group SIZES balanced — so a "keep some" nurse fills up to a fair load.
+  const idxOf={}; freeNurses.forEach((n,i)=>idxOf[n.id]=i);
+  let G=Array.from({length:M},()=>[]);
+  order.filter(r=>r.lock&&idxOf[r.lock]!=null).forEach(r=>{ G[idxOf[r.lock]].push(r); });   // seed locks
+  const freeRooms=order.filter(r=>!r.lock);
+  // target sizes: even split of TOTAL rooms; deal free rooms to whichever group is furthest below its target
+  const targets=[]; { const b=Math.floor(N/M), rm=N%M; for(let s=0;s<M;s++) targets.push(b+(s<rm?1:0)); }
+  // sort free rooms by acuity desc so heavy ones get placed first (better balancing), then deal to lightest-load group under target
+  freeRooms.forEach(r=>{
+    let pick=-1, bestKey=Infinity;
+    for(let s=0;s<M;s++){ if(G[s].length>=targets[s]) continue; const load=G[s].reduce((x,y)=>x+y.acuity,0); if(load<bestKey){ bestKey=load; pick=s; } }
+    if(pick<0){ // all at target (rounding) → lightest load overall
+      for(let s=0;s<M;s++){ const load=G[s].reduce((x,y)=>x+y.acuity,0); if(load<bestKey){ bestKey=load; pick=s; } }
+    }
+    G[pick].push(r);
+  });
   const hrs=g=>g.reduce((s,r)=>s+r.acuity,0);
   const spread=()=>{ const h=G.map(hrs); return Math.max(...h)-Math.min(...h); };
   const geo=()=>G.reduce((s,g)=>s+groupGeo(g),0);   // physical tightness on the real floor
@@ -2198,9 +2213,10 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   G=best;
   // --- match nurses to groups: pins, won't-take, orienting limits ---
   const pinRoomOf=nid=>{ const r=occ.find(x=>x.lock===nid); return r?r.id:null; };
+  const lockOwnerOf=gi=>{ const r=G[gi].find(x=>x.lock); return r?r.lock:null; };
   const can=(nid,gi)=>{ const n=nurseObj(nid), g=G[gi];
-    const forced=g.find(r=>r.lock); if(forced&&forced.lock!==nid) return false;
-    const mp=pinRoomOf(nid); if(mp!=null && !g.some(r=>r.id===mp)) return false;
+    const owner=lockOwnerOf(gi); if(owner && owner!==nid) return false;   // a group holding kept rooms must go to that nurse
+    const mine=occ.filter(r=>r.lock===nid); if(mine.length && !mine.every(r=>g.some(x=>x.id===r.id))) return false;  // all my locked rooms must be in this group
     if(n.level==='Orienting' && g.some(r=>r.acuity>=5||r.flags.includes('beh'))) return false;
     if(n.level==='Float' && g.some(r=>r.acuity>=5||r.flags.includes('beh')||r.flags.includes('sit'))) return false;
     if(g.some(r=>(r.avoid||[]).includes(nid))) return false;
