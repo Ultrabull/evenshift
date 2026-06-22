@@ -358,6 +358,17 @@
   .pendwrap{}
   .postfinal.posted{background:#1C7A46;box-shadow:0 4px 16px rgba(28,122,70,.25);}
   .postfinal:active{transform:scale(.98);}
+  .retrow{border-bottom:1px solid var(--line);padding:9px 0;}
+  .retname{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .retchk{display:flex;align-items:center;gap:8px;font-size:14.5px;cursor:pointer;}
+  .retchk.block{padding:9px 0;border-bottom:1px solid var(--line);}
+  .retchk input{width:18px;height:18px;}
+  .rethint{font-size:11.5px;color:var(--ink-soft);}
+  .retchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+  .retchip{display:flex;align-items:center;gap:5px;background:var(--bg);border:1.5px solid var(--line-strong);border-radius:9px;padding:6px 9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .retchip.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .retmini{margin-top:6px;font-size:12px;color:var(--ink-soft);}
+  .balfix{margin-left:8px;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
   .cardsec{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 9px;}
   .btilegrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:6px;}
   .btile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:20px 12px 15px;cursor:pointer;font-family:inherit;box-shadow:0 2px 10px rgba(20,30,50,.05);min-height:108px;}
@@ -659,6 +670,10 @@
   .edithint.armed{color:var(--teal-deep);background:var(--teal-wash);border:1px solid var(--teal);border-radius:9px;padding:7px 11px;margin:-4px 0 13px;}
   .flagkey{font-size:10.5px;color:var(--ink-soft);line-height:1.6;margin:8px 0 2px;}
   .flagkey b{color:var(--ink);font-weight:700;}
+  .fklist{display:flex;flex-direction:column;gap:8px;}
+  .fkrow{display:flex;flex-direction:column;gap:1px;padding-bottom:7px;border-bottom:1px solid var(--line);}
+  .fkrow b{font-size:14px;color:var(--ink);}
+  .fkrow span{font-size:12.5px;color:var(--ink-soft);}
   .keepbtn{margin-left:auto;font-family:var(--body);font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-soft);cursor:pointer;transition:.14s;}
   .keepbtn.on{background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);}
   .nrow{display:flex;align-items:center;justify-content:space-between;gap:10px;}
@@ -891,6 +906,13 @@
     </div>
   </div>
 
+  <div class="scrim" id="retScrim" onclick="if(event.target===this)closeReturning()">
+    <div class="modal">
+      <div class="mhead"><span class="rt">🔁 Returning staff</span><button class="btn" onclick="closeReturning()">Done</button></div>
+      <div class="mbody"><div id="retBody"></div></div>
+    </div>
+  </div>
+
   <!-- BOARD: the finished assignment everyone reads -->
   <div class="view" id="v-assign">
     <div class="screenbanner chargeOnly">📋 <b>Board</b> — tap a tile to see Nurses, PCTs, Sitters or HUC. Review, tweak, then <b>Post</b> at the bottom.</div>
@@ -900,6 +922,7 @@
       <button class="hucvocbtn" onclick="openVoceraGated()">📟 Vocera phones <small>HUC — needs code</small></button>
     </div>
     <div class="postbanner" id="postBanner2" style="display:none;"></div>
+    <div class="acureview chargeOnly" id="balanceBanner" style="display:none;"></div>
     <div class="boardstack">
       <div id="cardStack"></div>
       <div class="nurses" id="nurses"></div>
@@ -1208,7 +1231,7 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","Isolation","Isolation precautions"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (PICC/CVL)"],["wound","Wound","Wound care"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","Dialysis","Peritoneal dialysis"],["tele","Tele","Telemetry / monitored"],["foley","Foley","Foley catheter"],["hd","Hemodialysis","Hemodialysis"],["restr","Restraints","Restraints"],["interp","Interpreter","Interpreter needed"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (PICC/CVL)"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -1219,7 +1242,7 @@ let UNIT_FLAG_CONFIG={
   rules:{}            // {code:{mode:'spread'|'cap'|'none', cap:N}} — how the engine balances this flag
 };
 // Default balance rules baked from 10 Green convention (engine already handles beh/conf/heavy internally)
-const DEFAULT_FLAG_RULES={beh:{mode:'cap',cap:1},gtt:{mode:'spread'},ins:{mode:'ratiocap',ratio:3},cvl:{mode:'spread'},trach:{mode:'cap',cap:1},tot:{mode:'spread'},sit:{mode:'spread'},conf:{mode:'spread'},dc:{mode:'spread'},adm:{mode:'spread'}};
+const DEFAULT_FLAG_RULES={beh:{mode:'cap',cap:1},ins:{mode:'ratiocap',ratio:3},cvl:{mode:'spread'},trach:{mode:'cap',cap:1},tot:{mode:'spread'},sit:{mode:'spread'},conf:{mode:'spread'},dc:{mode:'spread'},adm:{mode:'spread'}};
 function flagRule(code){ const r=(UNIT_FLAG_CONFIG.rules||{})[code]; if(r) return r; return DEFAULT_FLAG_RULES[code]||{mode:'none'}; }
 /* The tightest total-patient cap a nurse is allowed, given the flags on their rooms.
    Unit base ratio is the default; any 'ratiocap' flag on a room tightens it for that nurse. */
@@ -1303,13 +1326,15 @@ seedRoom(41,'n6',3.5); seedRoom(54,'n6',3.0); seedRoom(56,'n6',3.0); seedRoom(58
 seedRoom(52,'n7',2.5); seedRoom(60,'n7',3.0,['wound']); seedRoom(62,'n7',4.0,['gtt','foley','wound']); seedRoom(64,'n7',3.0);
 seedRoom(53,'n8',3.0); seedRoom(55,'n8',3.5); seedRoom(59,'n8',3.5,['wound']); seedRoom(63,'n8',2.5);
 
+let shiftDate=new Date().toISOString().slice(0,10), shiftType='Day';   // declared early: syncWorking() filters the crew by shift
 let nurses=[], pcts=[], sitters=[], hucs=[];          // the working set for TODAY — what the engine assigns
 let rosterN=[], rosterP=[], rosterS=[], rosterH=[];   // the master unit roster — everyone, with an "on today" flag
-function syncWorking(){                       // pull today's working set out of the master roster
-  nurses  = rosterN.filter(n=>n.on!==false);
-  pcts    = rosterP.filter(p=>p.on!==false);
-  sitters = rosterS.filter(s=>s.on!==false);
-  hucs    = rosterH.filter(x=>x.on!==false);
+function syncWorking(){                       // pull today's working set out of the master roster — only THIS shift's crew
+  const onShift = x => x.on!==false && (x.shift||'Day')===shiftType;
+  nurses  = rosterN.filter(onShift);
+  pcts    = rosterP.filter(onShift);
+  sitters = rosterS.filter(onShift);
+  hucs    = rosterH.filter(onShift);
 }
 let _uid=200; const newId=p=>p+(_uid++);
 function defaultRoster(){
@@ -1375,6 +1400,7 @@ const HELP={
   status:['The status line','This little line tells you how even the assignment is. Green means everyone has about the same workload. It also shows how many patients and how many nurses you have.'],
   step:['The colored step box','This box always tells you the ONE thing to do next — Step 1, 2, or 3. Just follow it in order and you\u2019ll have a finished board.'],
   vocera:['📟 Vocera devices','Type each Vocera phone number into its slot (RN 1, RN 2, and so on). After you make the assignment, the first nurse on the board becomes RN 1, the next is RN 2, and each nurse\u2019s number shows up on their card. You don\u2019t have to match them by hand.'],
+  returning:['🔁 Returning staff','If a nurse, PCT, or sitter is staying on from the last shift, mark them here and pick which patients they keep. Those rooms get locked to them, and Make Assignment fills everyone else in around them. Because returning staff hold their patients, the board may not come out perfectly even — that\u2019s expected.'],
   vocreturn:['Vocera return tracking','At the end of the shift, tap each device as it comes back so you know nothing is missing. If one is lost or broken, mark it Lost or Repair — that warning stays on for the next charge until someone fixes it.'],
   unassigned:['Unassigned patients','These are patients no nurse has yet. Tap one, then tap a nurse to give it to them. “Place new admits” drops them in automatically.'],
   move:['Moving a room','Tap a room, then tap the nurse you want to have it. The workload numbers update by themselves. Use this to fix anything the app got not-quite-right.'],
@@ -1410,7 +1436,7 @@ function renderAcuity(){
   let html='';
   if(viewAs!=='charge'){
     const n=nurses.find(x=>x.id===viewAs);
-    const mine=occupied().filter(r=>r.nurse===viewAs).sort((a,b)=>posOf(a.id)-posOf(b.id));
+    const mine=occupied().filter(r=>r.nurse===viewAs).sort((a,b)=>a.id-b.id);
     html+=`<div class="hall"><h2>${n?n.name+'\u2019s patients':'Your patients'} · ${mine.length} · ${mine.reduce((s,r)=>s+r.acuity,0).toFixed(1)} hrs</h2><div class="rgrid">`;
     if(!mine.length) html+='<div class="empty2">No patients assigned to you yet.</div>';
     mine.forEach(rn=>{ const r=rn; const cls=acuClass(r.acuity);
@@ -1423,7 +1449,7 @@ function renderAcuity(){
   }
   for(const[k,h]of Object.entries(HALLS)){
     html+=`<div class="hall"><h2><span class="dot" style="background:${h.color}"></span>${h.label}</h2><div class="rgrid">`;
-    h.rooms.forEach(rn=>{
+    h.rooms.slice().sort((a,b)=>a-b).forEach(rn=>{
       const r=rooms[rn];
       if(!r.occupied){ html+=`<div class="rcard empty" data-room="${rn}" onclick="openModal(${rn})"><div class="rno" style="color:#9AA6B6">${rn}</div><div style="font-size:11px;color:#9AA6B6;margin-top:18px;">Empty · tap to admit</div></div>`; }
       else{
@@ -1462,18 +1488,25 @@ function flagsNoteHTML(){
     <input type="hidden" id="isoType_val" value="${esc(r.isoType||'')}"></div></div>`:'';
   const dcField=modalFlags.includes('dc')?`<div class="subfield"><span class="sublab">Expected D/C time / notes</span><input class="subin" id="dcTimeIn" value="${esc(r.dcTime||'')}" placeholder="e.g. By noon · Awaiting transport · After family arrives"></div>`:'';
   const admField=modalFlags.includes('adm')?`<div class="subfield"><span class="sublab">Expected admit source / time</span><input class="subin" id="admTimeIn" value="${esc(r.admTime||'')}" placeholder="e.g. From ED ~1400 · ICU transfer · Post-op"></div>`:'';
-  return `<div class="grp"><h4>Flags <span style="font-weight:400;color:var(--ink-soft)">· tap what applies</span></h4><div class="flagrow">`+toggles+`</div><div class="flagkey">${key}</div>${isoSel}${dcField}${admField}<textarea class="noteIn" id="noteIn" placeholder="Updates / handoff (e.g. diuretics held, PT/OT eval)">${r.note||''}</textarea></div>`;
+  return `<div class="grp"><h4>Flags <span style="font-weight:400;color:var(--ink-soft)">· tap what applies</span><button class="qhelp" onclick="showFlagKey()" title="What do these mean?">?</button></h4><div class="flagrow">`+toggles+`</div>${isoSel}${dcField}${admField}<textarea class="noteIn" id="noteIn" placeholder="Updates / handoff (e.g. diuretics held, PT/OT eval)">${r.note||''}</textarea></div>`;
+}
+function showFlagKey(){
+  const rows=getActiveFlags().map(([f,l,full])=>`<div class="fkrow"><b>${esc(l)}</b><span>${esc(full)}</span></div>`).join('');
+  document.getElementById('helpTitle').textContent='What the flags mean';
+  document.getElementById('helpBody').innerHTML=`<div class="fklist">${rows}</div>`;
+  document.getElementById('helpScrim').classList.add('on');
 }
 function nurseConstraintHTML(){
   if(!nurses.length) return '';
-  const pin=['<option value="">— no preference —</option>'].concat(nurses.map(n=>`<option value="${n.id}" ${modalPin===n.id?'selected':''}>${esc(n.name)}</option>`)).join('');
+  const pinChips=nurses.map(n=>`<button type="button" id="pin-${n.id}" class="ftog ${modalPin===n.id?'on':''}" ${modalAvoid.includes(n.id)?'disabled':''} onclick="togPin('${n.id}')">${esc(n.name)}</button>`).join('');
   const avoid=nurses.map(n=>`<button type="button" id="av-${n.id}" class="ftog ${modalAvoid.includes(n.id)?'avoidon':''}" ${modalPin===n.id?'disabled':''} onclick="togAvoid('${n.id}')">${esc(n.name)}</button>`).join('');
   return `<div class="grp"><h4>Nurse <span style="font-weight:400;color:var(--ink-soft)">· optional</span></h4>`
-    +`<div class="nrow"><span class="nlab">Keep with / requested</span><select class="ssel" onchange="setPin(this.value)">${pin}</select></div>`
-    +`<div class="nlab" style="margin:9px 0 5px;">Won’t take</div><div class="flagrow">${avoid}</div>`
-    +`<div class="hint" style="margin-top:6px;">A requested nurse is kept whenever you re-generate. “Won’t take” nurses are never assigned this room.</div></div>`;
+    +`<div class="nlab" style="margin:2px 0 5px;">Keep with / requested</div><div class="flagrow">${pinChips||'<span class="hint" style="margin:0;">No nurses on yet.</span>'}</div>`
+    +`<div class="nlab" style="margin:12px 0 5px;">Won’t take</div><div class="flagrow">${avoid}</div>`
+    +`<div class="hint" style="margin-top:6px;">Tap a name to request that nurse (kept when you re-generate). Tap under “Won’t take” to block a nurse from this room.</div></div>`;
 }
 function setPin(v){ modalPin=v||''; if(modalPin) modalAvoid=modalAvoid.filter(x=>x!==modalPin); renderModalBody(); }
+function togPin(id){ if(modalAvoid.includes(id)) return; modalPin=(modalPin===id)?'':id; if(modalPin) modalAvoid=modalAvoid.filter(x=>x!==modalPin); renderModalBody(); }
 function togAvoid(id){ if(modalPin===id) return; const i=modalAvoid.indexOf(id); if(i<0)modalAvoid.push(id); else modalAvoid.splice(i,1); const b=document.getElementById('av-'+id); if(b)b.classList.toggle('avoidon'); }
 function renderModalBody(){
   const seg=`<div class="seg"><button class="${modalMode==='quick'?'on':''}" onclick="setMode('quick')">Quick</button><button class="${modalMode==='full'?'on':''}" onclick="setMode('full')">Full list</button><button class="${modalMode==='express'?'on':''}" onclick="setMode('express')">Express</button></div>`;
@@ -1720,6 +1753,7 @@ function updateStepGuide(){
   const g=document.getElementById('stepGuide'); if(g) g.style.display='none';
 }
 /* Big tappable tiles — the whole Build tab. Names chosen so a brand-new nurse knows each one. */
+let vocConfirmed=false;   // turns the Vocera tile green once charge taps Done in the popup
 function renderBuildTiles(){
   const el=document.getElementById('buildTiles'); if(!el||!chargeMode){ if(el)el.style.display='none'; return; }
   const occ=occupied();
@@ -1729,13 +1763,17 @@ function renderBuildTiles(){
   const readyToMake = haveStaff && total>0 && scored===total;
   // states: done(✓ green) · now(glow) · wait(dim) · util(plain, always tappable)
   const s1 = (haveStaff && (total===0 || scored===total)) ? 'done' : 'now';
+  const sVoc = vocConfirmed ? 'done' : (haveStaff ? 'now' : 'wait');
+  const hasPrev = PREV_SHIFT && (PREV_SHIFT.nurses||[]).length>0;
+  const retCount = Object.keys(RET.nurses).length+Object.keys(RET.pcts).length+Object.keys(RET.sitters).length;
+  const sRet = !hasPrev ? 'util' : (RET.done ? 'done' : (haveStaff?'now':'wait'));
   const s2 = !readyToMake ? 'wait' : (anyAssigned ? 'done' : 'now');
-  const s3 = 'util';
   const s4 = !anyAssigned ? 'wait' : 'now';
   const s6 = !anyAssigned ? 'wait' : 'util';
   const staffStatus = haveStaff ? `${nurses.length} on` : 'tap to pick';
+  const vocStatus = vocConfirmed ? 'confirmed ✓' : 'set numbers';
+  const retStatus = !hasPrev ? 'none last shift' : (retCount?`${retCount} returning`:'tap to set');
   const makeStatus = s2==='wait' ? 'score first' : s2==='done' ? 'tap to redo' : 'tap me';
-  const vocStatus = 'phone numbers';
   const checkStatus = s4==='wait' ? 'make it first' : (boardPosted?'posted ✓':'review & post');
   const shareStatus = s6==='wait' ? 'make it first' : (boardPosted?'send it':'post first');
   const tile=(state,emoji,num,label,status,onclick,helpKey)=>
@@ -1748,14 +1786,85 @@ function renderBuildTiles(){
     `</button>`;
   let h='';
   h+=tile(s1,'👥','1',"Who's Working",staffStatus,'openStaff()','staff');
-  h+=tile(s2,'✨','2','Make Assignment',makeStatus, s2==='wait'?'showHelp(\'make\')':'generate()','make');
-  h+=tile(s3,'📟','3','Vocera Phones',vocStatus,'openVocera()','vocera');
-  h+=tile(s4,'🔎','4','Check & Post',checkStatus, s4==='wait'?'showHelp(\'make\')':'show(\'assign\')','post');
+  h+=tile(sVoc,'📟','2','Vocera Phones',vocStatus,'openVocera()','vocera');
+  h+=tile(sRet,'🔁','3','Returning Staff',retStatus,'openReturning()','returning');
+  h+=tile(s2,'✨','4','Make Assignment',makeStatus, s2==='wait'?'showHelp(\'make\')':'generate()','make');
+  h+=tile(s4,'🔎','5','Check & Post',checkStatus, s4==='wait'?'showHelp(\'make\')':'show(\'assign\')','post');
   h+=tile('util','⚙️','','More Tools','settings','openTools()','');
   el.innerHTML=h; el.style.display='';
 }
 function openVocera(){ const b=document.getElementById('vocCardBody'); if(b) b.innerHTML=renderVoceraCard(); document.getElementById('vocScrim').classList.add('on'); }
-function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); }
+function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); vocConfirmed=true; renderBuildTiles(); }
+
+/* ===== Returning staff — keep last shift's patients/zones/rooms for staff who are back ===== */
+function openReturning(){ if(!chargeMode)return; renderReturning(); document.getElementById('retScrim').classList.add('on'); }
+function closeReturning(){ applyReturning(); document.getElementById('retScrim').classList.remove('on'); RET.done=true; renderBuildTiles(); }
+function retNurseRooms(nid){ // last shift's rooms for this nurse that still exist & are occupied
+  if(!PREV_SHIFT) return [];
+  const rec=(PREV_SHIFT.nurses||[]).find(x=>x.id===nid); if(!rec) return [];
+  return rec.rooms.filter(rn=>rooms[rn]&&rooms[rn].occupied);
+}
+function renderReturning(){
+  const body=document.getElementById('retBody'); if(!body) return;
+  if(!PREV_SHIFT || !(PREV_SHIFT.nurses||[]).length){
+    body.innerHTML=`<div class="hint" style="margin:0;">No previous shift to pull from yet. After you run a shift and tap <b>End shift &amp; hand off</b>, returning staff and their patients will show here so you can keep them.</div>`;
+    return;
+  }
+  let h=`<div class="staffhelp">Mark who\u2019s staying from last shift and which patients they keep. Kept rooms are locked — <b>Make Assignment</b> fills everyone else around them. Returning staff keep their patients, so the board may not be perfectly even — that\u2019s expected.</div>`;
+  // NURSES
+  const retN=(PREV_SHIFT.nurses||[]).filter(rec=>nurses.find(n=>n.id===rec.id) && retNurseRooms(rec.id).length);
+  if(retN.length){
+    h+=`<div class="grp"><h4>Nurses</h4>`;
+    retN.forEach(rec=>{
+      const on=!!RET.nurses[rec.id];
+      const rms=retNurseRooms(rec.id);
+      const kept = RET.nurses[rec.id]||[];
+      h+=`<div class="retrow"><div class="retname"><label class="retchk"><input type="checkbox" ${on?'checked':''} onchange="togReturnNurse('${rec.id}')"> <b>${esc(rec.name)}</b></label>${on?`<span class="rethint">${kept.length} of ${rms.length} kept</span>`:''}</div>`;
+      if(on){
+        h+=`<div class="retchips">`+rms.map(rn=>{ const k=kept.includes(rn); const r=rooms[rn];
+          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${rec.id}',${rn})">${rn}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></button>`; }).join('')
+          +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${rec.id}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${rec.id}')">Keep none</button></div>`;
+      }
+      h+=`</div>`;
+    });
+    h+=`</div>`;
+  }
+  // PCTs
+  const retP=(PREV_SHIFT.pcts||[]).filter(rec=>pcts.find(p=>p.id===rec.id) && rec.rooms.some(rn=>rooms[rn]&&rooms[rn].occupied));
+  if(retP.length){
+    h+=`<div class="grp"><h4>PCTs · keep zone</h4>`;
+    retP.forEach(rec=>{ const on=!!RET.pcts[rec.id]; const live=rec.rooms.filter(rn=>rooms[rn]&&rooms[rn].occupied);
+      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnPct('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">${live.join(', ')}</span></label>`; });
+    h+=`</div>`;
+  }
+  // Sitters
+  const retS=(PREV_SHIFT.sitters||[]).filter(rec=>sitters.find(s=>s.id===rec.id) && rooms[rec.room] && rooms[rec.room].occupied);
+  if(retS.length){
+    h+=`<div class="grp"><h4>Sitters · keep 1:1 room</h4>`;
+    retS.forEach(rec=>{ const on=!!RET.sitters[rec.id];
+      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnSitter('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">Rm ${rec.room}</span></label>`; });
+    h+=`</div>`;
+  }
+  if(!retN.length&&!retP.length&&!retS.length) h+=`<div class="hint">None of last shift\u2019s staff are on the current crew. Pick the returning people under 👥 Who\u2019s Working first.</div>`;
+  body.innerHTML=h;
+}
+function togReturnNurse(id){ if(RET.nurses[id]) delete RET.nurses[id]; else RET.nurses[id]=retNurseRooms(id).slice(); renderReturning(); }
+function togKeepRoom(id,rn){ const a=RET.nurses[id]||(RET.nurses[id]=[]); const i=a.indexOf(rn); if(i<0)a.push(rn); else a.splice(i,1); renderReturning(); }
+function keepAllRooms(id){ RET.nurses[id]=retNurseRooms(id).slice(); renderReturning(); }
+function keepNoRooms(id){ RET.nurses[id]=[]; renderReturning(); }
+function togReturnPct(id){ if(RET.pcts[id]) delete RET.pcts[id]; else RET.pcts[id]=true; renderReturning(); }
+function togReturnSitter(id){ if(RET.sitters[id]) delete RET.sitters[id]; else RET.sitters[id]=true; renderReturning(); }
+function applyReturning(){
+  // Nurses: lock kept rooms to them; clear any stale locks for returning nurses' unkept rooms
+  Object.entries(RET.nurses).forEach(([nid,kept])=>{
+    (kept||[]).forEach(rn=>{ if(rooms[rn]&&rooms[rn].occupied){ rooms[rn].nurse=nid; rooms[rn].lock=nid; } });
+  });
+  // PCTs: pin their zone rooms via PCT_OVERRIDE
+  Object.keys(RET.pcts).forEach(pid=>{ const rec=(PREV_SHIFT.pcts||[]).find(x=>x.id===pid); if(rec) rec.rooms.forEach(rn=>{ if(rooms[rn]&&rooms[rn].occupied) PCT_OVERRIDE[rn]=pid; }); });
+  // Sitters: ensure their room is set
+  Object.keys(RET.sitters).forEach(sid=>{ const rec=(PREV_SHIFT.sitters||[]).find(x=>x.id===sid); const s=sitters.find(x=>x.id===sid); if(rec&&s) s.room=rec.room; });
+  scheduleSave(); if(assignVisible()) renderAssign();
+}
 function goShare(){ if(typeof openShare==='function') openShare(); else show('assign'); }
 function openTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.add('on'); }
 function closeTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.remove('on'); }
@@ -2051,7 +2160,7 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
       if(cf>capConf)  c+=(cf-capConf)*55;     // #5 spread confused / fall-risk
       if(dc>0&&adm>0) c+=Math.min(dc,adm)*40; // #4 don't pair a discharge with a fresh admit
     } return c; };
-  const cost=()=>Math.max(0,spread()-0.5)*200 + safety() + geo() + 2*burden() + flagRuleCost();   // hours first, then safety caps, then geography + even burden mix + per-unit flag rules
+  const cost=()=>Math.max(0,spread()-0.5)*450 + safety() + geo() + 2*burden() + flagRuleCost();   // hours first (strong), then safety caps, then geography + even burden mix + per-unit flag rules
   // per-unit flag rules: spread (penalize clustering) or cap (penalize exceeding max)
   const ruleCodes=getActiveFlags().map(x=>x[0]).filter(c=>{ const r=flagRule(c); return r.mode==='spread'||r.mode==='cap'; });
   const ruleTotals={}; ruleCodes.forEach(c=>{ ruleTotals[c]=occ.filter(r=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).length; });
@@ -2068,8 +2177,9 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
         for(const g of G){ let k=0; for(const r of g){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)) k++; } if(k>fair) c+=(k-fair)*(k-fair)*30; }
       }
     }
-    // ratio caps: penalize any nurse holding more patients than a ratiocap flag allows
-    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*150; } }
+    // ratio caps: a flagged patient (e.g. insulin drip) limits that nurse's TOTAL patients.
+    // Firm enough to win the patient-count tug-of-war, but not so high it abandons hour-balancing.
+    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*1200; } }
     return c;
   }
   let cur=cost(), bestC=cur, best=G.map(g=>g.slice()), sinceBest=0, T=8;
@@ -2112,8 +2222,40 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   selectedRoom=null; renderAssign(); scheduleSave();
   checkFlagViolations();
-  openVocera();  // assignment done → open Vocera so the charge confirms phones, then they go to Check & Post
+  balanceReport();
+  show('assign');  // assignment done → go straight to the Board to review & post (Vocera was step 2, before this)
 }
+/* After generate: check hours balance. Kept/locked/requested rooms are never moved — if they cause
+   the imbalance, explain it; if a FREE room is the cause, suggest pulling/reassigning it. */
+function balanceReport(){
+  const banner=document.getElementById('balanceBanner'); if(!banner) return;
+  const withRooms=nurses.map(n=>({n, rs:occupied().filter(r=>r.nurse===n.id)})).filter(x=>x.rs.length);
+  if(withRooms.length<2){ banner.style.display='none'; return; }
+  const load=x=>x.rs.reduce((s,r)=>s+r.acuity,0);
+  const sorted=withRooms.slice().sort((a,b)=>load(b)-load(a));
+  const hi=sorted[0], lo=sorted[sorted.length-1];
+  const gap=load(hi)-load(lo);
+  if(gap < 2.0){ banner.style.display='none'; return; }
+  const hiKept=hi.rs.filter(r=>r.lock===hi.n.id);
+  const hiKeptHrs=hiKept.reduce((s,r)=>s+r.acuity,0);
+  let msg='';
+  if(hiKept.length && hiKeptHrs >= load(hi)*0.6){
+    msg=`<b>${esc(hi.n.name)}</b> is the heaviest (${load(hi).toFixed(1)} hrs vs ${load(lo).toFixed(1)} for ${esc(lo.n.name)}) mostly because you kept rooms <b>${hiKept.map(r=>r.id).join(', ')}</b> for them. That\u2019s protected — left as you set it. Release one of those rooms if you\u2019d rather even it out.`;
+  } else {
+    const movable=hi.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(lo.n.id));
+    if(movable.length){
+      const target=gap/2;
+      movable.sort((a,b)=>Math.abs(a.acuity-target)-Math.abs(b.acuity-target));
+      const room=movable[0];
+      msg=`Board is uneven by <b>${gap.toFixed(1)} hrs</b> (${esc(hi.n.name)} ${load(hi).toFixed(1)} vs ${esc(lo.n.name)} ${load(lo).toFixed(1)}). To even it: move <b>Rm ${room.id}</b> (${room.acuity.toFixed(1)} hrs) from ${esc(hi.n.name)} \u2192 ${esc(lo.n.name)}, or pull it. <button class="balfix" onclick="balanceMove(${room.id},'${lo.n.id}')">Move it for me</button>`;
+    } else {
+      msg=`Board is uneven by <b>${gap.toFixed(1)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
+    }
+  }
+  banner.innerHTML = `<span class="rose-icon">⚖️</span> ${msg}`;
+  banner.style.display='';
+}
+function balanceMove(rn,nid){ if(!chargeMode)return; pushUndo(); const r=rooms[rn]; if(r){ r.nurse=nid; if(r.lock&&r.lock!==nid)r.lock=null; } renderAssign(); scheduleSave(); checkFlagViolations(); balanceReport(); }
 /* After generate: detect cap/spread rule violations and tell the charge */
 function checkFlagViolations(){
   const occ=occupied(); const msgs=[];
@@ -2385,7 +2527,7 @@ function esc(s){ return (s||'').replace(/"/g,'&quot;'); }
 /* ═══════════════════════════════════════════════════════════
    WHO'S COMING ON — quick roster swap for the next shift
    ═══════════════════════════════════════════════════════════ */
-function rebuildStaff(){ nurses=rosterN.filter(n=>n.on!==false); pcts=rosterP.filter(p=>p.on!==false); sitters=rosterS.filter(s=>s.on!==false); hucs=rosterH.filter(x=>x.on!==false); }
+function rebuildStaff(){ syncWorking(); }
 /* "Who's coming on" is now merged into the Staff screen (On/Off toggles + add/remove). */
 function openIncoming(){ openStaff(); }
 /* ─────────────────── end incoming ─────────────────── */
@@ -2846,6 +2988,8 @@ function codeTeam(){
 /* ===== BOARD CARD STACK — tiles that expand to editable cards ===== */
 let selectedPctRoom=null;   // tap a room in a PCT card, then tap a PCT card to move it
 let boardCard='pct';        // which support card is expanded under the tiles
+let PREV_SHIFT=null;        // snapshot of last shift's assignments for returning-staff continuity
+let RET={ done:false, nurses:{}, pcts:{}, sitters:{} };  // returning-staff picks: {nurseId:[roomsKept], pctId:true, sitterId:true}
 function selectPctRoom(rm){ if(!chargeMode)return; selectedPctRoom=(selectedPctRoom===rm)?null:rm; renderAssign(); }
 function movePctRoom(pid){ if(!chargeMode||selectedPctRoom==null)return; setPctRoom(selectedPctRoom,pid); selectedPctRoom=null; }
 function showBoardCard(k){ boardCard=(boardCard===k)?'':k; const sp=document.getElementById('cardStack'); if(sp) sp.dataset.userPicked='1'; renderAssign(); }
@@ -3015,7 +3159,6 @@ function renderSupport(){
 function buildLegend(){ if(!document.getElementById('legend'))return; const rows=[['L','Low','< 2.5 hrs'],['M','Moderate','2.5–3.5'],['H','High','3.5–5'],['X','Intensive','5+']]; document.getElementById('legend').innerHTML=rows.map(([c,l,r])=>`<div class="legrow"><span class="swatch p${c}"></span><b>${l}</b>&nbsp;<span style="color:var(--ink-soft)">${r}</span></div>`).join(''); }
 /* ---------- persistence + shift ---------- */
 const STORE_KEY='tenGreen.floor.v1';
-let shiftDate=new Date().toISOString().slice(0,10), shiftType='Day';
 let chargeName='Kamryn';
 const DEFAULT_DIRECTORY="Staffing 38793 \u00b7 Monitor Room 36999 \u00b7 Staffing Sup 30398\nOps Sup 35246 \u00b7 Bed Control 30399 / 34833 \u00b7 HUC 31048\nTube #901 / Pyxis C   \u00b7   Tube #810 / Pyxis D";
 let UNITINFO={ directory:DEFAULT_DIRECTORY };
@@ -3096,7 +3239,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -3126,6 +3269,7 @@ function applyState(st){
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
   if(st.hucPin) hucPin=st.hucPin;
+  if(st.prevShift) PREV_SHIFT=st.prevShift;
   if(st.rubric && Array.isArray(st.rubric.sections) && st.rubric.sections.length){ RUBRIC=st.rubric.sections; DIVISOR=st.rubric.divisor||2; ACUITY_LABEL=st.rubric.label||'nursing hours'; RUBRIC_NAME=st.rubric.name||'Custom'; rebuildRubric(); }
 }
 async function loadState(){
@@ -3134,7 +3278,7 @@ async function loadState(){
 }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); const ph=document.getElementById('prioH'); if(ph)ph.classList.toggle('on',balancePriority==='hallway'); const pe=document.getElementById('prioE'); if(pe)pe.classList.toggle('on',balancePriority==='hours'); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
-function setShiftType(t){ shiftType=t; applyShiftUI(); scheduleSave(); }
+function setShiftType(t){ shiftType=t; syncWorking(); applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 /* ═══════════════════════════════════════════════════════════
    FLAG EDITOR — per-unit clinical flag customization
    ═══════════════════════════════════════════════════════════ */
@@ -3727,15 +3871,22 @@ function nextShift(){ if(!chargeMode)return;
   if(!confirm('🔄 Start the next shift?\n\n✓ Tonight\u2019s board is SAVED to Manager reports first.\n✓ Each patient keeps their score, flags and notes.\n✗ Nurse assignments and locks are CLEARED so the next charge builds fresh.\n\nThis cannot be undone except with the Undo button. Continue?')) return;
   pushUndo();
   pushHistory();  // saves this shift to the cloud (or a local file if offline)
+  // Snapshot who had what THIS shift, so the next charge can keep returning staff's patients (no PHI — ids/rooms only)
+  PREV_SHIFT={
+    nurses: nurses.map(n=>({id:n.id,name:n.name,rooms:occupied().filter(r=>r.nurse===n.id).map(r=>r.id)})).filter(x=>x.rooms.length),
+    pcts: pcts.map(p=>({id:p.id,name:p.name,rooms:(pctZones().find(z=>z.pct.id===p.id)||{rooms:[]}).rooms.slice()})).filter(x=>x.rooms.length),
+    sitters: sitters.map(s=>({id:s.id,name:s.name,room:s.room})).filter(x=>x.room)
+  };
   const rcCodes=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
   Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity; r.nurse=null; r.lock=null;
     r.capCarried = rcCodes.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)); });
   rosterN.forEach(n=>{ n.scoredDone=false; });  // reset scoring-done for the new shift
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
   ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
-  boardPosted=false; lastUpdatedAt=0; lastUpdatedBy='';
+  boardPosted=false; lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{}};
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
+  syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
 }
 function clearFloor(){ if(!chargeMode)return;
