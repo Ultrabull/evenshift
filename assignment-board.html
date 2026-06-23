@@ -763,6 +763,9 @@
   .lookcard.on{border-color:var(--teal);background:var(--teal-wash);}
   .lookcard:active{transform:scale(.96);}
 
+  .reportfab{position:fixed;right:14px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:55;width:44px;height:44px;border-radius:50%;border:none;background:var(--surface);box-shadow:0 3px 12px rgba(0,0,0,.18);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.92;}
+  .reportfab:active{transform:scale(.92);}
+  .mdiv{height:1px;background:var(--line);margin:5px 8px;}
   .botnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
     background:rgba(255,255,255,.95);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);
     border-top:1px solid var(--line);padding:5px 8px calc(5px + env(safe-area-inset-bottom));}
@@ -890,6 +893,8 @@
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
+          <div class="mdiv"></div>
+          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');reportProblem()">🐞 Report a problem</button>
         </div>
       </details>
     </div>
@@ -1207,6 +1212,7 @@
   </div>
 </div>
 
+<button class="reportfab" onclick="reportProblem()" title="Report a problem to Neo" aria-label="Report a problem">🐞</button>
 <nav class="botnav" aria-label="Main">
   <button class="navitem on" id="navAcuity" onclick="show('acuity')" aria-label="Score">
     <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 8h6M9 12h6M9 16h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -1926,6 +1932,33 @@ function applyReturning(){
   scheduleSave(); if(assignVisible()) renderAssign();
 }
 function goShare(){ if(typeof openShare==='function') openShare(); else show('assign'); }
+function reportProblem(){
+  const view = (typeof document!=='undefined' && document.getElementById('v-acuity') && document.getElementById('v-acuity').classList.contains('on')) ? 'Score'
+    : (document.getElementById('v-build') && document.getElementById('v-build').classList.contains('on')) ? 'Build' : 'Board';
+  const who = chargeMode ? 'Charge' : (viewAs && viewAs!=='charge' ? 'Staff ('+viewAs+')' : 'View-only');
+  const subject = 'EvenShift problem report — '+FLOOR.unit;
+  const body =
+`Tell Neo what went wrong (type below this line):
+————————————————————————
+What I was doing:
+
+What I expected:
+
+What actually happened:
+
+
+————————————————————————
+(Auto-filled — please leave this part)
+Screen: ${view}
+Mode: ${who}
+Shift: ${shiftType} ${shiftDate}
+Unit: ${FLOOR.unit}
+Posted: ${boardPosted?'yes':'no'}
+When: ${new Date().toLocaleString()}
+App: EvenShift`;
+  const url = 'mailto:amith.v.alias@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  try{ window.location.href=url; }catch(e){ try{ navigator.clipboard.writeText(body); alert('Couldn\u2019t open email. The report was copied — paste it to Neo.'); }catch(_){ alert('Email this to amith.v.alias@gmail.com:\n\n'+body); } }
+}
 function openTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.add('on'); }
 function closeTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.remove('on'); }
 /* Three big numbered cards — like a recipe. The current step glows; finished steps get a ✓. */
