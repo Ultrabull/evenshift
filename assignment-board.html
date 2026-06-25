@@ -260,6 +260,28 @@
   .bdname{flex:1;min-width:80px;font-size:13.5px;font-weight:600;color:var(--ink);}
   .covselbd{height:30px;border:1px solid var(--line-strong);border-radius:8px;padding:0 4px;font-size:12px;font-family:inherit;background:#fff;max-width:115px;}
   .rosterbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .rostertop{position:sticky;top:0;z-index:5;background:var(--surface);padding:2px 0 10px;border-bottom:1px solid var(--line);margin-bottom:10px;}
+  .rsearch{width:100%;height:40px;border:1.5px solid var(--line-strong);border-radius:11px;padding:0 13px;font-size:15px;font-family:inherit;color:var(--ink);background:var(--bg);margin-bottom:9px;}
+  .rsearch:focus{outline:none;border-color:var(--teal);}
+  .rosteradd{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px;}
+  .addbtn{flex:1;min-width:68px;padding:9px 6px;border:1.5px solid var(--teal);background:var(--teal-wash);color:var(--teal-deep);border-radius:10px;font-weight:800;font-size:13px;font-family:var(--display);cursor:pointer;}
+  .addbtn:active{transform:scale(.96);}
+  .rshifttabs{display:flex;gap:6px;margin-bottom:10px;}
+  .rshifttabs button{flex:1;padding:9px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:10px;font-weight:800;font-size:14px;font-family:var(--display);color:var(--ink-soft);cursor:pointer;}
+  .rshifttabs button.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .rcount{display:inline-block;background:var(--line);color:var(--ink-soft);border-radius:999px;padding:0 8px;font-size:12px;font-weight:700;margin-left:5px;}
+  .rchips{display:flex;flex-direction:column;gap:5px;}
+  .rchip{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;}
+  .rchip.open{border-color:var(--teal);box-shadow:0 2px 8px rgba(3,112,126,.1);}
+  .rchiphead{width:100%;display:flex;align-items:center;gap:9px;padding:11px 12px;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;}
+  .rdot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .rdot.dy{background:#2E6BE6;} .rdot.nt{background:#7C3AED;}
+  .rchipname{font-weight:700;font-size:14.5px;color:var(--ink);flex:1;}
+  .rchiprole{font-size:11.5px;color:var(--ink-soft);font-weight:600;}
+  .rchipcar{font-size:12px;color:var(--ink-soft);margin-left:6px;}
+  .rchipedit{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);}
+  .rchipedit .sin{margin-top:10px;}
+  .srm.wide{width:100%;justify-content:center;color:var(--bad);border:1px solid #F2C9C9;background:#FCF2F2;border-radius:9px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;}
   .shsel{max-width:88px;}
   .srow2{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);}
   .srow2 .sin{grid-column:1;}
@@ -917,7 +939,7 @@
 
   <div class="view on" id="v-acuity">
     <div class="hint" style="font-size:12.5px;margin-bottom:6px;">Tap a room to score it — tally what the patient needs and it totals the acuity number.</div>
-    <div class="roomjump"><input id="roomSearch" inputmode="numeric" placeholder="Jump to room #" oninput="jumpRoom(this.value)"><span id="roomJumpMsg"></span></div>
+    <div class="roomjump"><input id="roomSearch" inputmode="numeric" placeholder="Jump to room #" oninput="jumpRoom(this.value,false)" onkeydown="if(event.key==='Enter'){jumpRoom(this.value,true);this.blur();}"><button class="btn sm" onclick="jumpRoom(document.getElementById('roomSearch').value,true)">Go</button><span id="roomJumpMsg"></span></div>
     <div class="rubrictag chargeOnly" id="rubricTag" onclick="openRubric()" title="Edit acuity rubric"></div>
     <div id="halls"></div>
   </div>
@@ -1382,44 +1404,47 @@ function syncWorking(){                       // pull today's working set out of
 }
 let _uid=200; const newId=p=>p+(_uid++);
 function defaultRoster(){
-  // Full 10 Green roster (first names), tagged Day/Night. A starter day crew is ON so the board isn't empty;
-  // the charge taps the real crew from the Day/Night tabs. Manager can edit/remove/import any time.
+  // Full 10 Green roster from the official contact sheet (updated 06.22.2026), tagged Day/Night.
+  // First names; a last initial is added only where two people share a first name on the same shift.
+  // A starter day crew is ON so the board isn't empty; the charge taps the real crew from the Day/Night tabs.
   // [name, level, shift, on]
   const N=[
-    // ----- Day shift nurses -----  (Senior = charge-capable, Orientee = RN Resident)
-    ['Anna','Senior','Day',true],['Briana','Senior','Day',true],['Jordan','Senior','Day',true],
-    ['Gracy','RN','Day',true],['Jillian','RN','Day',true],['Suja','RN','Day',true],
-    ['Dhanya','RN','Day',true],['Kathy','RN','Day',true],
-    ['Mia','Orientee','Day',false],['Joses','Orientee','Day',false],['Theresa','Orientee','Day',false],
-    ['Derek','RN','Day',false],['Kaitlyn','RN','Day',false],['Grace','Orientee','Day',false],
-    ['Kayla','Orientee','Day',false],['Lindsay','Orientee','Day',false],['Sarah','Orientee','Day',false],
-    ['Taylor','Orientee','Day',false],['Ally','Orientee','Day',false],['Hyun','RN','Day',false],
-    ['Juan','Orientee','Day',false],['Cara','Orientee','Day',false],['Kelsey','RN','Day',false],
-    ['Diana','Orientee','Day',false],['Gabriela','Orientee','Day',false],['Bharti','RN','Day',false],
-    ['Anne Marie','Orientee','Day',false],['Macy','RN','Day',false],['Crystal','RN','Day',false],
-    ['Eskinder','RN','Day',false],['Makayla','Orientee','Day',false],
-    // ----- Night shift nurses -----
-    ['Ashlyn','Orientee','Night',false],['Ruth','RN','Night',false],['Kate','Orientee','Night',false],
-    ['Geneva','RN','Night',false],['Jennifer','RN','Night',false],['Cortney','Senior','Night',false],
-    ['Derek','RN','Night',false],['Celenia','RN','Night',false],['Cecilia','RN','Night',false],['Gema','Senior','Night',false],
-    ['Mary','Orientee','Night',false],['Kelsey H.','Orientee','Night',false],['Anitta','Orientee','Night',false],
-    ['December','RN','Night',false],['Ashley','Orientee','Night',false],['Stephanie','Orientee','Night',false],
-    ['Raquel','Orientee','Night',false],['Gillian','Orientee','Night',false],['Ngan','Orientee','Night',false],
-    ['Kristie','Senior','Night',false],['Krystle','RN','Night',false],['Alex','Senior','Night',false],
-    ['Dini','RN','Night',false],['Samuel','Orientee','Night',false],['Rachel','RN','Night',false],
-    ['Amith','Senior','Night',false],['Bindhya','Orientee','Night',false]
+    // ----- Day shift nurses (27) -----
+    ['Anna','RN','Day',true],['Briana','RN','Day',true],['Jordan','RN','Day',true],
+    ['Kelsey','RN','Day',true],['Gracy','RN','Day',true],['Suja','RN','Day',true],
+    ['Kaitlyn','RN','Day',true],['Grace','RN','Day',true],
+    ['Mia A.','RN','Day',false],['Kate','RN','Day',false],['Joses','RN','Day',false],
+    ['Averri','RN','Day',false],['Tess','RN','Day',false],['Lindsay','RN','Day',false],
+    ['Jillian','RN','Day',false],['Taylor','RN','Day',false],['Juan','RN','Day',false],
+    ['Raquel','RN','Day',false],['Ally','RN','Day',false],['Gillian','RN','Day',false],
+    ['Ruby','RN','Day',false],['Joselle','RN','Day',false],['Anne Marie','RN','Day',false],
+    ['Mia T.','RN','Day',false],['Chayse','RN','Day',false],['Eskinder','RN','Day',false],
+    ['Makayla','RN','Day',false],
+    // ----- Night shift nurses (24) -----
+    ['Ashlyn','RN','Night',false],['Ruth','RN','Night',false],['Charina','RN','Night',false],
+    ['Geneva','RN','Night',false],['Jennifer','RN','Night',false],['Cortney','RN','Night',false],
+    ['Celenia','RN','Night',false],['Cecilia','RN','Night',false],['Amabelle','RN','Night',false],
+    ['Gema','RN','Night',false],['Mary','RN','Night',false],['Kelsey H.','RN','Night',false],
+    ['December','RN','Night',false],['Ashley','RN','Night',false],['Stephanie','RN','Night',false],
+    ['Ngan','RN','Night',false],['Kristie','RN','Night',false],['Wendy','RN','Night',false],
+    ['Krystle','RN','Night',false],['AJ','RN','Night',false],['Samuel','RN','Night',false],
+    ['Rachel','RN','Night',false],['Amith','RN','Night',false],['Bindhya','RN','Night',false]
   ];
   rosterN=N.map(([name,level,shift,on],i)=>({id:'n'+(i+1),name,level,cap:1.0,on,shift,vocAM:'',vocPM:''}));
   const P=[
-    ['Blessy','Day',true],['Dennis','Day',true],['Hannah','Day',true],['Samantha','Day',true],
-    ['Marie','Day',false],['Eric','Day',false],['Mia P.','Day',false],['Ivon','Day',false],
-    ['Carina','Day',false],['Tamara','Day',false],['Dasia','Day',false],
-    ['Briana C.','Night',false],['Jenifer','Night',false],['Corina','Night',false],['Carina G.','Night',false],
-    ['Carson','Night',false],['Joshna','Night',false],['Cynthia','Night',false],['Carina S.','Night',false]
+    // ----- Day shift PCT (15) -----
+    ['Blessy','Day',true],['Eric','Day',true],['Jacqueline','Day',true],['Lily','Day',false],
+    ['Jenifer','Day',false],['Kidist','Day',false],['Ivon','Day',false],['Juan H.','Day',false],
+    ['Julie','Day',false],['Abby','Day',false],['Alexiz','Day',false],['Tamara','Day',false],
+    ['Darby','Day',false],['Fekadu','Day',false],['Saba','Day',false],
+    // ----- Night shift PCT (12) -----
+    ['Lydia','Night',false],['Dennis','Night',false],['Corina','Night',false],['Mia','Night',false],
+    ['Carina G.','Night',false],['Ariyel','Night',false],['Angelina','Night',false],['Joshna','Night',false],
+    ['Michelle','Night',false],['Melody','Night',false],['Jiji','Night',false],['Carina S.','Night',false]
   ];
   rosterP=P.map(([name,shift,on],i)=>({id:'p'+(i+1),name,on,shift,vocAM:'',vocPM:''}));
   rosterS=[
-    ['Mawut C. (ED)','Day'],['Janice F. (11B)','Night']
+    ['Sitter 1','Day'],['Sitter 2','Night']
   ].map(([name,shift],i)=>({id:'s'+(i+1),name,room:'',on:false,shift,vocAM:'',vocPM:''}));
   rosterH=[
     ['Siby','Day'],['Jackie','Day'],['Imelda','Night']
@@ -2173,16 +2198,24 @@ function introNext(){ if(_introIdx<INTRO_CARDS.length-1){ _introIdx++; renderInt
 function introPrev(){ if(_introIdx>0){ _introIdx--; renderIntro(); } }
 function introDone(){ try{ localStorage.setItem('evenshift_intro_seen','1'); }catch(e){} document.getElementById('introScrim').classList.remove('on'); }
 
-/* Jump to a room number on the score grid */
-function jumpRoom(val){
+/* Jump to a room number on the score grid.
+   force=true means the user pressed Go/Enter — act even on a partial-looking number.
+   On plain typing we wait until the number actually matches a room, so it doesn't thrash per keystroke. */
+function jumpRoom(val, force){
   const msg=document.getElementById('roomJumpMsg');
-  const rn=parseInt(String(val).trim());
+  const raw=String(val).trim();
   document.querySelectorAll('.rcard.jumphi').forEach(c=>c.classList.remove('jumphi'));
+  if(!raw){ if(msg)msg.textContent=''; return; }
+  const rn=parseInt(raw,10);
   if(!rn){ if(msg)msg.textContent=''; return; }
-  if(!rooms[rn]){ if(msg)msg.textContent='no room '+rn; return; }
+  if(!rooms[rn]){ if(msg)msg.textContent = force ? ('no room '+rn) : ''; return; }
   if(msg) msg.textContent='';
   const card=document.querySelector('.rcard[data-room="'+rn+'"]');
-  if(card){ card.scrollIntoView({behavior:'smooth',block:'center'}); card.classList.add('jumphi'); setTimeout(()=>card.classList.remove('jumphi'),2200); }
+  if(card){
+    try{ card.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){ card.scrollIntoView(); }
+    card.classList.add('jumphi');
+    setTimeout(()=>{ if(card) card.classList.remove('jumphi'); }, 3000);
+  } else if(msg && force){ msg.textContent='room '+rn+' not on screen'; }
 }
 
 /* Draft vs Final: charge taps Post so staff know the board is final & safe to read */
@@ -2657,6 +2690,9 @@ function syncStaffDOM(){
   _wh.forEach((x,i)=>{ const a=document.getElementById('hh-'+i); if(a)x.name=a.value; gv('h',i,'am',x); gv('h',i,'pm',x); gsh('h',i,x); });
 }
 let _staffTab='day';
+let _rosterSearch='';      // master-roster live search text
+let _rosterShift='Day';    // which shift sub-list is showing in Master roster
+let _expandedRow=null;     // which roster chip is expanded for editing, e.g. 'n3'
 function setStaffTab(t){ syncStaffDOM(); _staffTab=t; renderStaffModal(); }
 function renderStaffModal(){
   const occRooms=occupied().map(r=>r.id).sort((a,b)=>posOf(a)-posOf(b));
@@ -2754,28 +2790,81 @@ function renderTeamTab(team){
 
 /* TAB — Master roster: full editable list + Excel/CSV import. Each person tagged Day/Night/Both. */
 function renderRosterTab(occRooms){
+  const q=_rosterSearch.trim().toLowerCase();
+  const searching = q.length>0;
   const shiftSel=(t,i,x)=>`<select id="ss-shift-${t}-${i}" class="ssel shsel">${['Day','Night'].map(s=>`<option ${ (x.shift||'Day')===s?'selected':''}>${s}</option>`).join('')}</select>`;
   const vocLine=(t,i,x)=>`<div class="vocrow"><span class="voclab">Voc</span><input id="va-${t}-${i}" class="vin" value="${esc(x.vocAM||'')}" placeholder="AM"><input id="vp-${t}-${i}" class="vin" value="${esc(x.vocPM||'')}" placeholder="PM"></div>`;
-  let h=`<div class="rosterbar"><button class="btn sm" onclick="openImport()">📥 Import Excel / CSV</button><button class="btn sm" onclick="downloadTemplate()">📄 Blank template</button></div>`;
-  h+=`<div class="staffhelp">The full unit roster. Set each person\u2019s <b>Shift</b> (Day or Night) — that decides which team tab they appear in. Import a spreadsheet or add people by hand. <b>✕</b> only when someone leaves for good.</div>`;
-  h+='<div class="grp"><h4>Nurses</h4>';
-  _wn.forEach((n,i)=>{ h+=`<div class="srow2"><input id="sn-${i}" class="sin" value="${esc(n.name)}" placeholder="Nurse name"><button class="srm" onclick="rmRow('n',${i})">✕</button><div class="srow2b"><select id="sl-${i}" class="ssel">${['RN','Senior','Float','Orientee'].map(l=>`<option ${n.level===l?'selected':''}>${l}</option>`).join('')}</select>${shiftSel('n',i,n)}</div>${vocLine('n',i,n)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'n\')">+ Add nurse</button></div>';
-  h+='<div class="grp"><h4>PCTs</h4>';
-  _wp.forEach((p,i)=>{ h+=`<div class="srow2"><input id="pp-${i}" class="sin" value="${esc(p.name)}" placeholder="PCT name"><button class="srm" onclick="rmRow('p',${i})">✕</button><div class="srow2b">${shiftSel('p',i,p)}</div>${vocLine('p',i,p)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'p\')">+ Add PCT</button></div>';
-  h+='<div class="grp"><h4>Sitters (1:1)</h4>';
-  _ws.forEach((s,i)=>{ h+=`<div class="srow2"><input id="ss-${i}" class="sin" value="${esc(s.name)}" placeholder="Sitter name"><button class="srm" onclick="rmRow('s',${i})">✕</button><div class="srow2b"><select id="sr-${i}" class="ssel"><option value="">room…</option>${occRooms.map(rm=>`<option value="${rm}" ${String(s.room)===String(rm)?'selected':''}>${rm}</option>`).join('')}</select>${shiftSel('s',i,s)}</div>${vocLine('s',i,s)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'s\')">+ Add sitter</button></div>';
-  h+='<div class="grp"><h4>HUCs (desk / unit coordinator)</h4>';
-  _wh.forEach((x,i)=>{ h+=`<div class="srow2"><input id="hh-${i}" class="sin" value="${esc(x.name)}" placeholder="HUC name"><button class="srm" onclick="rmRow('h',${i})">✕</button><div class="srow2b">${shiftSel('h',i,x)}</div>${vocLine('h',i,x)}</div>`; });
-  h+='<button class="addrow" onclick="addRow(\'h\')">+ Add HUC</button></div>';
+
+  // top bar: search + add buttons (pinned, always reachable)
+  let h=`<div class="rostertop">`
+    +`<input id="rosterSearch" class="rsearch" placeholder="🔍 Search staff…" value="${esc(_rosterSearch)}" oninput="setRosterSearch(this.value)">`
+    +`<div class="rosteradd"><button class="addbtn" onclick="addRow('n')">+ Nurse</button><button class="addbtn" onclick="addRow('p')">+ PCT</button><button class="addbtn" onclick="addRow('s')">+ Sitter</button><button class="addbtn" onclick="addRow('h')">+ HUC</button></div>`
+    +`<div class="rosterbar"><button class="btn sm" onclick="openImport()">📥 Import Excel / CSV</button><button class="btn sm" onclick="downloadTemplate()">📄 Blank template</button></div>`
+    +`</div>`;
+
+  // shift toggle (hidden while searching — search spans both shifts)
+  if(!searching){
+    h+=`<div class="rshifttabs"><button class="${_rosterShift==='Day'?'on':''}" onclick="setRosterShift('Day')">Day</button><button class="${_rosterShift==='Night'?'on':''}" onclick="setRosterShift('Night')">Night</button></div>`;
+  } else {
+    h+=`<div class="staffhelp">Showing matches for “${esc(_rosterSearch)}” across all shifts. Clear the search to browse by shift.</div>`;
+  }
+
+  const match=x=>!q || (x.name||'').toLowerCase().includes(q);
+  const inShift=x=>searching || (x.shift||'Day')===_rosterShift;
+  const chip=(t,i,x,extraEdit)=>{
+    const key=t+i;
+    const open=_expandedRow===key;
+    const roleLab={n:'RN',p:'PCT',s:'Sitter',h:'HUC'}[t];
+    const dot=(x.shift||'Day')==='Night'?'nt':'dy';
+    const nm=esc(x.name)|| '<i style="color:var(--ink-soft)">new — tap to name</i>';
+    let row=`<div class="rchip ${open?'open':''}">`
+      +`<button class="rchiphead" onclick="toggleRosterRow('${key}')"><span class="rdot ${dot}"></span><span class="rchipname">${nm}</span><span class="rchiprole">${roleLab} · ${(x.shift||'Day')}</span><span class="rchipcar">${open?'▾':'▸'}</span></button>`;
+    if(open){
+      row+=`<div class="rchipedit">`
+        +`<input id="${t==='n'?'sn':t==='p'?'pp':t==='s'?'ss':'hh'}-${i}" class="sin" value="${esc(x.name)}" placeholder="Name" autofocus>`
+        +`<div class="srow2b">`
+        + (t==='n'?`<select id="sl-${i}" class="ssel">${['RN','Senior','Float','Orientee'].map(l=>`<option ${x.level===l?'selected':''}>${l}</option>`).join('')}</select>`:'')
+        + (t==='s'?`<select id="sr-${i}" class="ssel"><option value="">room…</option>${occRooms.map(rm=>`<option value="${rm}" ${String(x.room)===String(rm)?'selected':''}>${rm}</option>`).join('')}</select>`:'')
+        + shiftSel(t,i,x)
+        +`</div>`
+        + vocLine(t,i,x)
+        +`<button class="srm wide" onclick="rmRow('${t}',${i})">✕ Remove from roster</button>`
+        +`</div>`;
+    }
+    return row+`</div>`;
+  };
+
+  const section=(title,arr,t)=>{
+    const items=arr.map((x,i)=>({x,i})).filter(o=>match(o.x)&&inShift(o.x));
+    let s=`<div class="grp"><h4>${title} <span class="rcount">${items.length}</span></h4>`;
+    if(!items.length) s+=`<div class="hint" style="margin:0 0 4px;">${searching?'No matches.':'None on '+_rosterShift.toLowerCase()+'.'}</div>`;
+    else s+=`<div class="rchips">`+items.map(o=>chip(t,o.i,o.x)).join('')+`</div>`;
+    return s+`</div>`;
+  };
+
+  h+=section('Nurses',_wn,'n');
+  h+=section('PCTs',_wp,'p');
+  h+=section('Sitters (1:1)',_ws,'s');
+  h+=section('HUCs',_wh,'h');
   return h;
 }
+function setRosterSearch(v){ syncStaffDOM(); _rosterSearch=v; _renderRosterOnly(); }
+function setRosterShift(s){ syncStaffDOM(); _rosterShift=s; _expandedRow=null; renderStaffModal(); }
+function toggleRosterRow(key){ syncStaffDOM(); _expandedRow=(_expandedRow===key)?null:key; renderStaffModal(); setTimeout(()=>{ const inp=document.querySelector('.rchip.open .sin'); if(inp) inp.focus(); },30); }
+// re-render without losing search-box focus: only used for live search typing
+function _renderRosterOnly(){ renderStaffModal(); const sb=document.getElementById('rosterSearch'); if(sb){ sb.focus(); const v=sb.value; sb.value=''; sb.value=v; } }
 /* tap a name to add/remove from the working crew */
 function togCrew(t,id){ syncStaffDOM(); const arr=t==='n'?_wn:t==='p'?_wp:t==='s'?_ws:_wh; const x=arr.find(o=>o.id===id); if(x) x.on=(x.on===false); renderStaffModal(); }
 function clearTeam(team){ syncStaffDOM(); if(!confirm('Clear who\u2019s working the '+team.toLowerCase()+' shift? The roster is kept — just re-tap who\u2019s on.')) return; [..._wn,..._wp,..._ws,..._wh].forEach(x=>{ if(inTeam(x,team)) x.on=false; }); renderStaffModal(); }
-function addRow(t){ syncStaffDOM(); const team=_staffTab==='night'?'Night':'Day'; if(t==='n')_wn.push({id:newId('n'),name:'',level:'RN',cap:1.0,on:true,shift:team}); else if(t==='p')_wp.push({id:newId('p'),name:'',on:true,shift:team}); else if(t==='s')_ws.push({id:newId('s'),name:'',room:'',on:true,shift:team}); else _wh.push({id:newId('h'),name:'',on:true,shift:team}); renderStaffModal(); }
+function addRow(t){ syncStaffDOM(); const team=_rosterShift==='Night'?'Night':'Day';
+  let arr, idx;
+  if(t==='n'){ _wn.push({id:newId('n'),name:'',level:'RN',cap:1.0,on:true,shift:team}); arr=_wn; }
+  else if(t==='p'){ _wp.push({id:newId('p'),name:'',on:true,shift:team}); arr=_wp; }
+  else if(t==='s'){ _ws.push({id:newId('s'),name:'',room:'',on:true,shift:team}); arr=_ws; }
+  else { _wh.push({id:newId('h'),name:'',on:true,shift:team}); arr=_wh; }
+  idx=arr.length-1; _rosterSearch=''; _expandedRow=t+idx;   // open the new chip so the name field is ready
+  renderStaffModal(); setTimeout(()=>{ const inp=document.querySelector('.rchip.open .sin'); if(inp) inp.focus(); },30);
+}
 function rmRow(t,i){ syncStaffDOM();
   const arr=t==='n'?_wn:t==='p'?_wp:t==='s'?_ws:_wh;
   const person=arr[i];
@@ -2817,7 +2906,7 @@ function mapRows(rows){
   const out=[];
   for(let r=1;r<rows.length;r++){ const cells=rows[r]; const name=String(cells[iName]||'').trim(); if(!name) continue;
     const roleRaw=(iRole>=0?String(cells[iRole]||''):'').toLowerCase();
-    let role='Nurse'; if(/pct|tech|aide|cna/.test(roleRaw))role='PCT'; else if(/sit/.test(roleRaw))role='Sitter';
+    let role='Nurse'; if(/pct|tech|aide|cna/.test(roleRaw))role='PCT'; else if(/sit/.test(roleRaw))role='Sitter'; else if(/huc|unit clerk|clerk|hucs/.test(roleRaw))role='HUC';
     const lvlRaw=(iLevel>=0?String(cells[iLevel]||''):'').toLowerCase();
     let level='RN'; if(/sr|senior/.test(lvlRaw))level='Senior'; else if(/float|pool/.test(lvlRaw))level='Float'; else if(/orient/.test(lvlRaw))level='Orientee';
     const shRaw=(iShift>=0?String(cells[iShift]||''):'').toLowerCase();
@@ -2845,8 +2934,8 @@ function finishParse(people){
   if(people===null){ if(msg)msg.textContent='Couldn\u2019t find a “Name” column. Use the blank template.'; return; }
   if(!people.length){ if(msg)msg.textContent='No staff rows found in that file.'; return; }
   _importParsed=people; if(msg)msg.textContent='';
-  const n=people.filter(p=>p.role==='Nurse').length, pc=people.filter(p=>p.role==='PCT').length, si=people.filter(p=>p.role==='Sitter').length;
-  let h=`<div class="staffsum">Found <b>${people.length}</b>: ${n} nurses · ${pc} PCT · ${si} sitter</div><div class="imptable">`;
+  const n=people.filter(p=>p.role==='Nurse').length, pc=people.filter(p=>p.role==='PCT').length, si=people.filter(p=>p.role==='Sitter').length, hu=people.filter(p=>p.role==='HUC').length;
+  let h=`<div class="staffsum">Found <b>${people.length}</b>: ${n} nurses · ${pc} PCT · ${si} sitter${hu?' · '+hu+' HUC':''}</div><div class="imptable">`;
   people.slice(0,40).forEach(p=>{ h+=`<div class="improw"><span class="impn">${esc(p.name)}</span><span class="impmeta">${p.role}${p.role==='Nurse'?' · '+p.level:''} · ${p.shift}${p.vocAM?' · '+esc(p.vocAM):''}</span></div>`; });
   if(people.length>40) h+=`<div class="impmeta" style="padding:6px 0;">…and ${people.length-40} more</div>`;
   h+='</div><div class="rsharebtns" style="margin-top:12px;gap:8px;"><button class="btn" onclick="applyImport(\'merge\')">Add to roster</button><button class="btn primary" onclick="applyImport(\'replace\')">Replace roster</button></div>';
@@ -2855,14 +2944,15 @@ function finishParse(people){
 function applyImport(mode){
   if(!_importParsed)return;
   if(mode==='replace'&&!confirm('Replace the whole roster with these '+_importParsed.length+' people? Anyone not in the file is removed.')) return;
-  const toN=[], toP=[], toS=[];
+  const toN=[], toP=[], toS=[], toH=[];
   _importParsed.forEach(p=>{ if(p.role==='PCT')toP.push({id:newId('p'),name:p.name,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
     else if(p.role==='Sitter')toS.push({id:newId('s'),name:p.name,room:'',on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
+    else if(p.role==='HUC')toH.push({id:newId('h'),name:p.name,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
     else toN.push({id:newId('n'),name:p.name,level:p.level,cap:1.0,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM}); });
-  if(mode==='replace'){ _wn=toN; _wp=toP; _ws=toS; }
+  if(mode==='replace'){ _wn=toN; _wp=toP; _ws=toS; if(toH.length) _wh=toH; }
   else { // merge: update existing by name, add new
     const merge=(arr,incoming)=>{ incoming.forEach(inp=>{ const ex=arr.find(x=>x.name.trim().toLowerCase()===inp.name.trim().toLowerCase()); if(ex){ Object.assign(ex,{level:inp.level||ex.level,shift:inp.shift,vocAM:inp.vocAM||ex.vocAM,vocPM:inp.vocPM||ex.vocPM}); } else arr.push(inp); }); };
-    merge(_wn,toN); merge(_wp,toP); merge(_ws,toS);
+    merge(_wn,toN); merge(_wp,toP); merge(_ws,toS); merge(_wh,toH);
   }
   closeImport(); _staffTab='roster'; renderStaffModal();
   const m=document.getElementById('importMsg'); if(m)m.textContent='';
@@ -2881,8 +2971,31 @@ function fileRoster(e){ const f=e.target.files&&e.target.files[0]; if(!f)return;
 function loadRoster(){
   let txt=(document.getElementById('rosterCode').value||'').trim(); if(!txt){ rmsg('Paste a code or choose a file first.'); return; }
   if(txt.startsWith(RCODE_PREFIX)) txt=txt.slice(RCODE_PREFIX.length);
-  let obj; try{ obj=JSON.parse(decodeURIComponent(escape(atob(txt)))); }catch(e){ rmsg('That code didn\u2019t read — copy the whole thing and try again.'); return; }
-  if(!obj||!Array.isArray(obj.rosterN)||!obj.rosterN.length){ rmsg('That doesn\u2019t look like a roster.'); return; }
+  let obj=null; try{ obj=JSON.parse(decodeURIComponent(escape(atob(txt)))); }catch(e){ obj=null; }
+  if(!obj || !Array.isArray(obj.rosterN)){
+    // Not a share-code — maybe the person pasted a CSV. Try that.
+    const people = mapRows(parseCSV(txt));
+    if(people && people.length){
+      if(!confirm('Load these '+people.length+' people as the roster? Anyone not in the list is removed, and today\u2019s assignments will clear.')) return;
+      const toN=[],toP=[],toS=[],toH=[];
+      people.forEach(p=>{ const role=(p.role||'Nurse');
+        if(role==='PCT') toP.push({id:newId('p'),name:p.name,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
+        else if(role==='Sitter') toS.push({id:newId('s'),name:p.name,room:'',on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
+        else if(role==='HUC') toH.push({id:newId('h'),name:p.name,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM});
+        else toN.push({id:newId('n'),name:p.name,level:p.level||'RN',cap:1.0,on:false,shift:p.shift,vocAM:p.vocAM,vocPM:p.vocPM}); });
+      if(!toN.length){ rmsg('That doesn\u2019t look like a roster — need at least one nurse.'); return; }
+      rosterN=toN; rosterP=toP; rosterS=toS; if(toH.length) rosterH=toH;
+      syncWorking();
+      occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });
+      if(viewAs!=='charge'&&!nurses.find(x=>x.id===viewAs))viewAs='charge';
+      closeRShare();
+      if(document.getElementById('staffScrim').classList.contains('on')){ _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); _wh=rosterH.map(x=>({...x})); renderStaffModal(); }
+      refreshViewOptions(); applyAccessUI(); renderAcuity(); renderAssign(); scheduleSave();
+      return;
+    }
+    rmsg('That didn\u2019t read as a code or a CSV. For a spreadsheet, use 📥 Import Excel / CSV → Choose file instead.'); return;
+  }
+  if(!obj.rosterN.length){ rmsg('That doesn\u2019t look like a roster.'); return; }
   if(!confirm('Replace the current roster with the imported one? Today\u2019s assignments will clear.')) return;
   rosterN=obj.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||''}));
   rosterP=(obj.rosterP||[]).map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
