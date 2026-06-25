@@ -711,6 +711,7 @@
   .edithint{font-size:11.5px;color:var(--ink-soft);margin:-8px 0 13px;line-height:1.4;}
   .edithint b{color:var(--teal-deep);}
   .edithint.armed{color:var(--teal-deep);background:var(--teal-wash);border:1px solid var(--teal);border-radius:9px;padding:7px 11px;margin:-4px 0 13px;}
+  .loadnext{font-size:11px;opacity:.85;font-weight:800;margin-left:1px;color:var(--teal-deep);}
   .nxt{font-size:10px;opacity:.8;margin-left:2px;font-weight:700;}
   .swinggrp h4{color:#9A6A00;}
   .rsnchips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -1692,8 +1693,8 @@ function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
 function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
-function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw=rs.reduce((s,r)=>s+r.acuity,0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,adj:raw/cap}; }
-function maxAdj(){return Math.max(10,...nurses.map(n=>nurseLoad(n.id).adj));}
+function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw=rs.reduce((s,r)=>s+r.acuity,0); const nx=rs.reduce((s,r)=>s+((r.nextAcuity!=null)?r.nextAcuity:r.acuity),0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,next:nx,adj:raw/cap}; }
+function maxAdj(){return Math.max(10,...nurses.map(n=>{const L=nurseLoad(n.id);return L.next||L.hrs;}));}
 function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===nid).map(r=>hallOf(r.id)))]; return hs; }
 
 /* RN self-view chip — tappable to score, shows "tap" if unscored */
@@ -1768,7 +1769,7 @@ function renderAssign(){
     const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
   } else {
   document.getElementById('nurses').innerHTML=shown.map(n=>{
-    const L=nurseLoad(n.id); const pct=Math.min(100,(L.adj/top)*100);
+    const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id));
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
     const hn=nurseHallNums(n.id); const wings=nurseWings(n.id);
@@ -1787,7 +1788,7 @@ function renderAssign(){
       ${selfRN?breakPickerHTML(n.id,false):(myBreak?`<div class="buddyline">🍽 Your break ~${myBreak.window}${myBreak.cover.length?` · ${myBreak.cover.map(esc).join(', ')} covers`:''}</div>`:'')}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
-      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${L.hrs.toFixed(1)}</b> hrs · ${L.count} pt</span></div>
+      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${L.hrs.toFixed(1)}</b>${(Math.abs(L.next-L.hrs)>=0.25)?`<span class="loadnext" title="predicted total for next shift — this is what the assignment is balanced on">→${L.next.toFixed(1)}</span>`:''} hrs · ${L.count} pt</span></div>
       ${bparts.length?`<div class="burds">${bparts.join(' · ')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
@@ -4473,11 +4474,10 @@ function buildPrint(){
   document.getElementById('printArea').innerHTML=h;
 }
 function shareAssign(){
-  buildPrint(); prQRdraw();
-  setTimeout(()=>{
-    const content=document.getElementById('printArea').innerHTML;
-    const unit=esc(FLOOR.unit||'Unit');
-    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  buildPrint(); prQRdraw();   // build synchronously, no timer (iOS needs share inside the tap)
+  const content=document.getElementById('printArea').innerHTML;
+  const unit=esc(FLOOR.unit||'Unit');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EvenShift — ${unit} Assignment</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -4531,13 +4531,16 @@ body{font-family:-apple-system,Arial,sans-serif;font-size:12px;color:#10151D;bac
 </style></head><body>
 ${content}
 </body></html>`;
-    const blob=new Blob([html],{type:'text/html'});
-    const file=new File([blob],`EvenShift-${(FLOOR.unit||'Unit').replace(/\s+/g,'-')}-${shiftDate}-${shiftType}.html`,{type:'text/html'});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      navigator.share({files:[file],title:`EvenShift — ${FLOOR.unit||'Unit'} Assignment`,text:`${FLOOR.unit||'Unit'} ${shiftType} shift assignment — ${shiftDate}`})
-        .catch(e=>{ if(e.name!=='AbortError') openInTab(html); });
+  const blob=new Blob([html],{type:'text/html'});
+  const file=new File([blob],`EvenShift-${(FLOOR.unit||'Unit').replace(/\s+/g,'-')}-${shiftDate}-${shiftType}.html`,{type:'text/html'});
+  // Prefer text+url share (works on far more devices than file share). Fall back to a new tab.
+  try{
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:`EvenShift — ${FLOOR.unit||'Unit'} Assignment`,text:`${FLOOR.unit||'Unit'} ${shiftType} assignment — ${shiftDate}`}).catch(e=>{ if(e&&e.name!=='AbortError') openInTab(html); });
+    } else if(navigator.share){
+      navigator.share({title:`EvenShift — ${FLOOR.unit||'Unit'} Assignment`,text:`${FLOOR.unit||'Unit'} ${shiftType} assignment — ${shiftDate}\n${unitLink()}`}).catch(e=>{ if(e&&e.name!=='AbortError') openInTab(html); });
     } else { openInTab(html); }
-  }, 80);
+  }catch(e){ openInTab(html); }
 }
 function openInTab(html){
   const w=window.open('','_blank');
@@ -4545,9 +4548,12 @@ function openInTab(html){
   else { const m=document.getElementById('copyMsg'); if(m) m.textContent='Allow pop-ups for this site to open the sheet in a new tab.'; }
 }
 function prQRdraw(){ const box=document.getElementById('prQR'); if(!box||!window.QRCode) return; box.innerHTML=''; try{ new QRCode(box,{text:location.origin+location.pathname+'?u='+encodeURIComponent(unitId||'demo'),width:132,height:132,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} }
-function printAssign(){ const go=()=>{ buildPrint(); prQRdraw(); setTimeout(()=>window.print(),80); };
-  if(window.QRCode){ go(); return; }
-  const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; s.onload=go; s.onerror=go; document.head.appendChild(s); }
+function printAssign(){
+  buildPrint();                                   // build the sheet synchronously (don't gate print on async QR)
+  if(window.QRCode) prQRdraw();
+  else { const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; s.onload=()=>{try{prQRdraw();}catch(e){}}; document.head.appendChild(s); }
+  try{ window.print(); }catch(e){ openInTab(document.getElementById('printArea').innerHTML); }
+}
 function unitCode(){ const v=(document.getElementById('unitInput')?.value||unitId||'demo').trim().toLowerCase().replace(/\s+/g,'-'); return v||'demo'; }
 function unitLink(){ return location.origin+location.pathname+'?u='+encodeURIComponent(unitCode()); }
 function openUnitQR(){ if(!chargeMode)return; const i=document.getElementById('unitInput'); if(i)i.value=unitId; const su=document.getElementById('sbUrl'),sk=document.getElementById('sbKey'); if(su)su.value=CLOUD.url||''; if(sk)sk.value=CLOUD.key||''; const st=document.getElementById('unitState'); if(st) st.textContent = cloudOn() ? ('☁ Live board · unit "'+unitId+'". Anyone who scans gets this unit\u2019s live board.') : 'Offline mode — this device only. Add Supabase keys below to make the board live and shareable.'; updateUnitLink(); const pm=document.getElementById('unitPassMsg'); if(pm) pm.textContent = unitPass ? 'An access code is set. Enter a new one to change it, or leave blank + Save to remove it.' : 'No access code — anyone with the link can open this board.'; document.getElementById('unitScrim').classList.add('on'); }
