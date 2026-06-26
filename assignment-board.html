@@ -59,6 +59,9 @@
   .rcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px;box-shadow:var(--shadow);cursor:pointer;transition:.13s;position:relative;}
   .rcard:hover{border-color:var(--ink-soft);}
   .rcard.empty{background:#F2F5F9;border-style:dashed;box-shadow:none;}
+  .lockchip{border:none;background:transparent;cursor:pointer;font-size:12px;padding:0 1px 0 3px;line-height:1;opacity:.55;}
+  .lockchip.on{opacity:1;}
+  .chip.locked{box-shadow:inset 0 0 0 1.5px var(--teal);}
   .rcard .rno{font-family:var(--display);font-weight:700;font-size:15px;}
   .rcard .acu{font-family:var(--display);font-weight:700;font-size:22px;line-height:1;margin-top:6px;}
   .rcard .acu small{font-size:11px;font-weight:600;color:var(--ink-soft);}
@@ -1415,7 +1418,7 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (PICC/CVL)"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -1810,7 +1813,15 @@ function rnChip(r){
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(miniFlag).join(' ');
   const acuRose = r.prevAcuity!=null && r.acuity!=null && r.acuity > r.prevAcuity+0.25;
-  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${r.lock?'<span title="continuity / requested nurse">🔒</span>':''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}</span>`;
+  const lockBtn = chargeMode
+    ? `<button class="lockchip ${r.lock?'on':''}" onclick="event.stopPropagation(); toggleRoomLock(${r.id})" title="${r.lock?'Locked to this nurse — tap to unlock':'Lock this room to this nurse (won\u2019t move on re-generate)'}">${r.lock?'🔒':'🔓'}</button>`
+    : (r.lock?'<span title="continuity / requested nurse">🔒</span>':'');
+  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${lockBtn}</span>`;
+}
+function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r||!r.occupied) return;
+  if(r.lock){ r.lock=null; }
+  else { if(!r.nurse){ return; } r.lock=r.nurse; }   // can only lock a room that's assigned to a nurse
+  scheduleSave(); renderAssign();
 }
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
 const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos'];
@@ -2189,17 +2200,17 @@ function dropTo(e,nid){ if(!chargeMode)return;e.preventDefault();leaveDrop();if(
 // Burden weights are SHIFT-AWARE: the same flag carries different weight on days vs nights.
 // Days: discharge, HD, procedures/off-floor are heavy. Nights: admissions, central-line draws, PD are heavy.
 // Clinical demands (behavioral, trach, airborne, 1:1, total care, chest tube, restraints) stay heavy on both.
-const BURDEN_W_DAY_DEFAULT  ={beh:4,conf:4,trach:4,airb:4,tot:3,sit:3,chest:3,restr:3, dc:3,hd:2.5,proc:3, adm:2,cvl:1.5,pd:1.5,draw:1, gtt:2,hep:2,ins:2, wound:2,wvac:2, iso:1.5,ostomy:1.5,foley:1,namealert:1,feed:1};
-const BURDEN_W_NIGHT_DEFAULT={beh:4,conf:4,trach:4,airb:4,tot:3,sit:3,chest:3,restr:3, dc:0.5,hd:0.5,proc:0.5, adm:3.5,cvl:3,pd:3,draw:2.5, gtt:2,hep:2,ins:2, wound:1.5,wvac:1.5, iso:1.5,ostomy:1.5,foley:1,namealert:1,feed:1};
+const BURDEN_W_DAY_DEFAULT  ={beh:4,conf:4,trach:4,airb:4,tot:3,sit:3,chest:3,restr:3, dc:3,hd:2.5,proc:3, adm:2,cvl:1.5,picc:1.5,pd:1.5,draw:1, gtt:2,hep:2,ins:2, wound:2,wvac:2,pu:2, iso:1.5,ostomy:1.5,foley:1,namealert:1,feed:1};
+const BURDEN_W_NIGHT_DEFAULT={beh:4,conf:4,trach:4,airb:4,tot:3,sit:3,chest:3,restr:3, dc:0.5,hd:0.5,proc:0.5, adm:3.5,cvl:3,picc:3,pd:3,draw:2.5, gtt:2,hep:2,ins:2, wound:1.5,wvac:1.5,pu:1.5, iso:1.5,ostomy:1.5,foley:1,namealert:1,feed:1};
 let BURDEN_W_DAY={...BURDEN_W_DAY_DEFAULT}, BURDEN_W_NIGHT={...BURDEN_W_NIGHT_DEFAULT};   // unit can override in Clinical flags editor
 function curBurdenW(){ return (shiftType==='Night') ? BURDEN_W_NIGHT : BURDEN_W_DAY; }
 const BURDEN_W_DEFAULT=BURDEN_W_DAY_DEFAULT;   // back-compat for the weight picker default lookup
-const BURDEN_LAB={hi:'hi-acuity',trach:'trach',airb:'airborne iso',beh:'behavioral',conf:'fall risk',tot:'total care',cvl:'central line',gtt:'drip',hep:'heparin',ins:'insulin',wound:'wound',wvac:'wound vac',dc:'discharge',adm:'admit',iso:'isolation',pd:'PD',hd:'HD',proc:'procedure',ostomy:'ostomy',foley:'foley',chest:'chest tube',restr:'restraints',namealert:'name alert',sit:'1:1',feed:'tube feed',draw:'blood draw'};
-const BURDEN_ORDER=['trach','airb','beh','conf','tot','chest','restr','cvl','gtt','hep','ins','wound','wvac','dc','adm','proc','iso','pd','hd','ostomy','foley','sit','hi','namealert','feed','draw'];
+const BURDEN_LAB={hi:'hi-acuity',trach:'trach',airb:'airborne iso',beh:'behavioral',conf:'fall risk',tot:'total care',cvl:'central line',picc:'PICC',gtt:'drip',hep:'heparin',ins:'insulin',wound:'wound',wvac:'wound vac',pu:'pressure ulcer',dc:'discharge',adm:'admit',iso:'isolation',pd:'PD',hd:'HD',proc:'procedure',ostomy:'ostomy',foley:'foley',chest:'chest tube',restr:'restraints',namealert:'name alert',sit:'1:1',feed:'tube feed',draw:'blood draw'};
+const BURDEN_ORDER=['trach','airb','beh','conf','tot','chest','restr','cvl','picc','gtt','hep','ins','wound','wvac','pu','dc','adm','proc','iso','pd','hd','ostomy','foley','sit','hi','namealert','feed','draw'];
 function patientTags(r){
   const t=[];
   if(r.acuity>=4) t.push('hi');
-  ['dc','adm','proc','beh','conf','trach','airb','gtt','hep','ins','cvl','wound','wvac','tot','iso','pd','hd','ostomy','foley','chest','restr','sit','namealert'].forEach(f=>{ if(r.flags.includes(f)) t.push(f); });
+  ['dc','adm','proc','beh','conf','trach','airb','gtt','hep','ins','cvl','picc','wound','wvac','pu','tot','iso','pd','hd','ostomy','foley','chest','restr','sit','namealert'].forEach(f=>{ if(r.flags.includes(f)) t.push(f); });
   (r.tags||[]).forEach(x=>t.push(x));   // feed, blood draw
   return t;
 }
