@@ -712,6 +712,46 @@
   .edithint b{color:var(--teal-deep);}
   .edithint.armed{color:var(--teal-deep);background:var(--teal-wash);border:1px solid var(--teal);border-radius:9px;padding:7px 11px;margin:-4px 0 13px;}
   .loadnext{font-size:11px;opacity:.85;font-weight:800;margin-left:1px;color:var(--teal-deep);}
+  .hudroom{border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:7px;background:var(--surface);}
+  .hudroomh{font-size:13.5px;margin-bottom:6px;color:var(--ink);}
+  .hudbars{display:flex;flex-wrap:wrap;gap:5px;}
+  .hudbar{padding:5px 9px;border:1.4px solid var(--line-strong);background:var(--bg);border-radius:999px;font-size:11.5px;font-weight:600;font-family:inherit;color:var(--ink);cursor:pointer;}
+  .hudbar.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .hudnote{width:100%;min-height:54px;border:1.5px solid var(--line-strong);border-radius:10px;padding:9px 11px;font-size:13px;font-family:inherit;resize:vertical;}
+  .hudcap{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:4px 10px;}
+  .hudcap summary{font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;padding:6px 0;}
+  .hudcapbody{padding:4px 0 10px;}
+  .hudcaprow{margin-top:8px;}
+  .hudcaplab{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:5px;}
+  .hudcaprow .hudbar{padding:4px 8px;font-size:11px;}
+  .hudactions{display:flex;gap:8px;margin-top:14px;}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:4px 0 12px;}
+  .dcard{border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--surface);}
+  .dcard.ok{border-color:#BFE6CF;background:#F3FAF5;} .dcard.warn{border-color:#EAD9AE;background:#FFFBF0;} .dcard.bad{border-color:#F2C9C9;background:#FDF4F4;}
+  .dbig{font-size:24px;font-weight:800;color:var(--ink);line-height:1;}
+  .dq{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line-strong);background:var(--bg);color:var(--ink-soft);font-size:10px;font-weight:800;cursor:pointer;margin-left:5px;padding:0;line-height:1;}
+  .dlab{font-size:12px;font-weight:800;color:var(--ink);margin-top:3px;}
+  .dsub{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .trendbox{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:12px;background:var(--surface);}
+  .trendlab{font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+  .timp{color:#1C7A46;font-weight:800;} .trendhint{margin-left:auto;font-weight:400;font-size:10.5px;}
+  .tsvg{width:100%;height:34px;display:block;}
+  .dnote{font-size:12px;color:var(--ink-soft);padding:8px 11px;background:var(--bg);border-radius:9px;margin-bottom:12px;}
+  .attnhead{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin:6px 0 6px;}
+  .attn{font-size:12.5px;color:var(--ink);padding:8px 11px;border:1px solid var(--line);border-left:3px solid #C07000;border-radius:8px;margin-bottom:6px;background:var(--surface);}
+  .attn.ok{border-left-color:#1C7A46;color:var(--teal-deep);}
+  .logwrap{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  .patwrap{margin-top:12px;border:1px solid var(--line);border-radius:11px;padding:2px 12px;}
+  .patsum{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;padding:9px 0;}
+  .patbody{padding:2px 0 10px;}
+  .prow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
+  .prow:last-of-type{border-bottom:none;}
+  .prow.warn .pval{color:#9A6A00;font-weight:700;}
+  .prow.ok .pval{color:#1C7A46;font-weight:700;}
+  .plab{color:var(--ink-soft);font-weight:600;display:flex;align-items:center;}
+  .pval{color:var(--ink);font-weight:600;text-align:right;}
+  .pnote{font-size:10.5px;color:var(--ink-soft);margin-top:9px;font-style:italic;}
+  .logsum{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;padding:6px 0;}
   .nxt{font-size:10px;opacity:.8;margin-left:2px;font-weight:700;}
   .swinggrp h4{color:#9A6A00;}
   .rsnchips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -934,6 +974,7 @@
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager analysis</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');reportProblem()">🐞 Report a problem</button>
         </div>
       </details>
@@ -1028,6 +1069,7 @@
         <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
         <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
         <button class="btile" onclick="closeTools(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
+        <button class="btile" onclick="closeTools(); setMgrCode();"><span class="btemoji">📊</span><span class="btlabel">Manager code</span><span class="btsub">analysis access</span></button>
         <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload roster + Vocera</span></button>
         <button class="btile danger" onclick="closeTools(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
       </div>
@@ -1133,7 +1175,8 @@
     <div class="mbody">
       <div class="meetTabs">
         <button class="mtab sel" id="mtab-clin" onclick="switchMeetTab('clin')">🏥 9am Clinical</button>
-        <button class="mtab" id="mtab-staff" onclick="switchMeetTab('staff')">👥 2pm/2am Staffing</button>
+        <button class="mtab" id="mtab-huddle" onclick="switchMeetTab('huddle')">🛏 Bed Huddle</button>
+        <button class="mtab" id="mtab-staff" onclick="switchMeetTab('staff')">👥 Staffing</button>
         <button class="mtab" id="mtab-cust" onclick="switchMeetTab('cust')" style="margin-left:auto;">⚙ Customize</button>
       </div>
       <div id="meetBody" style="margin-top:12px;"></div>
@@ -2577,6 +2620,7 @@ function refreshViewOptions(){
 }
 let chargeMode=false, chargePin=null;   // chargeMode = editing unlocked; chargePin = soft gate (charge/ANM)
 let hucPin=null;                        // separate simple code so a HUC can edit Vocera without full charge access
+let mgrPin=pinStore('0000');            // manager-only gate for Manager analysis. Placeholder 0000 — change in More Tools.
 function pinStore(p){ try{ return btoa(unescape(encodeURIComponent(p+'::es'))); }catch(e){ return p; } }
 /* Open the Vocera editor for a HUC: charge is always allowed; otherwise ask for the HUC code (or charge PIN). */
 function openVoceraGated(){
@@ -3578,7 +3622,6 @@ function renderSupport(){
       const afterTiles=`<div class="cardsec">After it\u2019s final</div><div class="btilegrid">`+
         `<button class="btile" onclick="goShare()"><span class="btemoji">📤</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`+
         `<button class="btile" onclick="nextShift()"><span class="btemoji">🔄</span><span class="btlabel">End Shift &amp; Hand Off</span><span class="btsub">save &amp; pass to next crew</span></button>`+
-        `<button class="btile" onclick="openHistory()"><span class="btemoji">📊</span><span class="btlabel">Manager analysis</span><span class="btsub">reports &amp; equity</span></button>`+
         `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">📋</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`+
       `</div>`;
       pf.innerHTML = (boardPosted
@@ -3671,7 +3714,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -3699,9 +3742,12 @@ function applyState(st){
   if(st.vocDevices&&st.vocDevices.Day&&st.vocDevices.Night){ VOC_DEVICES=st.vocDevices;
     ['Day','Night'].forEach(t=>['rn','pct','sit'].forEach(g=>{ if(!Array.isArray(VOC_DEVICES[t][g])) VOC_DEVICES[t][g]=[]; VOC_DEVICES[t][g]=VOC_DEVICES[t][g].map(d=>({num:d.num||'',status:d.status||'Assigned'})); })); }
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
+  if(st.bedCap){ BED_CAP={iso:st.bedCap.iso||[],lift:st.bedCap.lift||[]}; }
+  if(st.dcBarriers) DC_BARRIERS=st.dcBarriers; HUDDLE_NOTE=st.huddleNote||'';
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
   if(st.hucPin) hucPin=st.hucPin;
+  if(st.mgrPin) mgrPin=st.mgrPin;
   if(st.prevShift) PREV_SHIFT=st.prevShift;
   if(st.rubric && Array.isArray(st.rubric.sections) && st.rubric.sections.length){ RUBRIC=st.rubric.sections; DIVISOR=st.rubric.divisor||2; ACUITY_LABEL=st.rubric.label||'nursing hours'; RUBRIC_NAME=st.rubric.name||'Custom'; rebuildRubric(); }
 }
@@ -3822,7 +3868,7 @@ function switchMeetTab(t){
   document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('sel'));
   document.getElementById('mtab-'+t).classList.add('sel');
   const acts=document.getElementById('meetActions');
-  if(acts) acts.style.display=t==='cust'?'none':'flex';
+  if(acts) acts.style.display=(t==='cust'||t==='huddle')?'none':'flex';
   renderMeetTab();
 }
 
@@ -3904,6 +3950,7 @@ function buildStaffingText(){
 function renderMeetTab(){
   const el=document.getElementById('meetBody'); if(!el) return;
   if(_meetTab==='cust'){ renderCustomTab(); return; }
+  if(_meetTab==='huddle'){ renderHuddleTab(); return; }
   const occ=occupied(); const cfg=meetConfig;
   if(_meetTab==='clin'){
     const cs=cfg.clinSections;
@@ -3970,6 +4017,35 @@ function renderMeetTab(){
 
 function toggleMeetFlag(code,on){ if(!meetConfig.clinFlagCodes) meetConfig.clinFlagCodes=getDisplayFlagCodes(); if(on){ if(!meetConfig.clinFlagCodes.includes(code)) meetConfig.clinFlagCodes.push(code); } else meetConfig.clinFlagCodes=meetConfig.clinFlagCodes.filter(c=>c!==code); scheduleSave(); }
 function getMeetFlagCodes(){ if(!meetConfig.clinFlagCodes) meetConfig.clinFlagCodes=getDisplayFlagCodes(); return meetConfig.clinFlagCodes; }
+function renderHuddleTab(){
+  const el=document.getElementById('meetBody'); if(!el) return;
+  const d=huddleData();
+  let h=`<div class="meetSection">`;
+  h+=secHead('At a glance');
+  h+=`<div class="meetRow">Census <b>${d.census}/${TOTAL_BEDS}</b> · Open beds <b>${d.open.length}</b>${d.open.length?`<br><span style="font-size:12px;color:var(--ink-soft)">${d.open.map(rn=>rn+bedTags(rn)).join(', ')}</span>`:''}</div>`;
+  if(d.adm.length) h+=`<div class="meetRow warn">Pending admits: <b>${d.adm.map(r=>r.id+(r.acuity>=4?' (high)':'')).join(', ')}</b></div>`;
+  if(d.iso.length) h+=`<div class="meetRow">Isolation: <b>${d.iso.join(', ')}</b></div>`;
+  if(d.sit.length) h+=`<div class="meetRow">1:1 / sitters: <b>${d.sit.length}</b> (${d.sit.join(', ')})</div>`;
+  h+=`<div class="meetRow">Staffing: <b>${nurses.length}</b> RN · <b>${pcts.length}</b> PCT · <b>${sitters.length}</b> sitter</div>`;
+  h+=secHead('Discharges & barriers');
+  if(!d.dc.length) h+=`<div class="meetRow">No pending discharges. Flag a room D/C on the Score tab to add one.</div>`;
+  d.dc.forEach(r=>{
+    h+=`<div class="hudroom"><div class="hudroomh"><b>Rm ${r.id}</b>${r.dcTime?` · ${esc(r.dcTime)}`:''}</div><div class="hudbars">`;
+    BARRIERS.forEach(([grp,items])=>{ items.forEach(([code,label])=>{ const on=(DC_BARRIERS[r.id]||[]).includes(code); h+=`<button class="hudbar ${on?'on':''}" onclick="toggleBarrier(${r.id},'${code}')">${label}</button>`; }); });
+    h+=`</div></div>`;
+  });
+  h+=secHead('Escalations / notes');
+  h+=`<textarea class="hudnote" placeholder="anything else for the supervisor (optional)" oninput="setHuddleNote(this.value)">${esc(HUDDLE_NOTE)}</textarea>`;
+  h+=`<details class="hudcap"><summary>⚙ Set iso / lift-capable beds (once)</summary><div class="hudcapbody">`
+    +`<div class="hint">Mark which rooms are isolation-capable or have a patient lift. Remembered from now on.</div>`
+    +`<div class="hudcaprow"><span class="hudcaplab">ISO-capable</span><div class="hudbars">${allRooms.slice().sort((a,b)=>a-b).map(rn=>`<button class="hudbar ${(BED_CAP.iso||[]).includes(rn)?'on':''}" onclick="toggleBedCap('iso',${rn})">${rn}</button>`).join('')}</div></div>`
+    +`<div class="hudcaprow"><span class="hudcaplab">Lift bed</span><div class="hudbars">${allRooms.slice().sort((a,b)=>a-b).map(rn=>`<button class="hudbar ${(BED_CAP.lift||[]).includes(rn)?'on':''}" onclick="toggleBedCap('lift',${rn})">${rn}</button>`).join('')}</div></div>`
+    +`</div></details>`;
+  h+=`<div class="hudactions"><button class="btn primary" onclick="emailHuddle()">📧 Email to house supervisor</button><button class="btn" onclick="copyMeetingPrep()">Copy</button></div>`;
+  h+=`<div id="meetCopyMsg" class="hint" style="margin-top:6px;"></div>`;
+  h+=`</div>`;
+  el.innerHTML=h;
+}
 
 function copyMeetingPrep(){
   const t=getMeetText(); const m=document.getElementById('meetCopyMsg');
@@ -3978,9 +4054,83 @@ function copyMeetingPrep(){
 }
 
 function shareMeetingPrep(){
-  const t=getMeetText(); const title=_meetTab==='clin'?'Clinical Snapshot':'Staffing Snapshot';
+  const t=getMeetText(); const title=_meetTab==='clin'?'Clinical Snapshot':(_meetTab==='huddle'?'Bed Huddle':'Staffing Snapshot');
   if(navigator.share){ navigator.share({title:`EvenShift — ${FLOOR.unit} ${title}`,text:t}).catch(()=>copyMeetingPrep()); }
   else copyMeetingPrep();
+}
+
+/* ───── Bed Huddle (house-supervisor report-out) ───── */
+let BED_CAP={ iso:[], lift:[] };          // room numbers that are iso-capable / lift-equipped (set once, remembered)
+let DC_BARRIERS={};                        // { roomId: ['ride','hh',...] }
+let HUDDLE_NOTE='';                         // free escalations line
+const BARRIERS=[
+  ['Transport', [['ride','Needs ride'],['transport','Awaiting transport'],['wcvan','WC van / stretcher']]],
+  ['Home setup',[['hh','HH not set'],['dme','DME pending'],['walker','Needs walker']]],
+  ['Clinical',  [['mdorder','Awaiting MD order'],['walk6','6-min walk test'],['labs','Pending labs/imaging'],['ptot','PT/OT clearance']]],
+  ['Placement', [['snf','SNF/rehab pending'],['auth','Insurance auth']]],
+  ['Other',     [['dclounge','DC lounge eligible']]]
+];
+function barrierLabel(code){ for(const[,items]of BARRIERS)for(const[c,l]of items)if(c===code)return l; return code; }
+function toggleBarrier(rid,code){ const a=DC_BARRIERS[rid]||(DC_BARRIERS[rid]=[]); const i=a.indexOf(code); if(i>=0)a.splice(i,1); else a.push(code); if(!a.length)delete DC_BARRIERS[rid]; scheduleSave(); renderMeetTab(); }
+function toggleBedCap(kind,rid){ const a=BED_CAP[kind]||(BED_CAP[kind]=[]); const i=a.indexOf(rid); if(i>=0)a.splice(i,1); else a.push(rid); scheduleSave(); renderMeetTab(); }
+function bedTags(rid){ const t=[]; if((BED_CAP.iso||[]).includes(rid))t.push('iso'); if((BED_CAP.lift||[]).includes(rid))t.push('lift'); return t.length?' ('+t.join(', ')+')':''; }
+function openBeds(){ return allRooms.filter(rn=>!(rooms[rn]&&rooms[rn].occupied)).sort((a,b)=>a-b); }
+
+function huddleData(){
+  const occ=occupied();
+  const oos=occ.filter(r=>r.flags.includes('oos')).map(r=>r.id);
+  const census=occ.length-oos.length;
+  const open=openBeds();
+  const dc=occ.filter(r=>r.flags.includes('dc')).sort((a,b)=>a.id-b.id);
+  const adm=occ.filter(r=>r.flags.includes('adm')).sort((a,b)=>a.id-b.id);
+  const iso=occ.filter(r=>r.flags.includes('iso')).map(r=>r.id).sort((a,b)=>a-b);
+  const sit=occ.filter(r=>r.flags.includes('sit')||r.flags.includes('1:1')).map(r=>r.id);
+  return {census,open,dc,adm,iso,sit,oos};
+}
+function huddleText(){
+  const d=huddleData(); const when=new Date();
+  const hhmm=String(when.getHours()).padStart(2,'0')+String(when.getMinutes()).padStart(2,'0');
+  const L=[];
+  L.push(`${FLOOR.unit} — ${shiftType} Bed Huddle · ${shiftDate} ${hhmm}`);
+  L.push(`Reported by: ${chargeName||'Charge RN'}`);
+  L.push('');
+  L.push(`Census: ${d.census}/${TOTAL_BEDS} · Open beds: ${d.open.length}${d.open.length?' ('+d.open.map(rn=>rn+bedTags(rn)).join(', ')+')':''}`);
+  // discharges with barriers
+  if(d.dc.length){
+    L.push(`Discharges (${d.dc.length}):`);
+    d.dc.forEach(r=>{ const b=(DC_BARRIERS[r.id]||[]).map(barrierLabel); L.push(`  Rm ${r.id}${r.dcTime?' ('+r.dcTime+')':''}${b.length?' — '+b.join(', '):''}`); });
+  } else L.push('Discharges: none pending');
+  if(d.adm.length){ L.push(`Pending admits (${d.adm.length}): ${d.adm.map(r=>r.id+(r.acuity>=4?' (high acuity)':'')).join(', ')}`); }
+  if(d.iso.length) L.push(`Isolation: ${d.iso.join(', ')}`);
+  if(d.sit.length) L.push(`1:1 / sitters: ${d.sit.length} (rooms ${d.sit.join(', ')})`);
+  // staffing counts
+  L.push(`Staffing: ${nurses.length} RN · ${pcts.length} PCT · ${sitters.length} sitter`);
+  if(HUDDLE_NOTE.trim()) L.push(`Escalations: ${HUDDLE_NOTE.trim()}`);
+  return L.join('\n');
+}
+function emailHuddle(){
+  const subject=`${FLOOR.unit} ${shiftType} Bed Huddle — ${shiftDate}`;
+  const url='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(huddleText());
+  try{ window.location.href=url; }catch(e){ copyMeetingPrep(); }
+}
+function setHuddleNote(v){ HUDDLE_NOTE=v; scheduleSave(); }
+
+/* Text builder for Copy/Share across all meeting tabs (was referenced but undefined). */
+function getMeetText(){
+  if(_meetTab==='huddle') return huddleText();
+  const occ=occupied(); const L=[`${FLOOR.unit} — ${_meetTab==='clin'?'Clinical':'Staffing'} Snapshot · ${shiftType} ${shiftDate}`,''];
+  if(_meetTab==='clin'){
+    const dc=occ.filter(r=>r.flags.includes('dc')), adm=occ.filter(r=>r.flags.includes('adm'));
+    L.push(`Discharges: ${dc.length?dc.map(r=>r.id).join(', '):'none'}`);
+    L.push(`Admits: ${adm.length?adm.map(r=>r.id).join(', '):'none'}`);
+    const iso=occ.filter(r=>r.flags.includes('iso')).map(r=>r.id);
+    if(iso.length) L.push(`Isolation: ${iso.join(', ')}`);
+  } else {
+    const oos=occ.filter(r=>r.flags.includes('oos')).length;
+    L.push(`Census: ${occ.length-oos}/${TOTAL_BEDS}`);
+    L.push(`Staffing: ${nurses.length} RN · ${pcts.length} PCT · ${sitters.length} sitter`);
+  }
+  return L.join('\n');
 }
 /* ─────────────────── end meeting prep ─────────────────── */
 
@@ -4003,10 +4153,26 @@ function buildSnapshot(){
   const dnars=occ.filter(r=>r.flags.includes('dnar')).map(r=>r.id);
   const isos=occ.filter(r=>r.flags.includes('iso')).map(r=>r.id);
   const bk=nurseBreaks();
+  // Continuity: how many returning-staff kept-rooms were honored this shift
+  const retNurseCount=Object.keys(RET.nurses||{}).length;
+  const keptRooms=Object.values(RET.nurses||{}).reduce((s,arr)=>s+(arr?arr.length:0),0);
+  // Break coverage compliance: of approved breaks, how many had no coverage conflict
+  let brkApproved=0, brkSafe=0;
+  [...nurses,...pcts,...sitters].forEach(p=>{ const r=breakRec(p.id); if(r&&r.breakSlot&&r.breakApproved){ brkApproved++; if(breakConflict(p.id,r.breakSlot).ok) brkSafe++; } });
+  const sitCount=occ.filter(r=>r.flags.includes('sit')||r.flags.includes('1:1')).length;
+  const dcCount=occ.filter(r=>r.flags.includes('dc')).length;
+  const admCount=occ.filter(r=>r.flags.includes('adm')).length;
+  const isoCount=isos.length;
+  const totalAcuity=occ.reduce((s,r)=>s+(r.acuity||0),0);
   return {
     unit:FLOOR.unit, unitId, shiftDate, shiftType, chargeName,
     census:occ.length, totalBeds:TOTAL_BEDS,
     spread:Math.round(spread*100)/100,
+    nurseCount:nurses.length, pctCount:pcts.length, sitterCount:sitters.length, sitDemand:sitCount,
+    dcCount, admCount, isoCount, totalAcuity:Math.round(totalAcuity*10)/10,
+    floatCount:nurses.filter(n=>n.level==='Float').length, orientCount:nurses.filter(n=>n.level==='Orienting').length,
+    retNurses:retNurseCount, keptRooms,
+    brkApproved, brkSafe,
     nurses:nurseSnap, pcts:zones,
     breaks:Object.fromEntries(Object.entries(bk).map(([k,v])=>[k,v.window])),
     dnars, isos, savedAt:new Date().toISOString()
@@ -4034,7 +4200,19 @@ function downloadSnapshot(){ pushHistory(); }
 
 let _histSnaps=[], _histRange=7;
 
-function openHistory(){ if(!chargeMode)return; document.getElementById('histScrim').classList.add('on'); loadHistory(); }
+function openHistory(){
+  // Manager-only: requires the manager PIN (charge PIN does NOT open this).
+  const v=(prompt('Manager analysis is for unit leadership.\nEnter the manager code:')||'').trim();
+  if(v===''){ return; }
+  if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
+  document.getElementById('histScrim').classList.add('on'); loadHistory();
+}
+function setMgrCode(){ if(!chargeMode)return;
+  const cur=(prompt('Set a new MANAGER code (for Manager analysis).\nThis is separate from the charge PIN — only leadership should know it.')||'').trim();
+  if(cur===''){ return; }
+  if(cur.length<4){ alert('Use at least 4 digits/characters.'); return; }
+  mgrPin=pinStore(cur); scheduleSave(); alert('Manager code saved. Only people with this code can open Manager analysis.');
+}
 function closeHistory(){ document.getElementById('histScrim').classList.remove('on'); }
 function histRange(btn,days){ document.querySelectorAll('.hfbtn').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); _histRange=days; loadHistory(); }
 
@@ -4055,10 +4233,86 @@ async function loadHistory(){
     const sl=document.getElementById('histSummaryLine');
     if(sl&&n) sl.innerHTML=`<b>${n} shift${n>1?'s':''}</b> in this range · tap <b>Share report</b> to send it, or <b>View report</b> to see it first.`;
     if(list){
-      if(!n) list.innerHTML='<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>';
-      else list.innerHTML=_histSnaps.map(({snap},i)=>renderSnapRow(snap,'',i)).join('');
+      if(!n){ list.innerHTML='<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>'; return; }
+      const ag=aggregateSnaps(_histSnaps);
+      list.innerHTML = dashboardHTML(ag,n) + attentionHTML(ag) + patternsHTML(ag) +
+        `<details class="logwrap"><summary class="logsum">📋 Shift-by-shift log (${n})</summary>`+
+        _histSnaps.map(({snap},i)=>renderSnapRow(snap,'',i)).join('')+`</details>`;
     }
   }catch(e){ if(list) list.innerHTML=`<div class="hint" style="color:var(--bad)">Couldn\u2019t load reports: ${esc(e.message||'error')}. Make sure the shift_history table exists in Supabase.</div>`; }
+}
+
+function dashboardHTML(ag,n){
+  // 4 minimal headline cards, plain language, each with a ? explainer.
+  const card=(big,lab,sub,tone,key)=>`<div class="dcard ${tone||''}"><div class="dbig">${big}</div><div class="dlab">${lab}${key?`<button class="dq" onclick="mgrHelp('${key}')">?</button>`:''}</div>${sub?`<div class="dsub">${sub}</div>`:''}</div>`;
+  const ratioTone=ag.inRatioPct>=90?'ok':(ag.inRatioPct>=75?'warn':'bad');
+  const balTone=ag.balanced/n>=0.8?'ok':(ag.balanced/n>=0.5?'warn':'bad');
+  const heavy=ag.nurseStats.filter(x=>x.shifts>2 && x.shifts>0 && (x.above/x.shifts)>=0.4).length;
+  let cards=card(`${ag.inRatioPct}%`,'Safe patient numbers',`${ag.shortCount} of ${n} shifts were short`,ratioTone,'ratio')
+    + card(`${Math.round(ag.balanced/n*100)}%`,'Fair workload',`nurses ±${ag.avgSpread}h apart on average`,balTone,'balance')
+    + card(heavy?heavy:'✓','Same people overloaded?',heavy?`${heavy} nurse${heavy>1?'s'  :''} often heaviest`:'no one stuck with the load',heavy?'warn':'ok','equity');
+  if(ag.brkPct!=null) cards+=card(`${ag.brkPct}%`,'Safe breaks',`${ag.brkA} breaks approved`,ag.brkPct>=90?'ok':'warn','breaks');
+  else cards+=card(ag.avgCensus,'Average patients','of '+ag.totalBeds+' beds','','census');
+  let spark='';
+  if(ag.trend.length>=2){
+    const mx=Math.max(...ag.trend,0.1); const pts=ag.trend.map((v,i)=>`${(i/(ag.trend.length-1))*100},${30-(v/mx)*26}`).join(' ');
+    spark=`<div class="trendbox"><div class="trendlab">Is the workload getting more even? ${ag.trendImproving?'<span class="timp">↓ yes, improving</span>':''}<button class="dq" onclick="mgrHelp('trend')">?</button><span class="trendhint">lower line = more even</span></div>`
+      +`<svg viewBox="0 0 100 32" preserveAspectRatio="none" class="tsvg"><polyline points="${pts}" fill="none" stroke="${ag.trendImproving?'#1C7A46':'#C07000'}" stroke-width="2"/></svg></div>`;
+  }
+  const cont = ag.retShifts ? `<div class="dnote">🔁 <b>Keeping nurses with their patients:</b> ${ag.retShifts} shift${ag.retShifts>1?'s':''} let returning staff keep their patients (${ag.totalKept} rooms). <button class="dq" onclick="mgrHelp('continuity')">?</button></div>` : '';
+  return `<div class="dgrid">${cards}</div>${spark}${cont}`;
+}
+function mgrHelp(key){
+  const M={
+    ratio:['Safe patient numbers','Did each nurse have a safe number of patients to care for? We compare patients to nurses against the unit\u2019s target (like 1 nurse to 4 patients). Higher % is better — it means the floor was staffed safely.'],
+    balance:['Fair workload','Did nurses get an even share of the work, or did some get slammed while others were light? Higher % means the assignments were fair. The \u201c\u00b1h\u201d is how many hours of work apart the busiest and lightest nurse were.'],
+    equity:['Same people overloaded?','Over many shifts, is it always the SAME nurses getting the heaviest patients? This number is how many nurses were among the heaviest on 40%+ of their shifts. You want this to be zero — it means the load gets shared, not dumped on a few people.'],
+    breaks:['Safe breaks','When a nurse went on break, was the floor still safely covered (a buddy watching their patients, the unit not left short)? Higher % means breaks happened without leaving patients uncovered.'],
+    trend:['Getting more even?','Each point is one week\u2019s average gap between the busiest and lightest nurse. A line going DOWN means assignments are getting fairer over time — a good sign the tool is helping.'],
+    continuity:['Keeping nurses with their patients','When a nurse stays for another shift, keeping their same patients is safer (they already know them). This counts how often that happened and how many patients were kept.'],
+    census:['Average patients','On average, how many of the unit\u2019s beds were filled across these shifts.'],
+    sitter:['Sitter shortfall','How many shifts needed more 1:1 sitters than the unit actually had. A high number means patients who needed constant watching may not have had enough coverage \u2014 a safety and staffing flag.'],
+    floats:['Float / orientee use','How often the unit leaned on float nurses (borrowed from other units) or nurses still in orientation. Heavy reliance can signal the unit\u2019s own staffing is thin.'],
+    thruput:['Patient turnover','The average number of discharges and admits per shift. High turnover means lots of churn \u2014 more work that doesn\u2019t show up in a simple headcount.'],
+    isoburden:['Isolation burden','How many patients on average needed isolation precautions, and the busiest shift. Isolation adds time and limits which beds can take new patients.'],
+    daynight:['Day vs night / weekday vs weekend','Whether the workload came out as fair on nights as on days, and on weekends as on weekdays. Big gaps can point to where staffing or support is thinner.'],
+    acuity:['How heavy the unit runs','The average patient acuity \u2014 how much care each patient needed, not just how many there were. Rising acuity means the same headcount is actually more work.']
+  };
+  const e=M[key]; if(!e)return;
+  alert(e[0]+'\n\n'+e[1]);
+}
+function patternsHTML(ag){
+  const row=(lab,val,key,tone)=>`<div class="prow ${tone||''}"><span class="plab">${lab}<button class="dq" onclick="mgrHelp('${key}')">?</button></span><span class="pval">${val}</span></div>`;
+  const n=ag.shifts.length;
+  let h=`<details class="patwrap"><summary class="patsum">📈 Deeper patterns</summary><div class="patbody">`;
+  // 1 sitter shortfall
+  h+=row('Sitter shortfall', ag.sitterShortShifts?`${ag.sitterShortShifts} of ${n} shifts short`:'none', 'sitter', ag.sitterShortShifts?'warn':'ok');
+  // 2 float/orientee
+  h+=row('Float / orientee use', `floats ${Math.round(ag.floatShiftsN/n*100)}% · orientees ${Math.round(ag.orientShiftsN/n*100)}% of shifts`, 'floats');
+  // 3 throughput
+  if(ag.haveThru) h+=row('Patient turnover', `~${ag.avgDC} D/C · ${ag.avgAdm} admits per shift`, 'thruput');
+  // 4 iso burden
+  if(ag.haveIso) h+=row('Isolation burden', `avg ${ag.avgIso}/shift · peak ${ag.peakIso}`, 'isoburden');
+  // 5 day vs night, weekday vs weekend
+  const dn=[]; if(ag.daySpread!=null)dn.push(`Day ±${ag.daySpread}h`); if(ag.nightSpread!=null)dn.push(`Night ±${ag.nightSpread}h`);
+  h+=row('Day vs night fairness', dn.join(' · ')||'—', 'daynight');
+  const we=[]; if(ag.wkdaySpread!=null)we.push(`Weekday ±${ag.wkdaySpread}h`); if(ag.wkendSpread!=null)we.push(`Weekend ±${ag.wkendSpread}h`);
+  if(we.length) h+=row('Weekday vs weekend', we.join(' · '), 'daynight');
+  // 6 acuity intensity
+  if(ag.haveAcu&&ag.avgAcuity!=null) h+=row('How heavy the unit runs', `avg acuity ${ag.avgAcuity}h/patient${ag.acuTrendUp?' · ↑ rising':''}`, 'acuity', ag.acuTrendUp?'warn':'');
+  h+=`<div class="pnote">These fill in as more shifts are recorded. Some need data from the newer version, so older shifts may be blank.</div>`;
+  h+=`</div></details>`;
+  return h;
+}
+
+function attentionHTML(ag){
+  const items=[];
+  ag.shifts.forEach(s=>{ const m=s.nurseCount||(s.nurses||[]).length; const c=s.census||0; if(m>0&&c>0&&c/m>ag.target) items.push(`⚠ <b>${esc(s.shiftDate||'')} ${esc(s.shiftType||'')}</b> ran short — 1:${Math.ceil(c/m)} (target 1:${ag.target})`); });
+  ag.nurseStats.filter(x=>x.shifts>2&&(x.above/x.shifts)>=0.4).forEach(x=>items.push(`⚠ <b>${esc(x.name)}</b> was heavy on ${x.above} of ${x.shifts} shifts`));
+  ag.nurseStats.filter(x=>x.shifts>3&&(x.below/x.shifts)>=0.5).forEach(x=>items.push(`• <b>${esc(x.name)}</b> ran lighter than peers (${x.below}/${x.shifts})`));
+  if(ag.brkPct!=null && ag.brkPct<90) items.push(`⚠ Break coverage was ${ag.brkPct}% — some approved breaks had a coverage gap`);
+  if(!items.length) return `<div class="attn ok">✓ Nothing to worry about — nurses had safe patient numbers, the work was shared fairly, and no one was stuck with the load.</div>`;
+  return `<div class="attnhead">Things to look into</div>`+items.slice(0,8).map(t=>`<div class="attn">${t}</div>`).join('');
 }
 
 function renderSnapRow(snap,fname,i){
@@ -4122,7 +4376,57 @@ function aggregateSnaps(snaps){
     });
   });
   const nurseStats=Object.entries(nurseMap).map(([name,d])=>({name,shifts:d.shifts,avgAdj:Math.round(d.totalAdj/d.shifts*100)/100,above:d.above,below:d.below,level:d.level||'RN'})).sort((a,b)=>b.avgAdj-a.avgAdj);
-  return {unitName,totalBeds,target,shifts,avgCensus,avgDay,avgNight,shortShifts,avgSpread,balanced,floatShifts,chargeStats,nurseStats,spreads};
+  // Ratio: use captured nurseCount when present, else nurses array length
+  const ratioShifts=shifts.map(s=>{ const m=s.nurseCount||(s.nurses||[]).length; const c=s.census||0; return {short:(m>0&&c>0&&c/m>target), m, c}; });
+  const shortCount=ratioShifts.filter(x=>x.short).length;
+  const inRatioPct=shifts.length?Math.round((shifts.length-shortCount)/shifts.length*100):0;
+  // Balance trend: weekly average spread (oldest→newest)
+  const byWeek={};
+  shifts.forEach(s=>{ const d=new Date(s.shiftDate||s.savedAt||Date.now()); const wk=Math.floor(d.getTime()/(7*86400000)); (byWeek[wk]=byWeek[wk]||[]).push(s.spread||0); });
+  const weeks=Object.keys(byWeek).map(Number).sort((a,b)=>a-b);
+  const trend=weeks.map(w=>Math.round(byWeek[w].reduce((a,b)=>a+b,0)/byWeek[w].length*100)/100);
+  const trendImproving = trend.length>=2 && trend[trend.length-1] < trend[0];
+  // Continuity: shifts that had returning staff, and kept-rooms honored
+  const retShifts=shifts.filter(s=>(s.retNurses||0)>0).length;
+  const totalKept=shifts.reduce((a,s)=>a+(s.keptRooms||0),0);
+  // Break coverage compliance
+  const brkA=shifts.reduce((a,s)=>a+(s.brkApproved||0),0);
+  const brkS=shifts.reduce((a,s)=>a+(s.brkSafe||0),0);
+  const brkPct=brkA?Math.round(brkS/brkA*100):null;
+  // Sitter demand
+  const sitDemands=shifts.map(s=>s.sitDemand||0);
+  const avgSitDemand=sitDemands.length?Math.round(sitDemands.reduce((a,b)=>a+b,0)/sitDemands.length*10)/10:0;
+  // (1) Sitter shortfall — shifts where 1:1 demand > sitters available
+  const sitterShortShifts=shifts.filter(s=>(s.sitDemand||0)>(s.sitterCount||0)).length;
+  // (2) Float / orientee reliance
+  const floatShiftsN=shifts.filter(s=>(s.floatCount||0)>0).length;
+  const orientShiftsN=shifts.filter(s=>(s.orientCount||0)>0).length;
+  // (3) Throughput — avg discharges & admits per shift
+  const haveThru=shifts.some(s=>s.dcCount!=null||s.admCount!=null);
+  const avgDC=haveThru?Math.round(shifts.reduce((a,s)=>a+(s.dcCount||0),0)/shifts.length*10)/10:null;
+  const avgAdm=haveThru?Math.round(shifts.reduce((a,s)=>a+(s.admCount||0),0)/shifts.length*10)/10:null;
+  // (4) Isolation burden
+  const haveIso=shifts.some(s=>s.isoCount!=null||(s.isos&&s.isos.length));
+  const isoCounts=shifts.map(s=>s.isoCount!=null?s.isoCount:((s.isos||[]).length));
+  const avgIso=haveIso?Math.round(isoCounts.reduce((a,b)=>a+b,0)/shifts.length*10)/10:null;
+  const peakIso=haveIso?Math.max(0,...isoCounts):null;
+  // (5) Day vs night fairness + weekday vs weekend
+  const daySpreads=shifts.filter(s=>s.shiftType==='Day').map(s=>s.spread||0);
+  const nightSpreads=shifts.filter(s=>s.shiftType==='Night').map(s=>s.spread||0);
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*100)/100:null;
+  const daySpread=avg(daySpreads), nightSpread=avg(nightSpreads);
+  const isWeekend=d=>{ const day=new Date(d).getDay(); return day===0||day===6; };
+  const wkdaySpreads=shifts.filter(s=>s.shiftDate&&!isWeekend(s.shiftDate)).map(s=>s.spread||0);
+  const wkendSpreads=shifts.filter(s=>s.shiftDate&&isWeekend(s.shiftDate)).map(s=>s.spread||0);
+  const wkdaySpread=avg(wkdaySpreads), wkendSpread=avg(wkendSpreads);
+  // (6) Acuity intensity — avg patient acuity per shift, with simple trend
+  const haveAcu=shifts.some(s=>s.totalAcuity!=null);
+  const acuPer=shifts.map(s=>{ const c=s.census||0; return (s.totalAcuity!=null&&c)?s.totalAcuity/c:null; }).filter(x=>x!=null);
+  const avgAcuity=acuPer.length?Math.round(acuPer.reduce((a,b)=>a+b,0)/acuPer.length*100)/100:null;
+  const acuTrendUp = acuPer.length>=4 && (acuPer.slice(-Math.ceil(acuPer.length/2)).reduce((a,b)=>a+b,0)/Math.ceil(acuPer.length/2)) > (acuPer.slice(0,Math.floor(acuPer.length/2)).reduce((a,b)=>a+b,0)/Math.floor(acuPer.length/2));
+  return {unitName,totalBeds,target,shifts,avgCensus,avgDay,avgNight,shortShifts,avgSpread,balanced,floatShifts,chargeStats,nurseStats,spreads,
+    shortCount,inRatioPct,trend,trendImproving,retShifts,totalKept,brkPct,brkA,avgSitDemand,
+    sitterShortShifts,floatShiftsN,orientShiftsN,avgDC,avgAdm,avgIso,peakIso,daySpread,nightSpread,wkdaySpread,wkendSpread,avgAcuity,acuTrendUp,haveThru,haveIso,haveAcu};
 }
 
 function rpt(txt,fw,fs,clr,al){ return `<span style="font-weight:${fw||400};font-size:${fs||14}px;color:${clr||'#10151D'};text-align:${al||'left'}">${txt}</span>`; }
@@ -4317,6 +4621,7 @@ function nextShift(){ if(!chargeMode)return;
     r.nurse=null; r.lock=null;
     r.capCarried = rcCodes.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)); });
   rosterN.forEach(n=>{ n.scoredDone=false; n.breakSlot=''; n.breakApproved=false; });  // reset scoring-done + breaks for the new shift
+  DC_BARRIERS={}; HUDDLE_NOTE='';   // huddle is per-shift; bed-capability (BED_CAP) is permanent
   rosterP.forEach(p=>{ p.breakSlot=''; p.breakApproved=false; });
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
