@@ -725,6 +725,29 @@
   .hudcaplab{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:5px;}
   .hudcaprow .hudbar{padding:4px 8px;font-size:11px;}
   .hudactions{display:flex;gap:8px;margin-top:14px;}
+  .reqrow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13.5px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line);}
+  .reqstep{display:inline-flex;align-items:center;gap:10px;}
+  .reqstep button{width:30px;height:30px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:8px;font-size:17px;font-weight:800;color:var(--teal-deep);cursor:pointer;line-height:1;}
+  .reqstep b{min-width:20px;text-align:center;font-size:16px;}
+  .reqsug{font-size:10.5px;color:var(--ink-soft);margin-left:8px;font-weight:400;}
+  .housetabs{display:flex;gap:6px;margin-bottom:10px;}
+  .housetabs button{flex:1;padding:9px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:10px;font-weight:800;font-size:13px;font-family:var(--display);color:var(--ink-soft);cursor:pointer;}
+  .housetabs button.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .hunit{border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:11px;padding:11px 13px;margin-bottom:8px;background:var(--surface);}
+  .hunit.ok{border-left-color:#1C7A46;} .hunit.tight{border-left-color:#C07000;} .hunit.short{border-left-color:#C0271C;}
+  .hutop{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .hutop b{font-size:15px;color:var(--ink);}
+  .hudot{font-size:13px;}
+  .huratio{margin-left:auto;font-size:13px;font-weight:800;color:var(--ink);}
+  .hugrid{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;}
+  .hugrid b{color:var(--ink);}
+  .hustaff{font-size:12.5px;color:var(--ink-soft);}
+  .hushort{color:#C0271C;font-weight:800;}
+  .huwhy{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .bedneed{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+  .bedneed span{font-size:12.5px;font-weight:700;color:var(--ink-soft);}
+  .bedneed button{padding:6px 12px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;color:var(--ink);cursor:pointer;}
+  .bedneed button.on{background:var(--teal);border-color:var(--teal);color:#fff;}
   .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:4px 0 12px;}
   .dcard{border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--surface);}
   .dcard.ok{border-color:#BFE6CF;background:#F3FAF5;} .dcard.warn{border-color:#EAD9AE;background:#FFFBF0;} .dcard.bad{border-color:#F2C9C9;background:#FDF4F4;}
@@ -975,6 +998,7 @@
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager analysis</button>
+          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openHouseView()">🏥 House View</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');reportProblem()">🐞 Report a problem</button>
         </div>
       </details>
@@ -1176,6 +1200,7 @@
       <div class="meetTabs">
         <button class="mtab sel" id="mtab-clin" onclick="switchMeetTab('clin')">🏥 9am Clinical</button>
         <button class="mtab" id="mtab-huddle" onclick="switchMeetTab('huddle')">🛏 Bed Huddle</button>
+        <button class="mtab" id="mtab-staffreq" onclick="switchMeetTab('staffreq')">📠 Staffing Office</button>
         <button class="mtab" id="mtab-staff" onclick="switchMeetTab('staff')">👥 Staffing</button>
         <button class="mtab" id="mtab-cust" onclick="switchMeetTab('cust')" style="margin-left:auto;">⚙ Customize</button>
       </div>
@@ -1185,6 +1210,16 @@
         <button class="btn" onclick="copyMeetingPrep()">Copy as text</button>
       </div>
       <div id="meetCopyMsg" class="hint" style="min-height:14px;margin-top:6px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="houseScrim" onclick="if(event.target===this)closeHouse()">
+  <div class="modal wide">
+    <div class="mhead"><span class="rt">🏥 House View</span><button class="btn" onclick="closeHouse()">Close</button></div>
+    <div class="mbody">
+      <p class="covnote">Every unit on EvenShift in one place — census, open beds, and who\u2019s truly short. For the house / staffing supervisor.</p>
+      <div id="houseBody"></div>
     </div>
   </div>
 </div>
@@ -3714,7 +3749,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -3744,6 +3779,7 @@ function applyState(st){
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
   if(st.bedCap){ BED_CAP={iso:st.bedCap.iso||[],lift:st.bedCap.lift||[]}; }
   if(st.dcBarriers) DC_BARRIERS=st.dcBarriers; HUDDLE_NOTE=st.huddleNote||'';
+  STAFFREQ_OR=st.staffReqOR||''; STAFFREQ_NOTE=st.staffReqNote||'';
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
   if(st.hucPin) hucPin=st.hucPin;
@@ -3868,7 +3904,7 @@ function switchMeetTab(t){
   document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('sel'));
   document.getElementById('mtab-'+t).classList.add('sel');
   const acts=document.getElementById('meetActions');
-  if(acts) acts.style.display=(t==='cust'||t==='huddle')?'none':'flex';
+  if(acts) acts.style.display=(t==='cust'||t==='huddle'||t==='staffreq')?'none':'flex';
   renderMeetTab();
 }
 
@@ -3951,6 +3987,7 @@ function renderMeetTab(){
   const el=document.getElementById('meetBody'); if(!el) return;
   if(_meetTab==='cust'){ renderCustomTab(); return; }
   if(_meetTab==='huddle'){ renderHuddleTab(); return; }
+  if(_meetTab==='staffreq'){ renderStaffReqTab(); return; }
   const occ=occupied(); const cfg=meetConfig;
   if(_meetTab==='clin'){
     const cs=cfg.clinSections;
@@ -4022,7 +4059,9 @@ function renderHuddleTab(){
   const d=huddleData();
   let h=`<div class="meetSection">`;
   h+=secHead('At a glance');
-  h+=`<div class="meetRow">Census <b>${d.census}/${TOTAL_BEDS}</b> · Open beds <b>${d.open.length}</b>${d.open.length?`<br><span style="font-size:12px;color:var(--ink-soft)">${d.open.map(rn=>rn+bedTags(rn)).join(', ')}</span>`:''}</div>`;
+  h+=`<div class="meetRow">Census <b>${d.census}/${TOTAL_BEDS}</b> · Open now <b>${d.open.length}</b></div>`;
+  if(d.open.length){ const parts=[]; if(d.openIso.length)parts.push(`iso ${d.openIso.join(', ')}`); if(d.openLift.length)parts.push(`lift ${d.openLift.join(', ')}`); if(d.openStd.length)parts.push(`standard ${d.openStd.join(', ')}`); h+=`<div class="meetRow" style="font-size:12px;color:var(--ink-soft)">Beds: ${parts.join(' · ')}</div>`; }
+  h+=`<div class="meetRow ${d.canTake>0?'ok':''}">Net <b>${d.netAfter>=0?'+':''}${d.netAfter}</b> after D/Cs &amp; admits · can take <b>~${d.canTake}</b> admit${d.canTake!==1?'s':''} once they clear</div>`;
   if(d.adm.length) h+=`<div class="meetRow warn">Pending admits: <b>${d.adm.map(r=>r.id+(r.acuity>=4?' (high)':'')).join(', ')}</b></div>`;
   if(d.iso.length) h+=`<div class="meetRow">Isolation: <b>${d.iso.join(', ')}</b></div>`;
   if(d.sit.length) h+=`<div class="meetRow">1:1 / sitters: <b>${d.sit.length}</b> (${d.sit.join(', ')})</div>`;
@@ -4076,6 +4115,115 @@ function toggleBedCap(kind,rid){ const a=BED_CAP[kind]||(BED_CAP[kind]=[]); cons
 function bedTags(rid){ const t=[]; if((BED_CAP.iso||[]).includes(rid))t.push('iso'); if((BED_CAP.lift||[]).includes(rid))t.push('lift'); return t.length?' ('+t.join(', ')+')':''; }
 function openBeds(){ return allRooms.filter(rn=>!(rooms[rn]&&rooms[rn].occupied)).sort((a,b)=>a-b); }
 
+/* ───── Staffing Office request (the 3am/3pm fax) ───── */
+let _rnReqAdj=null, _pctReqAdj=null, _hucReqAdj=null;   // null = use suggestion; number = charge override
+let STAFFREQ_OR='', STAFFREQ_NOTE='';                    // OR/out-of-OR times + notes (charge types)
+function staffReqData(){
+  const occ=occupied(); const target=FLOOR.ratio||4;
+  const dc=occ.filter(r=>r.flags.includes('dc')).map(r=>r.id).sort((a,b)=>a-b);
+  const adm=occ.filter(r=>r.flags.includes('adm')).map(r=>r.id).sort((a,b)=>a-b);
+  const projCensus=occ.length - dc.length + adm.length;
+  const ones=occ.filter(r=>r.flags.includes('sit')||r.flags.includes('1:1')).map(r=>({id:r.id,beh:r.flags.includes('beh')})).sort((a,b)=>a.id-b.id);
+  const beh1to1=ones.filter(o=>o.beh).length;
+  const ins=occ.filter(r=>r.flags.includes('ins')).map(r=>r.id).sort((a,b)=>a-b);
+  const highAcuity=occ.filter(r=>(r.acuity||0)>=4).length;
+  const rnAvail=nurses.length;
+  const floats=nurses.filter(n=>n.level==='Float').length;
+  const orients=nurses.filter(n=>n.level==='Orienting').length;
+  // Skill-mix: orientees carry ~half a load, floats ~80% (can't take every assignment).
+  const effectiveRN=Math.max(0.1, rnAvail - 0.5*orients - 0.2*floats);
+  const flatRatio=rnAvail? projCensus/rnAvail : 0;
+  const effRatio=effectiveRN? projCensus/effectiveRN : 0;
+  const rnNeeded=Math.ceil(projCensus/target);
+  // Suggestion uses skill-mix-adjusted available, so it accounts for orientees/floats.
+  const rnReqSuggest=Math.max(0, rnNeeded - Math.floor(effectiveRN));
+  return {target,dc,adm,projCensus,ones,beh1to1,ins,highAcuity,rnAvail,floats,orients,effectiveRN,flatRatio,effRatio,rnNeeded,rnReqSuggest,
+    pctSched:pcts.length, hucSched:rosterH.filter(h=>h.on!==false && (h.shift||'Day')===shiftType).length,
+    rnReq:(_rnReqAdj!=null?_rnReqAdj:rnReqSuggest), pctReq:(_pctReqAdj!=null?_pctReqAdj:0), hucReq:(_hucReqAdj!=null?_hucReqAdj:0)};
+}
+function staffReqWhy(d){
+  const bits=[`${d.projCensus} patients`];
+  if(d.highAcuity) bits.push(`${d.highAcuity} high-acuity`);
+  if(d.ins.length) bits.push(`${d.ins.length} insulin gtt`);
+  if(d.beh1to1) bits.push(`${d.beh1to1} behavioral 1:1`);
+  const mix = (d.orients||d.floats) ? ` (${d.effectiveRN.toFixed(1)} full-load equiv after ${d.orients} orientee${d.orients!==1?'s':''}/${d.floats} float${d.floats!==1?'s':''})` : '';
+  return `${bits.join(', ')}. ${d.rnAvail} RNs${mix} → effective 1:${d.effRatio.toFixed(1)} vs target 1:${d.target}.`;
+}
+function setReq(which,delta){ const d=staffReqData();
+  if(which==='rn'){ _rnReqAdj=Math.max(0,(_rnReqAdj!=null?_rnReqAdj:d.rnReqSuggest)+delta); }
+  if(which==='pct'){ _pctReqAdj=Math.max(0,(_pctReqAdj!=null?_pctReqAdj:0)+delta); }
+  if(which==='huc'){ _hucReqAdj=Math.max(0,(_hucReqAdj!=null?_hucReqAdj:0)+delta); }
+  scheduleSave(); renderMeetTab();
+}
+function staffReqText(){
+  const d=staffReqData(); const seven=shiftType==='Day'?'7A':'7P';
+  const sitLine=d.ones.length?d.ones.map(o=>'Rm '+o.id+(o.beh?' (SI/SH or AMS)':'')).join(', '):'none';
+  const L=[];
+  L.push(`UT Southwestern — Staffing Request`);
+  L.push(`Unit: ${FLOOR.unit}   For: ${seven}   Date: ${shiftDate}`);
+  L.push(`Expected census @ start of shift: ${d.projCensus}`);
+  L.push('');
+  L.push(`Anticipated discharges: ${d.dc.length}${d.dc.length?' (Rm '+d.dc.join(', ')+')':''}`);
+  L.push(`Expected ORs / out-of-OR: ${STAFFREQ_OR.trim()||'____'}`);
+  L.push(`1:1 patients (room #): ${sitLine}`);
+  L.push(`Insulin gtt on floor (room #): ${d.ins.length?'Rm '+d.ins.join(', '):'none'}`);
+  L.push('');
+  L.push(`— RNs —`);
+  L.push(`ANM charge: ____   RN charge: ____`);
+  L.push(`Bedside RN scheduled: ____   Traveler: ____   Agency: ____`);
+  L.push(`PRN: ____   On-call: ____   Extra (w2w): ____   OT: ____   Called in/sick: ____`);
+  L.push(`Total RNs available (from roster): ${d.rnAvail}${d.floats?` · ${d.floats} float`:''}${d.orients?` · ${d.orients} orientee`:''}`);
+  L.push(`# RNs requested: ${d.rnReq}   (suggested ${d.rnReqSuggest})`);
+  L.push(`Why: ${staffReqWhy(d)}`);
+  L.push('');
+  L.push(`— HUCs —`);
+  L.push(`Scheduled: ${d.hucSched}   PRN/Extra/OT/Call-ins: ____`);
+  L.push(`# HUCs requested: ${d.hucReq}`);
+  L.push('');
+  L.push(`— PCTs —`);
+  L.push(`Scheduled: ${d.pctSched}   PRN/Extra/OT/Call-ins: ____`);
+  L.push(`# PCTs requested: ${d.pctReq}`);
+  if(STAFFREQ_NOTE.trim()){ L.push(''); L.push(`Notes: ${STAFFREQ_NOTE.trim()}`); }
+  L.push('');
+  L.push(`Reported by: ${chargeName||'Charge RN'}`);
+  return L.join('\n');
+}
+function emailStaffReq(){
+  const subject=`${FLOOR.unit} Staffing Request — ${shiftDate} ${shiftType==='Day'?'7A':'7P'}`;
+  const url='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(staffReqText());
+  try{ window.location.href=url; }catch(e){ copyMeetingPrep(); }
+}
+function setStaffReqOR(v){ STAFFREQ_OR=v; scheduleSave(); }
+function setStaffReqNote(v){ STAFFREQ_NOTE=v; scheduleSave(); }
+function renderStaffReqTab(){
+  const el=document.getElementById('meetBody'); if(!el) return;
+  const d=staffReqData(); const seven=shiftType==='Day'?'7A':'7P';
+  const stepper=(which,val,sug)=>`<span class="reqstep"><button onclick="setReq('${which}',-1)">–</button><b>${val}</b><button onclick="setReq('${which}',1)">+</button></span>${sug!=null?`<span class="reqsug">suggested ${sug}</span>`:''}`;
+  let h=`<div class="meetSection">`;
+  h+=`<div class="meetRow"><b>${esc(FLOOR.unit)}</b> · For <b>${seven}</b> · ${esc(shiftDate)}</div>`;
+  h+=secHead('Auto-filled from your board');
+  h+=`<div class="meetRow">Expected census next shift: <b>${d.projCensus}</b> <span style="font-size:11px;color:var(--ink-soft)">(now ${occupied().length} − ${d.dc.length} D/C + ${d.adm.length} admit)</span></div>`;
+  h+=`<div class="meetRow">Anticipated discharges: <b>${d.dc.length}</b>${d.dc.length?` · Rm ${d.dc.join(', ')}`:''}</div>`;
+  h+=`<div class="meetRow">1:1 patients: <b>${d.ones.length?d.ones.map(o=>o.id+(o.beh?'*':'')).join(', '):'none'}</b>${d.ones.some(o=>o.beh)?' <span style="font-size:11px;color:var(--ink-soft)">*behavioral — mark SI/SH or AMS on the form</span>':''}</div>`;
+  h+=`<div class="meetRow">Insulin gtt on floor: <b>${d.ins.length?'Rm '+d.ins.join(', '):'none'}</b></div>`;
+  h+=`<div class="meetRow">RNs available: <b>${d.rnAvail}</b>${d.floats?` · ${d.floats} float`:''}${d.orients?` · ${d.orients} orientee`:''} · PCT <b>${d.pctSched}</b> · HUC <b>${d.hucSched}</b></div>`;
+  const ratioWarn=d.effRatio>d.target+0.25;
+  h+=`<div class="meetRow ${ratioWarn?'alert':''}">Effective ratio <b>1:${d.effRatio.toFixed(1)}</b> vs target 1:${d.target}${ratioWarn?' ⚠':''} <span style="font-size:11px;color:var(--ink-soft)">(flat headcount 1:${d.flatRatio.toFixed(1)}; acuity + skill-mix make it heavier)</span></div>`;
+  h+=`<div class="meetRow" style="font-size:12px;background:var(--bg)">📋 <b>Why:</b> ${esc(staffReqWhy(d))}</div>`;
+  h+=secHead('Requested (tap to adjust)');
+  h+=`<div class="reqrow"><span>RNs requested</span>${stepper('rn',d.rnReq,d.rnReqSuggest)}</div>`;
+  h+=`<div class="reqrow"><span>PCTs requested</span>${stepper('pct',d.pctReq,null)}</div>`;
+  h+=`<div class="reqrow"><span>HUCs requested</span>${stepper('huc',d.hucReq,null)}</div>`;
+  h+=secHead('Charge fills in');
+  h+=`<input class="hudnote" style="min-height:0;height:38px;margin-bottom:8px" placeholder="Expected ORs / out-of-OR times" value="${esc(STAFFREQ_OR)}" oninput="setStaffReqOR(this.value)">`;
+  h+=`<textarea class="hudnote" placeholder="Notes (optional)" oninput="setStaffReqNote(this.value)">${esc(STAFFREQ_NOTE)}</textarea>`;
+  h+=`<div class="meetRow" style="font-size:11px;color:var(--ink-soft);margin-top:8px">Traveler / agency / PRN / on-call / OT / call-in splits stay blank for you to fill on the fax — the app can\u2019t know those.</div>`;
+  h+=`<div class="hudactions"><button class="btn primary" onclick="emailStaffReq()">📧 Email staffing office</button><button class="btn" onclick="copyMeetingPrep()">Copy</button></div>`;
+  h+=`<div id="meetCopyMsg" class="hint" style="margin-top:6px;"></div>`;
+  h+=`</div>`;
+  el.innerHTML=h;
+}
+
 function huddleData(){
   const occ=occupied();
   const oos=occ.filter(r=>r.flags.includes('oos')).map(r=>r.id);
@@ -4085,7 +4233,17 @@ function huddleData(){
   const adm=occ.filter(r=>r.flags.includes('adm')).sort((a,b)=>a.id-b.id);
   const iso=occ.filter(r=>r.flags.includes('iso')).map(r=>r.id).sort((a,b)=>a-b);
   const sit=occ.filter(r=>r.flags.includes('sit')||r.flags.includes('1:1')).map(r=>r.id);
-  return {census,open,dc,adm,iso,sit,oos};
+  // open beds grouped by capability
+  const openIso=open.filter(rn=>(BED_CAP.iso||[]).includes(rn));
+  const openLift=open.filter(rn=>(BED_CAP.lift||[]).includes(rn)&&!(BED_CAP.iso||[]).includes(rn));
+  const openStd=open.filter(rn=>!(BED_CAP.iso||[]).includes(rn)&&!(BED_CAP.lift||[]).includes(rn));
+  // net bed math: open now + expected discharges − expected admits
+  const netAfter=open.length + dc.length - adm.length;
+  const canTake=Math.max(0, netAfter);
+  // discharges sorted by time (timed first, then untimed)
+  const timed=dc.filter(r=>r.dcTime).sort((a,b)=>String(a.dcTime).localeCompare(String(b.dcTime)));
+  const untimed=dc.filter(r=>!r.dcTime);
+  return {census,open,dc,adm,iso,sit,oos,openIso,openLift,openStd,netAfter,canTake,timedDC:timed,untimedDC:untimed};
 }
 function huddleText(){
   const d=huddleData(); const when=new Date();
@@ -4094,11 +4252,16 @@ function huddleText(){
   L.push(`${FLOOR.unit} — ${shiftType} Bed Huddle · ${shiftDate} ${hhmm}`);
   L.push(`Reported by: ${chargeName||'Charge RN'}`);
   L.push('');
-  L.push(`Census: ${d.census}/${TOTAL_BEDS} · Open beds: ${d.open.length}${d.open.length?' ('+d.open.map(rn=>rn+bedTags(rn)).join(', ')+')':''}`);
-  // discharges with barriers
+  L.push(`Census: ${d.census}/${TOTAL_BEDS} · Open now: ${d.open.length}`);
+  // beds by capability
+  if(d.open.length){ const parts=[]; if(d.openIso.length)parts.push(`iso-capable: ${d.openIso.join(', ')}`); if(d.openLift.length)parts.push(`lift: ${d.openLift.join(', ')}`); if(d.openStd.length)parts.push(`standard: ${d.openStd.join(', ')}`); L.push(`  Open beds — ${parts.join(' · ')}`); }
+  // net bed math
+  L.push(`Net after discharges/admits: ${d.netAfter>=0?'+':''}${d.netAfter} bed${Math.abs(d.netAfter)!==1?'s':''} · can take ~${d.canTake} admit${d.canTake!==1?'s':''} once D/Cs clear`);
+  // discharges with timing + barriers
   if(d.dc.length){
     L.push(`Discharges (${d.dc.length}):`);
-    d.dc.forEach(r=>{ const b=(DC_BARRIERS[r.id]||[]).map(barrierLabel); L.push(`  Rm ${r.id}${r.dcTime?' ('+r.dcTime+')':''}${b.length?' — '+b.join(', '):''}`); });
+    d.timedDC.forEach(r=>{ const b=(DC_BARRIERS[r.id]||[]).map(barrierLabel); L.push(`  Rm ${r.id} by ${r.dcTime}${b.length?' — '+b.join(', '):''}`); });
+    d.untimedDC.forEach(r=>{ const b=(DC_BARRIERS[r.id]||[]).map(barrierLabel); L.push(`  Rm ${r.id} (time TBD)${b.length?' — '+b.join(', '):''}`); });
   } else L.push('Discharges: none pending');
   if(d.adm.length){ L.push(`Pending admits (${d.adm.length}): ${d.adm.map(r=>r.id+(r.acuity>=4?' (high acuity)':'')).join(', ')}`); }
   if(d.iso.length) L.push(`Isolation: ${d.iso.join(', ')}`);
@@ -4118,6 +4281,7 @@ function setHuddleNote(v){ HUDDLE_NOTE=v; scheduleSave(); }
 /* Text builder for Copy/Share across all meeting tabs (was referenced but undefined). */
 function getMeetText(){
   if(_meetTab==='huddle') return huddleText();
+  if(_meetTab==='staffreq') return staffReqText();
   const occ=occupied(); const L=[`${FLOOR.unit} — ${_meetTab==='clin'?'Clinical':'Staffing'} Snapshot · ${shiftType} ${shiftDate}`,''];
   if(_meetTab==='clin'){
     const dc=occ.filter(r=>r.flags.includes('dc')), adm=occ.filter(r=>r.flags.includes('adm'));
@@ -4207,11 +4371,126 @@ function openHistory(){
   if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
   document.getElementById('histScrim').classList.add('on'); loadHistory();
 }
-function setMgrCode(){ if(!chargeMode)return;
-  const cur=(prompt('Set a new MANAGER code (for Manager analysis).\nThis is separate from the charge PIN — only leadership should know it.')||'').trim();
-  if(cur===''){ return; }
-  if(cur.length<4){ alert('Use at least 4 digits/characters.'); return; }
-  mgrPin=pinStore(cur); scheduleSave(); alert('Manager code saved. Only people with this code can open Manager analysis.');
+
+/* ───────── HOUSE VIEW — supervisor suite (reads all units from the cloud) ───────── */
+let _houseRows=[], _houseTab='rollup', _bedNeed='any';
+function openHouseView(){
+  const v=(prompt('House View is for the house / staffing supervisor.\nEnter the manager code:')||'').trim();
+  if(v===''){ return; }
+  if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
+  document.getElementById('houseScrim').classList.add('on');
+  _houseTab='rollup'; loadHouse();
+}
+function closeHouse(){ const s=document.getElementById('houseScrim'); if(s) s.classList.remove('on'); }
+function setHouseTab(t){ _houseTab=t; renderHouse(); }
+function setBedNeed(n){ _bedNeed=n; renderHouse(); }
+async function loadHouse(){
+  const body=document.getElementById('houseBody'); if(!body) return;
+  if(!cloudOn()){ body.innerHTML='<div class="hint">House View needs the cloud connected — it reads every unit\u2019s live board. Connect the unit link first.</div>'; return; }
+  body.innerHTML='<div class="hint">Loading units…</div>';
+  try{
+    const { data } = await sb.from('boards').select('unit,meta,acuity,updated_at');
+    _houseRows=(data||[]).map(row=>summarizeUnitState(row)).filter(Boolean).sort((a,b)=>a.unit.localeCompare(b.unit));
+    renderHouse();
+  }catch(e){ body.innerHTML=`<div class="hint" style="color:var(--bad)">Couldn\u2019t load units: ${esc(e.message||'error')}</div>`; }
+}
+/* Reconstruct one unit's picture from its saved board (meta + acuity). */
+function summarizeUnitState(row){
+  const meta=row.meta||{}; const acu=row.acuity||{};
+  const floor=meta.floor||{}; const halls=floor.halls||{};
+  const allR=[].concat(...Object.values(halls)).filter(x=>typeof x==='number');
+  if(!allR.length) return null;
+  const target=floor.ratio||4;
+  const rmState=meta.rooms||{};
+  // a room is occupied if its saved state says so, or it carries acuity/flags
+  const occIds=allR.filter(rn=>{ const s=rmState[rn]||acu[rn]; return s && (s.occupied || s.acuity!=null || (s.flags&&s.flags.length)); });
+  const flagsOf=rn=>{ const a=(acu[rn]&&acu[rn].flags)||[]; const b=(rmState[rn]&&rmState[rn].flags)||[]; return a.length?a:b; };
+  const acuOf=rn=>{ const s=acu[rn]||rmState[rn]||{}; return s.acuity||0; };
+  const census=occIds.length;
+  const open=allR.filter(rn=>!occIds.includes(rn)).sort((a,b)=>a-b);
+  const bedCap=meta.bedCap||{iso:[],lift:[]};
+  const openIso=open.filter(rn=>(bedCap.iso||[]).includes(rn));
+  const openLift=open.filter(rn=>(bedCap.lift||[]).includes(rn)&&!(bedCap.iso||[]).includes(rn));
+  const openStd=open.filter(rn=>!(bedCap.iso||[]).includes(rn)&&!(bedCap.lift||[]).includes(rn));
+  const dc=occIds.filter(rn=>flagsOf(rn).includes('dc'));
+  const adm=occIds.filter(rn=>flagsOf(rn).includes('adm'));
+  const iso=occIds.filter(rn=>flagsOf(rn).includes('iso'));
+  const ins=occIds.filter(rn=>flagsOf(rn).includes('ins'));
+  const beh=occIds.filter(rn=>flagsOf(rn).includes('beh')&&(flagsOf(rn).includes('sit')||flagsOf(rn).includes('1:1')));
+  const highAcu=occIds.filter(rn=>acuOf(rn)>=4).length;
+  const netAfter=open.length + dc.length - adm.length;
+  // staffing from roster (on + matching shift)
+  const shiftType=meta.shiftType||'Day';
+  const onShift=arr=>(arr||[]).filter(p=>p.on!==false && (p.shift||'Day')===shiftType);
+  const rns=onShift(meta.rosterN), pctsA=onShift(meta.rosterP), hucsA=onShift(meta.rosterH);
+  const floats=rns.filter(n=>n.level==='Float').length, orients=rns.filter(n=>n.level==='Orienting').length;
+  const projCensus=census - dc.length + adm.length;
+  const effectiveRN=Math.max(0.1, rns.length - 0.5*orients - 0.2*floats);
+  const effRatio=effectiveRN?projCensus/effectiveRN:0;
+  const flatRatio=rns.length?projCensus/rns.length:0;
+  const rnReqSuggest=Math.max(0, Math.ceil(projCensus/target)-Math.floor(effectiveRN));
+  let status='ok'; if(effRatio>target+0.5||rnReqSuggest>0) status='short'; else if(effRatio>target) status='tight';
+  return {unit:meta.unit||row.unit||'Unit', unitId:row.unit, totalBeds:allR.length, census, projCensus,
+    open, openIso, openLift, openStd, dc:dc.length, adm:adm.length, iso:iso.length, ins:ins.length, beh:beh.length, highAcu,
+    netAfter, canTake:Math.max(0,netAfter), rnCount:rns.length, pctCount:pctsA.length, hucCount:hucsA.length,
+    floats, orients, effRatio, flatRatio, target, rnReqSuggest, status, shiftType, chargeName:meta.chargeName||'',
+    updated:row.updated_at};
+}
+function houseStatusDot(s){ return s==='short'?'🔴':(s==='tight'?'🟡':'🟢'); }
+function renderHouse(){
+  const body=document.getElementById('houseBody'); if(!body) return;
+  if(!_houseRows.length){ body.innerHTML='<div class="hint">No units found yet. As units start using EvenShift on this same cloud, they\u2019ll appear here.</div>'; return; }
+  let h=`<div class="housetabs">`
+    +`<button class="${_houseTab==='rollup'?'on':''}" onclick="setHouseTab('rollup')">Roll-up</button>`
+    +`<button class="${_houseTab==='gap'?'on':''}" onclick="setHouseTab('gap')">Staffing gaps</button>`
+    +`<button class="${_houseTab==='beds'?'on':''}" onclick="setHouseTab('beds')">Bed finder</button>`
+    +`</div>`;
+  if(_houseRows.length===1) h+=`<div class="hint" style="margin:8px 0">Only <b>${esc(_houseRows[0].unit)}</b> is reporting so far. This view fills out as more units join.</div>`;
+  if(_houseTab==='rollup') h+=houseRollup();
+  else if(_houseTab==='gap') h+=houseGaps();
+  else h+=houseBeds();
+  body.innerHTML=h;
+}
+function houseRollup(){
+  let h='';
+  _houseRows.forEach(u=>{
+    h+=`<div class="hunit ${u.status}"><div class="hutop"><span class="hudot">${houseStatusDot(u.status)}</span><b>${esc(u.unit)}</b><span class="huratio">1:${u.effRatio.toFixed(1)}</span></div>`
+     +`<div class="hugrid"><span>Census <b>${u.census}/${u.totalBeds}</b></span><span>Open <b>${u.open.length}</b></span><span>Net <b>${u.netAfter>=0?'+':''}${u.netAfter}</b></span><span>Can take <b>${u.canTake}</b></span></div>`
+     +`<div class="hustaff">${u.rnCount} RN · ${u.pctCount} PCT${u.hucCount?' · '+u.hucCount+' HUC':''}${u.rnReqSuggest>0?` · <span class="hushort">needs ${u.rnReqSuggest} RN</span>`:''}</div>`
+     +`</div>`;
+  });
+  return h;
+}
+function houseGaps(){
+  const sorted=_houseRows.slice().sort((a,b)=>b.effRatio-a.effRatio);
+  let h=`<div class="hint" style="margin-bottom:8px">Units sorted by who\u2019s truly short — effective ratio counts acuity &amp; skill mix, not just headcount.</div>`;
+  sorted.forEach(u=>{
+    const why=[]; if(u.highAcu)why.push(`${u.highAcu} high-acuity`); if(u.ins)why.push(`${u.ins} insulin`); if(u.beh)why.push(`${u.beh} behavioral 1:1`); if(u.orients)why.push(`${u.orients} orientee`); if(u.floats)why.push(`${u.floats} float`);
+    h+=`<div class="hunit ${u.status}"><div class="hutop"><span class="hudot">${houseStatusDot(u.status)}</span><b>${esc(u.unit)}</b><span class="huratio">eff 1:${u.effRatio.toFixed(1)} <span style="font-weight:400;color:var(--ink-soft)">(flat 1:${u.flatRatio.toFixed(1)})</span></span></div>`
+      +`<div class="hustaff">${u.rnCount} RN for ${u.projCensus} patients${u.rnReqSuggest>0?` · <span class="hushort">short ${u.rnReqSuggest}</span>`:' · ok'}</div>`
+      +(why.length?`<div class="huwhy">${why.join(' · ')}</div>`:'')+`</div>`;
+  });
+  return h;
+}
+function houseBeds(){
+  let h=`<div class="bedneed"><span>Admit needs:</span>`
+    +['any','iso','lift','standard'].map(n=>`<button class="${_bedNeed===n?'on':''}" onclick="setBedNeed('${n}')">${n==='any'?'Any':n[0].toUpperCase()+n.slice(1)}</button>`).join('')+`</div>`;
+  const match=u=>{ if(_bedNeed==='iso')return u.openIso; if(_bedNeed==='lift')return u.openLift; if(_bedNeed==='standard')return u.openStd; return u.open; };
+  const hits=_houseRows.map(u=>({u,beds:match(u)})).filter(x=>x.beds.length).sort((a,b)=>b.beds.length-a.beds.length);
+  if(!hits.length){ h+=`<div class="hint" style="margin-top:10px">No open ${_bedNeed==='any'?'':_bedNeed+' '}beds reporting right now.</div>`; return h; }
+  hits.forEach(({u,beds})=>{
+    h+=`<div class="hunit ok"><div class="hutop"><b>${esc(u.unit)}</b><span class="huratio">${beds.length} open</span></div>`
+      +`<div class="hustaff">Rooms ${beds.join(', ')}${_bedNeed==='any'?` <span style="color:var(--ink-soft);font-size:11px">(${u.openIso.length} iso · ${u.openLift.length} lift · ${u.openStd.length} std)</span>`:''}</div></div>`;
+  });
+  return h;
+}
+
+function setMgrCode(){
+  if(!chargeMode){ alert('Unlock as Charge first (tap 🔒 Charge at the top), then open More Tools → Manager code.'); return; }
+  const cur=(prompt('Set a new MANAGER code (for Manager analysis).\nThis is separate from the charge PIN — only leadership should know it.\nUse 4+ digits or letters.')||'').trim();
+  if(cur===''){ return; }   // cancelled
+  if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters. Try again from More Tools → Manager code.'); return; }
+  mgrPin=pinStore(cur); scheduleSave(); alert('✓ Manager code saved. Only people with this code can open Manager analysis (⋯ menu → Manager analysis).');
 }
 function closeHistory(){ document.getElementById('histScrim').classList.remove('on'); }
 function histRange(btn,days){ document.querySelectorAll('.hfbtn').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); _histRange=days; loadHistory(); }
@@ -4622,6 +4901,7 @@ function nextShift(){ if(!chargeMode)return;
     r.capCarried = rcCodes.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)); });
   rosterN.forEach(n=>{ n.scoredDone=false; n.breakSlot=''; n.breakApproved=false; });  // reset scoring-done + breaks for the new shift
   DC_BARRIERS={}; HUDDLE_NOTE='';   // huddle is per-shift; bed-capability (BED_CAP) is permanent
+  STAFFREQ_OR=''; STAFFREQ_NOTE=''; _rnReqAdj=null; _pctReqAdj=null; _hucReqAdj=null;
   rosterP.forEach(p=>{ p.breakSlot=''; p.breakApproved=false; });
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
