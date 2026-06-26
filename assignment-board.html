@@ -1403,7 +1403,7 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (PICC/CVL)"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (PICC/CVL)"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -2174,13 +2174,20 @@ function dropTo(e,nid){ if(!chargeMode)return;e.preventDefault();leaveDrop();if(
 
 /* burden tags a patient carries, for spreading load types across nurses */
 /* every demanding thing a patient brings, for spreading the MIX across nurses (not just the hours) */
-const BURDEN_W={beh:4,conf:4,trach:4,tot:3,sit:3,cvl:2,gtt:2,ins:2,wound:2,dc:2,adm:2,iso:1.5,pd:1.5,feed:1,draw:1}; // 'hi' excluded — hours already covers acuity
-const BURDEN_LAB={hi:'hi-acuity',trach:'trach',beh:'behavioral',conf:'fall risk',tot:'total care',cvl:'central line',gtt:'drip',ins:'insulin',wound:'wound',dc:'discharge',adm:'admit',iso:'isolation',pd:'dialysis',sit:'1:1',feed:'tube feed',draw:'blood draw'};
-const BURDEN_ORDER=['trach','beh','conf','tot','cvl','gtt','ins','wound','dc','adm','iso','pd','sit','hi','feed','draw'];
+// Burden weights are SHIFT-AWARE: the same flag carries different weight on days vs nights.
+// Days: discharge, HD, procedures/off-floor are heavy. Nights: admissions, central-line draws, PD are heavy.
+// Clinical demands (behavioral, trach, airborne, 1:1, total care, chest tube, restraints) stay heavy on both.
+const BURDEN_W_DAY_DEFAULT  ={beh:4,conf:4,trach:4,airb:4,tot:3,sit:3,chest:3,restr:3, dc:3,hd:2.5,proc:3, adm:2,cvl:1.5,pd:1.5,draw:1, gtt:2,hep:2,ins:2, wound:2,wvac:2, iso:1.5,ostomy:1.5,foley:1,namealert:1,feed:1};
+const BURDEN_W_NIGHT_DEFAULT={beh:4,conf:4,trach:4,airb:4,tot:3,sit:3,chest:3,restr:3, dc:0.5,hd:0.5,proc:0.5, adm:3.5,cvl:3,pd:3,draw:2.5, gtt:2,hep:2,ins:2, wound:1.5,wvac:1.5, iso:1.5,ostomy:1.5,foley:1,namealert:1,feed:1};
+let BURDEN_W_DAY={...BURDEN_W_DAY_DEFAULT}, BURDEN_W_NIGHT={...BURDEN_W_NIGHT_DEFAULT};   // unit can override in Clinical flags editor
+function curBurdenW(){ return (shiftType==='Night') ? BURDEN_W_NIGHT : BURDEN_W_DAY; }
+const BURDEN_W_DEFAULT=BURDEN_W_DAY_DEFAULT;   // back-compat for the weight picker default lookup
+const BURDEN_LAB={hi:'hi-acuity',trach:'trach',airb:'airborne iso',beh:'behavioral',conf:'fall risk',tot:'total care',cvl:'central line',gtt:'drip',hep:'heparin',ins:'insulin',wound:'wound',wvac:'wound vac',dc:'discharge',adm:'admit',iso:'isolation',pd:'PD',hd:'HD',proc:'procedure',ostomy:'ostomy',foley:'foley',chest:'chest tube',restr:'restraints',namealert:'name alert',sit:'1:1',feed:'tube feed',draw:'blood draw'};
+const BURDEN_ORDER=['trach','airb','beh','conf','tot','chest','restr','cvl','gtt','hep','ins','wound','wvac','dc','adm','proc','iso','pd','hd','ostomy','foley','sit','hi','namealert','feed','draw'];
 function patientTags(r){
   const t=[];
   if(r.acuity>=4) t.push('hi');
-  ['dc','adm','beh','conf','trach','gtt','ins','cvl','wound','tot','iso','pd','sit'].forEach(f=>{ if(r.flags.includes(f)) t.push(f); });
+  ['dc','adm','proc','beh','conf','trach','airb','gtt','hep','ins','cvl','wound','wvac','tot','iso','pd','hd','ostomy','foley','chest','restr','sit','namealert'].forEach(f=>{ if(r.flags.includes(f)) t.push(f); });
   (r.tags||[]).forEach(x=>t.push(x));   // feed, blood draw
   return t;
 }
@@ -2449,8 +2456,9 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   const spread=()=>{ const h=G.map(hrs); return Math.max(...h)-Math.min(...h); };
   const geo=()=>G.reduce((s,g)=>s+groupGeo(g),0);   // physical tightness on the real floor
   // precompute each room's weighted burden types, then spread them so no nurse gets a pile of one kind
-  const btag={}; occ.forEach(r=>{ const s={}; patientTags(r).forEach(t=>{ if(BURDEN_W[t]) s[t]=1; }); btag[r.id]=s; });
-  const burden=()=>{ let c=0; for(const g of G){ const cnt={}; for(const r of g){ const s=btag[r.id]; for(const t in s) cnt[t]=(cnt[t]||0)+1; } for(const t in cnt) c+=BURDEN_W[t]*cnt[t]*cnt[t]; } return c; };
+  const BW=curBurdenW();   // shift-aware: Day or Night weight profile
+  const btag={}; occ.forEach(r=>{ const s={}; patientTags(r).forEach(t=>{ if(BW[t]) s[t]=1; }); btag[r.id]=s; });
+  const burden=()=>{ let c=0; for(const g of G){ const cnt={}; for(const r of g){ const s=btag[r.id]; for(const t in s) cnt[t]=(cnt[t]||0)+1; } for(const t in cnt) c+=BW[t]*cnt[t]*cnt[t]; } return c; };
   // safety caps: spread the heaviest patients (5+), behavioral and confused; don't stack a discharge AND a fresh admit on one nurse.
   // cap = the fewest each nurse can hold (1 when there are <= one per nurse), so violations only appear when the floor truly forces them.
   const totHeavy=occ.filter(r=>r.acuity>=5).length, totBeh=occ.filter(r=>r.flags.includes('beh')).length, totConf=occ.filter(r=>r.flags.includes('conf')).length;
@@ -2484,18 +2492,32 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
     if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*1200; } }
     return c;
   }
-  let cur=cost(), bestC=cur, best=G.map(g=>g.slice()), sinceBest=0, T=8;
-  for(let it=0; it<22000; it++){
-    T*=0.99975;
-    const i=Math.random()*M|0, j=Math.random()*M|0; if(i===j) continue;
-    const gi=G[i], gj=G[j]; if(!gi.length||!gj.length) continue;
-    const a=Math.random()*gi.length|0, b=Math.random()*gj.length|0;
-    if(gi[a].lock||gj[b].lock) continue;                 // pinned patients don't move in the partition
-    const ra=gi[a], rb=gj[b]; gi[a]=rb; gj[b]=ra;
-    const c=cost(), d=c-cur;
-    if(d<0 || Math.random()<Math.exp(-d/T)){ cur=c; if(c<bestC-1e-9){ bestC=c; best=G.map(g=>g.slice()); sinceBest=0; } else sinceBest++; }
-    else { gi[a]=ra; gj[b]=rb; sinceBest++; }
-    if(spread()<=0.5 && sinceBest>5000) break;
+  // One-tap best: run several independent annealing restarts and keep the best of all.
+  // Each restart shuffles the seed, so a single tap now does what repeated taps used to.
+  let bestC=Infinity, best=G.map(g=>g.slice());
+  const RESTARTS=5;
+  for(let pass=0; pass<RESTARTS; pass++){
+    if(pass>0){ // reshuffle non-locked patients across groups for a fresh seed
+      const pool=[]; for(const g of G){ for(let k=g.length-1;k>=0;k--){ if(!g[k].lock){ pool.push(g[k]); g.splice(k,1); } } }
+      for(let k=pool.length-1;k>0;k--){ const q=Math.random()*(k+1)|0; const tmp=pool[k]; pool[k]=pool[q]; pool[q]=tmp; }
+      let gi=0; for(const r of pool){ // round-robin to the currently smallest group
+        let sm=0; for(let x=1;x<M;x++) if(G[x].length<G[sm].length) sm=x; G[sm].push(r); }
+    }
+    let cur=cost(), passBestC=cur, passBest=G.map(g=>g.slice()), sinceBest=0, T=8;
+    for(let it=0; it<22000; it++){
+      T*=0.99975;
+      const i=Math.random()*M|0, j=Math.random()*M|0; if(i===j) continue;
+      const gi=G[i], gj=G[j]; if(!gi.length||!gj.length) continue;
+      const a=Math.random()*gi.length|0, b=Math.random()*gj.length|0;
+      if(gi[a].lock||gj[b].lock) continue;                 // pinned patients don't move in the partition
+      const ra=gi[a], rb=gj[b]; gi[a]=rb; gj[b]=ra;
+      const c=cost(), d=c-cur;
+      if(d<0 || Math.random()<Math.exp(-d/T)){ cur=c; if(c<passBestC-1e-9){ passBestC=c; passBest=G.map(g=>g.slice()); sinceBest=0; } else sinceBest++; }
+      else { gi[a]=ra; gj[b]=rb; sinceBest++; }
+      if(spread()<=0.5 && sinceBest>5000) break;
+    }
+    if(passBestC<bestC){ bestC=passBestC; best=passBest; }
+    G=passBest.map(g=>g.slice());   // carry forward this pass's best as the base for reshuffling
   }
   G=best;
   // --- match nurses to groups: pins, won't-take, orienting limits ---
@@ -3759,7 +3781,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -3787,6 +3809,9 @@ function applyState(st){
   if(st.vocDevices&&st.vocDevices.Day&&st.vocDevices.Night){ VOC_DEVICES=st.vocDevices;
     ['Day','Night'].forEach(t=>['rn','pct','sit'].forEach(g=>{ if(!Array.isArray(VOC_DEVICES[t][g])) VOC_DEVICES[t][g]=[]; VOC_DEVICES[t][g]=VOC_DEVICES[t][g].map(d=>({num:d.num||'',status:d.status||'Assigned'})); })); }
   if(st.meetConfig) meetConfig={clinSections:{...MEET_CLIN_DEFAULTS,...(st.meetConfig.clinSections||{})},staffSections:{...MEET_STAFF_DEFAULTS,...(st.meetConfig.staffSections||{})},clinCustom:st.meetConfig.clinCustom||[],staffCustom:st.meetConfig.staffCustom||[],clinFlagCodes:st.meetConfig.clinFlagCodes||null};
+  if(st.burdenWDay && typeof st.burdenWDay==='object') BURDEN_W_DAY={...BURDEN_W_DAY_DEFAULT,...st.burdenWDay};
+  if(st.burdenWNight && typeof st.burdenWNight==='object') BURDEN_W_NIGHT={...BURDEN_W_NIGHT_DEFAULT,...st.burdenWNight};
+  else if(st.burdenW && typeof st.burdenW==='object'){ BURDEN_W_DAY={...BURDEN_W_DAY_DEFAULT,...st.burdenW}; BURDEN_W_NIGHT={...BURDEN_W_NIGHT_DEFAULT,...st.burdenW}; }  // migrate old single profile
   if(st.bedCap){ BED_CAP={iso:st.bedCap.iso||[],lift:st.bedCap.lift||[]}; }
   if(st.dcBarriers) DC_BARRIERS=st.dcBarriers; HUDDLE_NOTE=st.huddleNote||'';
   STAFFREQ_OR=st.staffReqOR||''; STAFFREQ_NOTE=st.staffReqNote||'';
@@ -3856,8 +3881,24 @@ function ruleSelector(code){
     `<option value="ratiocap" ${mode==='ratiocap'?'selected':''}>Tighten nurse ratio…</option>`+
     `</select>`+
     (mode==='cap'?`<input class="capIn" type="number" min="1" max="9" value="${cap}" onchange="setFlagCap('${code}',this.value)" title="Max of this flag per nurse">`:'')+
-    (mode==='ratiocap'?`<span class="capWrap">1:<input class="capIn" type="number" min="1" max="9" value="${ratio}" onchange="setFlagRatio('${code}',this.value)" title="Max TOTAL patients for a nurse who has this"></span>`:'');
+    (mode==='ratiocap'?`<span class="capWrap">1:<input class="capIn" type="number" min="1" max="9" value="${ratio}" onchange="setFlagRatio('${code}',this.value)" title="Max TOTAL patients for a nurse who has this"></span>`:'')+
+    (mode==='spread'?weightPicker(code):'');
 }
+/* Day + Night spread strength — the unit decides how hard to spread this flag on each shift. */
+function weightPicker(code){
+  return wpick(code,'Day')+wpick(code,'Night');
+}
+function wpick(code,shift){
+  const prof = shift==='Night'?BURDEN_W_NIGHT:BURDEN_W_DAY;
+  const def  = shift==='Night'?BURDEN_W_NIGHT_DEFAULT:BURDEN_W_DAY_DEFAULT;
+  const w=(prof[code]!=null)?prof[code]:(def[code]||2);
+  const lvl = w>=4?'high':(w>=2?'med':(w>=0.75?'low':'off'));
+  const opt=(v,lab)=>`<option value="${v}" ${lvl===v?'selected':''}>${lab}</option>`;
+  return `<select class="ruleSel wtSel" title="How evenly to spread this on ${shift}" onchange="setFlagWeight('${code}','${shift}',this.value)">`
+    +`<option disabled>${shift==='Night'?'🌙':'☀️'} ${shift}</option>`
+    +opt('off','None')+opt('low','Low')+opt('med','Med')+opt('high','High')+`</select>`;
+}
+function setFlagWeight(code,shift,lvl){ const map={off:0.3,low:1,med:2.5,high:4}; const prof=shift==='Night'?BURDEN_W_NIGHT:BURDEN_W_DAY; prof[code]=map[lvl]!=null?map[lvl]:2.5; scheduleSave(); }
 function setFlagRule(code,mode){
   if(!UNIT_FLAG_CONFIG.rules) UNIT_FLAG_CONFIG.rules={};
   if(mode==='none') UNIT_FLAG_CONFIG.rules[code]={mode:'none'};
