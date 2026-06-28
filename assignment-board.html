@@ -98,6 +98,13 @@
   .cols{display:grid;grid-template-columns:1fr 300px;gap:15px;align-items:start;}
   @media(max-width:880px){.cols{grid-template-columns:1fr;}}
   .nurses{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+  .nurses.solo{grid-template-columns:1fr;}
+  .nurses.solo .nurse{padding:20px;border-width:1.5px;border-radius:16px;}
+  .nurses.solo .nhead .name{font-size:22px;}
+  .nurses.solo .chips{gap:9px;}
+  .nurses.solo .chip{font-size:15px;padding:8px 12px;}
+  .nurses.solo .loadnum{font-size:15px;}
+  .nurses.solo .hcov{font-size:14px;}
   @media(max-width:560px){.nurses{grid-template-columns:1fr;}}
   .nurse{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:12px;box-shadow:var(--shadow);transition:.13s;}
   .nurse.drop{outline:2px dashed var(--teal);outline-offset:2px;background:var(--teal-wash);}
@@ -1937,6 +1944,8 @@ function renderAssign(){
     const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
     const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
   } else {
+  const soloStaff = (selfRN && shown.length===1);
+  const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
   const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
   document.getElementById('nurses').innerHTML=welcome+shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
@@ -2477,6 +2486,9 @@ function jumpRoom(val, force){
 
 /* Draft vs Final: charge taps Post so staff know the board is final & safe to read */
 let boardPosted=false, lastUpdatedAt=0, lastUpdatedBy='';
+// The charge shown ON the assignment (which is for the NEXT shift) is the oncoming charge.
+// Falls back to the preparer only if no oncoming charge was entered.
+function assignmentCharge(){ return (chargeOncoming&&chargeOncoming.trim()) ? chargeOncoming.trim() : (chargeName||''); }
 // Silently remember the last app error so a bug report is useful even if the user just says "it broke".
 let _lastError='';
 if(typeof window!=='undefined'){
@@ -4191,7 +4203,7 @@ function secHead(t){ return `<div class="meetSec">${t}</div>`; }
 function buildClinicalText(){
   const occ=occupied(); const lines=[];
   lines.push(`${FLOOR.unit} — Clinical Snapshot`);
-  lines.push(`${shiftType} shift · ${shiftDate}${chargeName?' · Charge: '+chargeName:''}`);
+  lines.push(`${shiftType} shift · ${shiftDate}${assignmentCharge()?' · Charge: '+assignmentCharge():''}`);
   lines.push(`Census: ${occ.length}/${TOTAL_BEDS}`);
   lines.push('');
   const fl=(code,label)=>{ const rs=occ.filter(r=>r.flags.includes(code)); if(!rs.length) return; lines.push(`${label} (${rs.length}): ${rs.map(r=>r.id).join(', ')}`); };
@@ -4221,7 +4233,7 @@ function buildStaffingText(){
   const short=M<needAtProj;
   const lines=[];
   lines.push(`${FLOOR.unit} — Staffing Snapshot`);
-  lines.push(`${shiftType} shift · ${shiftDate}${chargeName?' · Charge: '+chargeName:''}`);
+  lines.push(`${shiftType} shift · ${shiftDate}${assignmentCharge()?' · Charge: '+assignmentCharge():''}`);
   lines.push('');
   lines.push(`Current census: ${occ.length}/${TOTAL_BEDS}`);
   if(dcCount) lines.push(`Expected discharges: ${dcCount} → projected census: ${occ.length-dcCount}`);
@@ -5328,7 +5340,7 @@ function clearFloor(){ if(!chargeMode)return;
 /* ---------- share: print / copy / qr ---------- */
 function assignText(){
   const L=[`${FLOOR.unit} \u2014 ${shiftType} \u00b7 ${shiftDate}  (Census ${occupied().length}/${TOTAL_BEDS})`];
-  if(chargeName.trim()) L.push(`Charge: ${chargeName.trim()}`);
+  if(assignmentCharge().trim()) L.push(`Charge: ${assignmentCharge().trim()}`);
   L.push('','NURSES');
   nurses.forEach(n=>{ const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id)).map(r=>r.id);
     L.push(`  ${n.name}${n.level==='Orienting'?' (or)':''}: ${rs.join(', ')||'\u2014'}`); });
