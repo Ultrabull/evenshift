@@ -789,6 +789,18 @@
   .attn{font-size:12.5px;color:var(--ink);padding:8px 11px;border:1px solid var(--line);border-left:3px solid #C07000;border-radius:8px;margin-bottom:6px;background:var(--surface);}
   .attn.ok{border-left-color:#1C7A46;color:var(--teal-deep);}
   .logwrap{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
+  .pb-charge{font-weight:500;}
+  .rcats{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 10px;}
+  .rcat{padding:9px 13px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;color:var(--ink);cursor:pointer;text-align:left;}
+  .rcat.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .repcard{border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--surface);}
+  .reptop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .reptop b{font-size:13.5px;color:var(--ink);}
+  .reptime{font-size:10.5px;color:var(--ink-soft);white-space:nowrap;}
+  .repmsg{font-size:12.5px;color:var(--ink);margin-top:5px;}
+  .repmeta{font-size:10.5px;color:var(--ink-soft);margin-top:6px;}
+  .reperr{font-size:10.5px;color:#9A2A2A;background:#FBE9E9;border-radius:6px;padding:4px 7px;margin-top:6px;font-family:monospace;}
+  .pb-charge b{font-weight:800;}
   .patwrap{margin-top:12px;border:1px solid var(--line);border-radius:11px;padding:2px 12px;}
   .patsum{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;padding:9px 0;}
   .patbody{padding:2px 0 10px;}
@@ -1024,6 +1036,7 @@
           <div class="mdiv"></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager analysis</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openHouseView()">🏥 House View</button>
+          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openReportsView()">🐞 Bug reports</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');reportProblem()">🐞 Report a problem</button>
         </div>
       </details>
@@ -1236,6 +1249,20 @@
       </div>
       <div id="meetCopyMsg" class="hint" style="min-height:14px;margin-top:6px;"></div>
     </div>
+  </div>
+</div>
+
+<div class="scrim" id="reportScrim" onclick="if(event.target===this)closeReport()">
+  <div class="modal" style="max-width:460px;">
+    <div class="mhead"><span class="rt">🐞 Report a problem</span><button class="btn" onclick="closeReport()">Close</button></div>
+    <div class="mbody" id="reportBody"></div>
+  </div>
+</div>
+
+<div class="scrim" id="reportsViewScrim" onclick="if(event.target===this)closeReportsView()">
+  <div class="modal wide">
+    <div class="mhead"><span class="rt">🐞 Bug reports</span><button class="btn" onclick="closeReportsView()">Close</button></div>
+    <div class="mbody" id="reportsViewBody"></div>
   </div>
 </div>
 
@@ -1501,7 +1528,7 @@ function applyFloor(){
   allRooms.forEach(rn=>{ rooms[rn]= old[rn] || blankRoom(rn); });   // keep existing rooms, add new, drop removed
 }
 applyFloor();
-function seed(rn,ac,flags,note,lock,tags){const r=rooms[rn];r.occupied=true;r.acuity=ac;r.flags=flags||[];r.note=note||'';if(lock){r.lock=lock;r.nurse=lock;}r.tags=tags||[];}
+function seed(rn,ac,flags,note,lock,tags){const r=rooms[rn];r.occupied=true;r.acuity=ac;r.flags=flags||[];r.note='';if(lock){r.lock=lock;r.nurse=lock;}r.tags=tags||[];}
 function seedRoom(rn,nurse,ac,flags,tags){const r=rooms[rn];r.occupied=true;r.acuity=ac;r.flags=flags||[];r.tags=tags||[];r.note='';r.nurse=nurse;}
 // sample 10 Green board — rooms, assignments and key flags from the unit sheet (loads only when a unit has no saved board yet)
 seedRoom(36,'n1',3.5,['wound']); seedRoom(38,'n1',3.0,['wound']); seedRoom(44,'n1',2.5); seedRoom(46,'n1',3.5,['cvl']);
@@ -1634,7 +1661,7 @@ function renderAcuity(){
     if(!mine.length) html+='<div class="empty2">No patients assigned to you yet.</div>';
     mine.forEach(rn=>{ const r=rn; const cls=acuClass(r.acuity);
       const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
+      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
     });
     html+='</div></div>';
     document.getElementById('halls').innerHTML=html;
@@ -1648,7 +1675,7 @@ function renderAcuity(){
       else{
         const cls=acuClass(r.acuity);
         const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}${r.note?`<div class="rnote">${r.note}</div>`:''}</div>`;
+        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
       }
     });
     html+='</div></div>';
@@ -1684,7 +1711,7 @@ function flagsNoteHTML(){
     <input type="hidden" id="isoType_val" value="${esc(r.isoType||'')}"></div></div>`:'';
   const dcField=modalFlags.includes('dc')?`<div class="subfield"><span class="sublab">Expected D/C time / notes</span><input class="subin" id="dcTimeIn" value="${esc(r.dcTime||'')}" placeholder="e.g. By noon · Awaiting transport · After family arrives"></div>`:'';
   const admField=modalFlags.includes('adm')?`<div class="subfield"><span class="sublab">Expected admit source / time</span><input class="subin" id="admTimeIn" value="${esc(r.admTime||'')}" placeholder="e.g. From ED ~1400 · ICU transfer · Post-op"></div>`:'';
-  return `<div class="grp"><h4>Flags <span style="font-weight:400;color:var(--ink-soft)">· tap what applies</span><button class="qhelp" onclick="showFlagKey()" title="What do these mean?">?</button></h4><div class="flagrow">`+toggles+`</div>${isoSel}${dcField}${admField}<textarea class="noteIn" id="noteIn" placeholder="Updates / handoff (e.g. diuretics held, PT/OT eval)">${r.note||''}</textarea></div>`;
+  return `<div class="grp"><h4>Flags <span style="font-weight:400;color:var(--ink-soft)">· tap what applies</span><button class="qhelp" onclick="showFlagKey()" title="What do these mean?">?</button></h4><div class="flagrow">`+toggles+`</div>${isoSel}${dcField}${admField}</div>`;
 }
 function showFlagKey(){
   const rows=getActiveFlags().map(([f,l,full])=>`<div class="fkrow"><b>${esc(l)}</b><span>${esc(full)}</span></div>`).join('');
@@ -1777,7 +1804,7 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
     const w=document.getElementById('swingReasonWrap'); if(w){ w.innerHTML=swingReasonHTML(); w.scrollIntoView({behavior:'smooth',block:'center'}); }
     alert('That\u2019s a big acuity change — tap a reason first (pick “Other” if none fit).'); return;
   }
-  r.flags=modalFlags; r.note=document.getElementById('noteIn').value.trim();
+  r.flags=modalFlags; r.note='';
   const iv=document.getElementById('isoType_val'); r.isoType=iv?iv.value:'';
   if(!r.flags.includes('iso')) r.isoType='';
   const dc=document.getElementById('dcTimeIn'); r.dcTime=dc?dc.value.trim():'';
@@ -2122,32 +2149,53 @@ function applyReturning(){
   scheduleSave(); if(assignVisible()) renderAssign();
 }
 function goShare(){ if(typeof openShare==='function') openShare(); else show('assign'); }
-function reportProblem(){
+let _reportCat='';
+const REPORT_CATS=[['gen',"Assignment won't generate"],['save',"Can't see / use Save"],['count','Wrong nurse or patient count'],['voc','Vocera number wrong/missing'],['flag','Flag or score problem'],['sync',"Board didn't sync / update"],['other','Something else']];
+function reportContext(){
   const view = (typeof document!=='undefined' && document.getElementById('v-acuity') && document.getElementById('v-acuity').classList.contains('on')) ? 'Score'
     : (document.getElementById('v-build') && document.getElementById('v-build').classList.contains('on')) ? 'Build' : 'Board';
   const who = chargeMode ? 'Charge' : (viewAs && viewAs!=='charge' ? 'Staff ('+viewAs+')' : 'View-only');
-  const subject = 'EvenShift problem report — '+FLOOR.unit;
-  const body =
-`Tell Neo what went wrong (type below this line):
-————————————————————————
-What I was doing:
-
-What I expected:
-
-What actually happened:
-
-
-————————————————————————
-(Auto-filled — please leave this part)
-Screen: ${view}
-Mode: ${who}
-Shift: ${shiftType} ${shiftDate}
-Unit: ${FLOOR.unit}
-Posted: ${boardPosted?'yes':'no'}
-When: ${new Date().toLocaleString()}
-App: EvenShift`;
-  const url = 'mailto:amith.v.alias@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  try{ window.location.href=url; }catch(e){ try{ navigator.clipboard.writeText(body); alert('Couldn\u2019t open email. The report was copied — paste it to Neo.'); }catch(_){ alert('Email this to amith.v.alias@gmail.com:\n\n'+body); } }
+  return {view, who, shift:`${shiftType} ${shiftDate}`, unit:FLOOR.unit, posted:boardPosted?'yes':'no', lastError:_lastError||'none', when:new Date().toLocaleString(), ua:(navigator&&navigator.userAgent||'').slice(0,120)};
+}
+function reportProblem(){
+  _reportCat='';
+  const sc=document.getElementById('reportScrim'); if(sc){ renderReport(); sc.classList.add('on'); }
+}
+function closeReport(){ const s=document.getElementById('reportScrim'); if(s) s.classList.remove('on'); }
+function pickReportCat(c){ _reportCat=c; renderReport(); }
+function renderReport(){
+  const body=document.getElementById('reportBody'); if(!body) return;
+  const chips=REPORT_CATS.map(([c,lab])=>`<button class="rcat ${_reportCat===c?'on':''}" onclick="pickReportCat('${c}')">${lab}</button>`).join('');
+  body.innerHTML=
+    `<p class="covnote">Tap what went wrong, add a line if you can, and send. No patient names — just what the app did.</p>`
+    +`<div class="rcats">${chips}</div>`
+    +`<textarea id="reportText" class="hudnote" placeholder="Optional: what were you doing when it broke?"></textarea>`
+    +`<div class="hudactions"><button class="btn primary" onclick="submitReport()">Send to Neo</button><button class="btn" onclick="closeReport()">Cancel</button></div>`
+    +`<div id="reportMsg" class="hint" style="margin-top:8px;"></div>`;
+}
+async function submitReport(){
+  const txt=(document.getElementById('reportText')||{}).value||'';
+  const catLabel=(REPORT_CATS.find(c=>c[0]===_reportCat)||[])[1]||'';
+  if(!_reportCat && !txt.trim()){ const m=document.getElementById('reportMsg'); if(m){ m.textContent='Tap what went wrong (or type a line) first.'; } return; }
+  const ctx=reportContext();
+  const row={ unit:ctx.unit, category:catLabel||'(none)', message:txt.trim(), screen:ctx.view, mode:ctx.who, shift:ctx.shift, posted:ctx.posted, last_error:ctx.lastError, ua:ctx.ua, by:(chargeName||'') , created_at:new Date().toISOString() };
+  const msg=document.getElementById('reportMsg'); if(msg) msg.textContent='Sending…';
+  if(cloudOn()){
+    try{
+      await sb.from('reports').insert(row);
+      if(msg) msg.textContent='✓ Sent — thank you. Neo will see this.';
+      setTimeout(closeReport,1200); return;
+    }catch(e){ /* fall through to email fallback */ }
+  }
+  // Offline / no cloud → fall back to email or copy
+  reportEmailFallback(row);
+}
+function reportEmailFallback(row){
+  const subject='EvenShift problem report — '+row.unit;
+  const body=`What broke: ${row.category}\n${row.message?('Details: '+row.message+'\n'):''}\n— context —\nScreen: ${row.screen}\nMode: ${row.mode}\nShift: ${row.shift}\nPosted: ${row.posted}\nLast error: ${row.last_error}\nWhen: ${new Date().toLocaleString()}\nApp: EvenShift`;
+  const url='mailto:amith.v.alias@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  try{ window.location.href=url; closeReport(); }
+  catch(e){ try{ navigator.clipboard.writeText(body); const m=document.getElementById('reportMsg'); if(m) m.textContent='Offline — report copied. Paste it to Neo.'; }catch(_){ alert('Email this to amith.v.alias@gmail.com:\n\n'+body); } }
 }
 function openTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.add('on'); }
 function closeTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.remove('on'); }
@@ -2184,7 +2232,7 @@ function renderRecipe(){
 }
 /* ---------- undo: one tap back for the charge ---------- */
 let undoStack=[];
-function snapRooms(){ const s={}; Object.values(rooms).forEach(r=>{ s[r.id]={acuity:r.acuity,occupied:r.occupied,tally:JSON.parse(JSON.stringify(r.tally||{})),flags:[...(r.flags||[])],note:r.note,lock:r.lock,nurse:r.nurse,tags:[...(r.tags||[])],avoid:[...(r.avoid||[])]}; }); return s; }
+function snapRooms(){ const s={}; Object.values(rooms).forEach(r=>{ s[r.id]={acuity:r.acuity,occupied:r.occupied,tally:JSON.parse(JSON.stringify(r.tally||{})),flags:[...(r.flags||[])],lock:r.lock,nurse:r.nurse,tags:[...(r.tags||[])],avoid:[...(r.avoid||[])]}; }); return s; }
 function pushUndo(){ undoStack.push(snapRooms()); if(undoStack.length>25) undoStack.shift(); updateUndoBtn(); }
 function undo(){ if(!chargeMode||!undoStack.length)return; const s=undoStack.pop(); Object.values(rooms).forEach(r=>{ const d=s[r.id]; if(d) Object.assign(r,d); }); selectedRoom=null; updateUndoBtn(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()&&chargeMode) pushMeta(); else scheduleSave(); }
 function updateUndoBtn(){ const b=document.getElementById('undoBtn'); if(b) b.style.display=(chargeMode&&undoStack.length)?'':'none'; }
@@ -2397,17 +2445,24 @@ function jumpRoom(val, force){
 
 /* Draft vs Final: charge taps Post so staff know the board is final & safe to read */
 let boardPosted=false, lastUpdatedAt=0, lastUpdatedBy='';
+// Silently remember the last app error so a bug report is useful even if the user just says "it broke".
+let _lastError='';
+if(typeof window!=='undefined'){
+  window.addEventListener('error', e=>{ try{ _lastError=`${(e.message||'error')} @ ${(e.filename||'').split('/').pop()}:${e.lineno||'?'} [${new Date().toLocaleTimeString()}]`; }catch(_){} });
+  window.addEventListener('unhandledrejection', e=>{ try{ _lastError=`promise: ${(e.reason&&e.reason.message)||e.reason||'rejection'} [${new Date().toLocaleTimeString()}]`; }catch(_){} });
+}
 function togglePosted(){ if(!chargeMode)return;
   if(!boardPosted){
-    // Posting: ask who's posting this assignment (free-type, pre-filled with last name).
+    // Posting: record who's posting — separate from who PREPARED it (chargeName), so the
+    // manager's "assignment made by" stays intact.
     const who=(prompt('Who\u2019s posting this assignment?', chargeName||'')||'').trim();
     if(who===''){ return; }   // cancelled or blank → don't post
-    chargeName=who;
+    lastUpdatedBy=who;
     boardPosted=true;
   } else {
     boardPosted=false;   // un-posting back to draft
   }
-  lastUpdatedAt=Date.now(); lastUpdatedBy=chargeName||'Charge'; renderAssign(); scheduleSave();
+  lastUpdatedAt=Date.now(); if(!lastUpdatedBy) lastUpdatedBy=chargeName||'Charge'; renderAssign(); scheduleSave();
 }
 function updatePostUI(){
   const btn=document.getElementById('postBtn');
@@ -2416,7 +2471,8 @@ function updatePostUI(){
     const ban=document.getElementById(id); if(!ban) return;
     if(!chargeMode){
       if(boardPosted){
-        ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
+        const chargeLine = chargeOncoming ? ` <span class="pb-charge">· Charge this shift: <b>${esc(chargeOncoming)}</b></span>` : '';
+        ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${chargeLine}${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
         ban.className='postbanner final'; ban.style.display='';
       } else {
         ban.innerHTML=`<span class="pb-ico">✏️</span> <b>The charge is still building this assignment.</b> Check back shortly — it isn\u2019t final yet.`;
@@ -2956,9 +3012,10 @@ function renderStaffModal(){
   let h=`<div class="confirmhead ${staffConfirmed?'done':''}">`
     +`<div class="chrow"><span class="chlab">Date</span><input type="date" id="confDate" class="chin" value="${esc(shiftDate)}" onchange="setConfDate(this.value)"></div>`
     +`<div class="chrow"><span class="chlab">Shift</span><div class="chseg"><button class="${shiftType==='Day'?'on':''}" onclick="setConfShift('Day')">☀️ Day</button><button class="${shiftType==='Night'?'on':''}" onclick="setConfShift('Night')">🌙 Night</button></div></div>`
-    +`<div class="chrow"><span class="chlab">Charge RN</span><input id="confCharge" class="chin" placeholder="who\u2019s preparing this" value="${esc(chargeName||'')}" oninput="chargeName=this.value.trim()"></div>`
+    +`<div class="chrow"><span class="chlab">Assignment prepared by</span><input id="confCharge" class="chin" placeholder="outgoing charge (you)" value="${esc(chargeName||'')}" oninput="chargeName=this.value.trim()"></div>`
+    +`<div class="chrow"><span class="chlab">Charge this shift</span><input id="confOncoming" class="chin" placeholder="who's charging the shift" value="${esc(chargeOncoming||'')}" oninput="chargeOncoming=this.value.trim()"></div>`
     + (staffConfirmed
-        ? `<div class="chconfirmed">✓ ${esc(shiftType)} · ${esc(shiftDate)}${chargeName?' · '+esc(chargeName):''} <button class="chedit" onclick="staffConfirmed=false;renderStaffModal()">change</button></div>`
+        ? `<div class="chconfirmed">✓ ${esc(shiftType)} · ${esc(shiftDate)}${chargeName?' · prepared by '+esc(chargeName):''}${chargeOncoming?' · charge: '+esc(chargeOncoming):''} <button class="chedit" onclick="staffConfirmed=false;renderStaffModal()">change</button></div>`
         : `<button class="chgo" onclick="confirmStaffHead()">✓ Looks right — pick the crew</button>`)
     +`</div>`;
   if(!staffConfirmed){ document.getElementById('staffBody').innerHTML=h; return; }
@@ -2973,7 +3030,7 @@ function renderStaffModal(){
 }
 function setConfDate(v){ if(v){ shiftDate=v; } }
 function setConfShift(s){ if(s===shiftType){ return; } setShiftType(s); _staffTab=s==='Night'?'night':'day'; renderStaffModal(); }
-function confirmStaffHead(){ const cd=document.getElementById('confDate'); if(cd&&cd.value) shiftDate=cd.value; const cc=document.getElementById('confCharge'); if(cc) chargeName=cc.value.trim(); staffConfirmed=true; renderStaffModal(); scheduleSave(); }
+function confirmStaffHead(){ const cd=document.getElementById('confDate'); if(cd&&cd.value) shiftDate=cd.value; const cc=document.getElementById('confCharge'); if(cc) chargeName=cc.value.trim(); const co=document.getElementById('confOncoming'); if(co) chargeOncoming=co.value.trim(); staffConfirmed=true; renderStaffModal(); scheduleSave(); }
 
 /* ===== VOCERA DEVICES — fixed slots (RN1-8, PCT1-4, Sitters), separate Day/Night sets ===== */
 const VOC_STATUS=['Assigned','Returned','Lost','Repair'];
@@ -3816,7 +3873,8 @@ function renderSupport(){
 function buildLegend(){ if(!document.getElementById('legend'))return; const rows=[['L','Low','< 2.5 hrs'],['M','Moderate','2.5–3.5'],['H','High','3.5–5'],['X','Intensive','5+']]; document.getElementById('legend').innerHTML=rows.map(([c,l,r])=>`<div class="legrow"><span class="swatch p${c}"></span><b>${l}</b>&nbsp;<span style="color:var(--ink-soft)">${r}</span></div>`).join(''); }
 /* ---------- persistence + shift ---------- */
 const STORE_KEY='tenGreen.floor.v1';
-let chargeName='Kamryn';
+let chargeName='Kamryn';   // who PREPARED the assignment (outgoing charge — for the manager)
+let chargeOncoming='';     // who's CHARGING this shift (oncoming — for the staff)
 const DEFAULT_DIRECTORY="Staffing 38793 \u00b7 Monitor Room 36999 \u00b7 Staffing Sup 30398\nOps Sup 35246 \u00b7 Bed Control 30399 / 34833 \u00b7 HUC 31048\nTube #901 / Pyxis C   \u00b7   Tube #810 / Pyxis D";
 let UNITINFO={ directory:DEFAULT_DIRECTORY };
 let saveTimer=null, storageOK=true;
@@ -3872,13 +3930,13 @@ async function cloudInit(){
 }
 function acuityObj(){
   const a={};
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || r.note || (r.tally&&Object.keys(r.tally).length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags,note:r.note}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags}; });
   return a;
 }
 function applyCloudRow(row){
   if(!row) return;
   if(row.meta) applyState(row.meta);                                   // charge-owned: roster, rubric, floor, assignments, shift, pin
-  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=a.note||''; } }   // acuity always wins
+  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; } }   // acuity always wins; note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
 function cloudRerender(){ applyShiftUI(); refreshViewOptions(); updateUnitTag(); updateRubricTag(); updateScoreTab(); renderAcuity(); renderAssign(); applyGate(); }
@@ -3895,14 +3953,14 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,note:r.note,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
 function applyState(st){
   if(st.floor && st.floor.halls){ FLOOR=st.floor; applyFloor(); updateUnitTag(); }
-  if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });
+  if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
   if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''}));
@@ -3915,6 +3973,7 @@ function applyState(st){
   if(st.shiftDate) shiftDate=st.shiftDate;
   if(st.shiftType) shiftType=st.shiftType;
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
+  if(typeof st.chargeOncoming==='string') chargeOncoming=st.chargeOncoming;
   boardPosted=!!st.boardPosted; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
@@ -4159,7 +4218,7 @@ function renderMeetTab(){
     const cs=cfg.clinSections;
     let h=`<div class="meetSection">`;
     if(cfg.clinCustom.length){ h+=secHead('Custom items'); cfg.clinCustom.filter(x=>x.text.trim()).forEach(x=>h+=`<div class="meetRow">${esc(x.text)}</div>`); }
-    if(cs.unitStatus){ const oos=occ.filter(r=>r.flags.includes('oos')); if(oos.length){ h+=secHead('Unit status'); oos.forEach(r=>h+=`<div class="meetRow warn"><b>Rm ${r.id}</b> — Out of service / Maintenance${r.note?' · '+esc(r.note):''}</div>`); } }
+    if(cs.unitStatus){ const oos=occ.filter(r=>r.flags.includes('oos')); if(oos.length){ h+=secHead('Unit status'); oos.forEach(r=>h+=`<div class="meetRow warn"><b>Rm ${r.id}</b> — Out of service / Maintenance</div>`); } }
     if(cs.throughput){
       const dc=occ.filter(r=>r.flags.includes('dc')); const adm=occ.filter(r=>r.flags.includes('adm'));
       h+=secHead('Throughput');
@@ -4495,7 +4554,7 @@ function buildSnapshot(){
   const isoCount=isos.length;
   const totalAcuity=occ.reduce((s,r)=>s+(r.acuity||0),0);
   return {
-    unit:FLOOR.unit, unitId, shiftDate, shiftType, chargeName,
+    unit:FLOOR.unit, unitId, shiftDate, shiftType, chargeName, chargeOncoming,
     census:occ.length, totalBeds:TOTAL_BEDS,
     spread:Math.round(spread*100)/100,
     nurseCount:nurses.length, pctCount:pcts.length, sitterCount:sitters.length, sitDemand:sitCount,
@@ -4548,6 +4607,31 @@ function openHouseView(){
   _houseTab='rollup'; loadHouse();
 }
 function closeHouse(){ const s=document.getElementById('houseScrim'); if(s) s.classList.remove('on'); }
+/* Manager-gated viewer to read bug reports without opening Supabase. */
+function openReportsView(){
+  const v=(prompt('Bug reports are for unit leadership.\nEnter the manager code:')||'').trim();
+  if(v===''){ return; }
+  if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
+  document.getElementById('reportsViewScrim').classList.add('on'); loadReportsView();
+}
+function closeReportsView(){ const s=document.getElementById('reportsViewScrim'); if(s) s.classList.remove('on'); }
+async function loadReportsView(){
+  const body=document.getElementById('reportsViewBody'); if(!body) return;
+  if(!cloudOn()){ body.innerHTML='<div class="hint">Bug reports need the cloud connected.</div>'; return; }
+  body.innerHTML='<div class="hint">Loading reports…</div>';
+  try{
+    const { data } = await sb.from('reports').select('*').order('created_at',{ascending:false}).limit(100);
+    if(!data||!data.length){ body.innerHTML='<div class="hint">No reports yet. When staff hit 🐞 Report a problem, they show up here.</div>'; return; }
+    body.innerHTML=data.map(r=>{
+      const when=r.created_at?new Date(r.created_at).toLocaleString():'';
+      return `<div class="repcard"><div class="reptop"><b>${esc(r.category||'(none)')}</b><span class="reptime">${esc(when)}</span></div>`
+        +(r.message?`<div class="repmsg">${esc(r.message)}</div>`:'')
+        +`<div class="repmeta">${esc(r.unit||'')} · ${esc(r.screen||'')} · ${esc(r.mode||'')} · ${esc(r.shift||'')}${r.by?' · '+esc(r.by):''}</div>`
+        +(r.last_error&&r.last_error!=='none'?`<div class="reperr">⚠ ${esc(r.last_error)}</div>`:'')
+        +`</div>`;
+    }).join('');
+  }catch(e){ body.innerHTML=`<div class="hint" style="color:var(--bad)">Couldn\u2019t load reports: ${esc(e.message||'error')}. The reports table may not exist yet.</div>`; }
+}
 function setHouseTab(t){ _houseTab=t; renderHouse(); }
 function setBedNeed(n){ _bedNeed=n; renderHouse(); }
 async function loadHouse(){
@@ -4777,7 +4861,7 @@ function renderSnapRow(snap,fname,i){
   const flagLine=flags.length?`<div class="hsection">Alerts</div><div style="font-size:11.5px;color:var(--bad);padding:4px 0">${flags.join('  ·  ')}</div>`:'';
   return `<div class="hrow"><div class="hrow-head" onclick="toggleHrow(${i})">
     <span class="hdate">${esc(snap.shiftDate||'')} ${esc(snap.shiftType||'')}</span>
-    <span class="hcharge">${snap.chargeName?`Charge: <b>${esc(snap.chargeName)}</b>  · `:''}Census <b>${snap.census||0}</b>/${snap.totalBeds||0}</span>${stamp}
+    <span class="hcharge">${snap.chargeName?`Assignment by <b>${esc(snap.chargeName)}</b>  · `:''}Census <b>${snap.census||0}</b>/${snap.totalBeds||0}</span>${stamp}
   </div><div class="hrow-body" id="hbody-${i}">
     <div class="hsection">Nurses</div>${nurseRows}
     ${pctRows?`<div class="hsection">PCT zones</div>${pctRows}`:''}${flagLine}
