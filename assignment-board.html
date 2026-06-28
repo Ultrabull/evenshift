@@ -674,6 +674,14 @@
   .fltot{font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);text-align:right;padding:4px 2px;}
   .mycard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);}
   .welcomecard{background:linear-gradient(135deg,var(--teal-wash),var(--bg));border:1.5px solid var(--teal);border-radius:16px;padding:20px 20px 22px;margin-bottom:14px;}
+  .welcomecard.autofade{animation:welcomeFade 5s ease forwards;overflow:hidden;}
+  @keyframes welcomeFade{
+    0%{opacity:0;transform:translateY(-4px);}
+    8%{opacity:1;transform:translateY(0);}
+    80%{opacity:1;transform:translateY(0);max-height:200px;padding-top:20px;padding-bottom:22px;margin-bottom:14px;border-width:1.5px;}
+    100%{opacity:0;max-height:0;padding-top:0;padding-bottom:0;margin-bottom:0;border-width:0;transform:translateY(-4px);}
+  }
+  @media(prefers-reduced-motion:reduce){ .welcomecard.autofade{animation:none;} }
   .welcometop{font-family:var(--display);font-weight:800;font-size:24px;line-height:1.2;color:var(--teal-deep);}
   .welcomesub{font-size:17px;color:var(--ink);margin-top:8px;line-height:1.45;font-weight:500;}
   .mycard h3{font-family:var(--display);font-weight:800;font-size:15px;margin:0 0 11px;color:var(--ink);}
@@ -793,6 +801,10 @@
   .attn.ok{border-left-color:#1C7A46;color:var(--teal-deep);}
   .logwrap{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;}
   .pb-charge{font-weight:500;}
+  .invlab{display:inline-block;min-width:120px;color:var(--ink-soft);font-weight:600;}
+  .livehdr{font-family:var(--display);font-weight:800;font-size:17px;color:var(--teal-deep);margin-bottom:4px;}
+  .livesub{display:block;font-size:11.5px;font-weight:500;color:var(--ink-soft);margin-top:2px;}
+  .invrooms{color:var(--ink-soft);font-size:11.5px;}
   .rcats{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 10px;}
   .rcat{padding:9px 13px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;color:var(--ink);cursor:pointer;text-align:left;}
   .rcat.on{background:var(--teal);border-color:var(--teal);color:#fff;}
@@ -1239,10 +1251,8 @@
     <div class="mhead"><span class="rt">📋 Meeting prep</span><button class="btn" onclick="closeMeetingPrep()">Close</button></div>
     <div class="mbody">
       <div class="meetTabs">
-        <button class="mtab sel" id="mtab-clin" onclick="switchMeetTab('clin')">🏥 9am Clinical</button>
-        <button class="mtab" id="mtab-huddle" onclick="switchMeetTab('huddle')">🛏 Bed Huddle</button>
+        <button class="mtab sel" id="mtab-huddle" onclick="switchMeetTab('huddle')">🛏 Bed Huddle</button>
         <button class="mtab" id="mtab-staffreq" onclick="switchMeetTab('staffreq')">📠 Staffing Office</button>
-        <button class="mtab" id="mtab-staff" onclick="switchMeetTab('staff')">👥 Staffing</button>
         <button class="mtab" id="mtab-cust" onclick="switchMeetTab('cust')" style="margin-left:auto;">⚙ Customize</button>
       </div>
       <div id="meetBody" style="margin-top:12px;"></div>
@@ -1873,7 +1883,7 @@ function staffWelcome(name){
   const first=(name||'').trim().split(/\s+/)[0]||'';
   const d=new Date(shiftDate||Date.now()); const idx=(d.getDate()+(shiftType==='Night'?1:0))%WELCOME_LINES.length;
   const greet = shiftType==='Night' ? 'Good evening' : 'Good morning';
-  return `<div class="welcomecard"><div class="welcometop">${greet}${first?', '+esc(first):''} 👋</div><div class="welcomesub">${WELCOME_LINES[idx]}</div></div>`;
+  return `<div class="welcomecard autofade" id="welcomeCard"><div class="welcometop">${greet}${first?', '+esc(first):''} 👋</div><div class="welcomesub">${WELCOME_LINES[idx]}</div></div>`;
 }
 function renderMyPCT(){
   const id=viewAs.slice(2), p=pcts.find(x=>x.id===id);
@@ -2475,16 +2485,12 @@ if(typeof window!=='undefined'){
 }
 function togglePosted(){ if(!chargeMode)return;
   if(!boardPosted){
-    // Posting: record who's posting — separate from who PREPARED it (chargeName), so the
-    // manager's "assignment made by" stays intact.
-    const who=(prompt('Who\u2019s posting this assignment?', chargeName||'')||'').trim();
-    if(who===''){ return; }   // cancelled or blank → don't post
-    lastUpdatedBy=who;
     boardPosted=true;
+    lastUpdatedBy=chargeName||'Charge';   // stamp = who prepared it (no extra prompt)
   } else {
     boardPosted=false;   // un-posting back to draft
   }
-  lastUpdatedAt=Date.now(); if(!lastUpdatedBy) lastUpdatedBy=chargeName||'Charge'; renderAssign(); scheduleSave();
+  lastUpdatedAt=Date.now(); renderAssign(); scheduleSave();
 }
 function updatePostUI(){
   const btn=document.getElementById('postBtn');
@@ -2493,7 +2499,7 @@ function updatePostUI(){
     const ban=document.getElementById(id); if(!ban) return;
     if(!chargeMode){
       if(boardPosted){
-        const chargeLine = chargeOncoming ? ` <span class="pb-charge">· Charge this shift: <b>${esc(chargeOncoming)}</b></span>` : '';
+        const chargeLine = chargeOncoming ? ` <span class="pb-charge">· Charge next shift: <b>${esc(chargeOncoming)}</b></span>` : '';
         ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${chargeLine}${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
         ban.className='postbanner final'; ban.style.display='';
       } else {
@@ -3034,10 +3040,10 @@ function renderStaffModal(){
   let h=`<div class="confirmhead ${staffConfirmed?'done':''}">`
     +`<div class="chrow"><span class="chlab">Date</span><input type="date" id="confDate" class="chin" value="${esc(shiftDate)}" onchange="setConfDate(this.value)"></div>`
     +`<div class="chrow"><span class="chlab">Shift</span><div class="chseg"><button class="${shiftType==='Day'?'on':''}" onclick="setConfShift('Day')">☀️ Day</button><button class="${shiftType==='Night'?'on':''}" onclick="setConfShift('Night')">🌙 Night</button></div></div>`
-    +`<div class="chrow"><span class="chlab">Assignment prepared by</span><input id="confCharge" class="chin" placeholder="outgoing charge (you)" value="${esc(chargeName||'')}" oninput="chargeName=this.value.trim()"></div>`
-    +`<div class="chrow"><span class="chlab">Charge this shift</span><input id="confOncoming" class="chin" placeholder="who's charging the shift" value="${esc(chargeOncoming||'')}" oninput="chargeOncoming=this.value.trim()"></div>`
+    +`<div class="chrow"><span class="chlab">Prepared by (charge this shift)</span><input id="confCharge" class="chin" placeholder="outgoing charge (you)" value="${esc(chargeName||'')}" oninput="chargeName=this.value.trim()"></div>`
+    +`<div class="chrow"><span class="chlab">Charge next shift</span><input id="confOncoming" class="chin" placeholder="who's charging the next shift" value="${esc(chargeOncoming||'')}" oninput="chargeOncoming=this.value.trim()"></div>`
     + (staffConfirmed
-        ? `<div class="chconfirmed">✓ ${esc(shiftType)} · ${esc(shiftDate)}${chargeName?' · prepared by '+esc(chargeName):''}${chargeOncoming?' · charge: '+esc(chargeOncoming):''} <button class="chedit" onclick="staffConfirmed=false;renderStaffModal()">change</button></div>`
+        ? `<div class="chconfirmed">✓ ${esc(shiftType)} · ${esc(shiftDate)}${chargeName?' · prepared by '+esc(chargeName):''}${chargeOncoming?' · next charge: '+esc(chargeOncoming):''} <button class="chedit" onclick="staffConfirmed=false;renderStaffModal()">change</button></div>`
         : `<button class="chgo" onclick="confirmStaffHead()">✓ Looks right — pick the crew</button>`)
     +`</div>`;
   if(!staffConfirmed){ document.getElementById('staffBody').innerHTML=h; return; }
@@ -3976,7 +3982,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -4010,6 +4016,7 @@ function applyState(st){
   else if(st.burdenW && typeof st.burdenW==='object'){ BURDEN_W_DAY={...BURDEN_W_DAY_DEFAULT,...st.burdenW}; BURDEN_W_NIGHT={...BURDEN_W_NIGHT_DEFAULT,...st.burdenW}; }  // migrate old single profile
   if(st.bedCap){ BED_CAP={iso:st.bedCap.iso||[],lift:st.bedCap.lift||[]}; }
   if(st.dcBarriers) DC_BARRIERS=st.dcBarriers; HUDDLE_NOTE=st.huddleNote||'';
+  if(Array.isArray(st.huddleHistory)) HUDDLE_HISTORY=st.huddleHistory;
   STAFFREQ_OR=st.staffReqOR||''; STAFFREQ_NOTE=st.staffReqNote||'';
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
@@ -4134,7 +4141,7 @@ function removeCustomFlag(i){
 /* ═══════════════════════════════════════════════════════════
    MEETING PREP — Clinical (9am) + Staffing (2pm/2am)
    ═══════════════════════════════════════════════════════════ */
-let _meetTab='clin';
+let _meetTab='huddle';
 const MEET_CLIN_DEFAULTS={throughput:true,isolation:true,clinFlags:true,unitStatus:true};
 const MEET_STAFF_DEFAULTS={census:true,staffing:true};
 let meetConfig={
@@ -4144,7 +4151,7 @@ let meetConfig={
   staffCustom:[]
 };
 
-function openMeetingPrep(){ if(!chargeMode)return; _meetTab='clin'; renderMeetTab(); document.getElementById('meetScrim').classList.add('on'); }
+function openMeetingPrep(){ if(!chargeMode)return; _meetTab='huddle'; renderMeetTab(); document.getElementById('meetScrim').classList.add('on'); }
 function closeMeetingPrep(){ document.getElementById('meetScrim').classList.remove('on'); }
 function switchMeetTab(t){
   _meetTab=t;
@@ -4305,14 +4312,49 @@ function renderHuddleTab(){
   const el=document.getElementById('meetBody'); if(!el) return;
   const d=huddleData();
   let h=`<div class="meetSection">`;
+  h+=`<div class="livehdr">📋 Your unit right now <span class="livesub">${esc(FLOOR.unit)} · ${esc(shiftType)} · prepared for handoff</span></div>`;
+  // ── What changed since last huddle ──
+  const delta=huddleDelta();
+  if(delta && delta.items.length){
+    h+=secHead('🔺 What changed since last huddle');
+    delta.items.slice(0,12).forEach(it=>{
+      h+=`<div class="meetRow ${it.type==='new'?'warn':'ok'}">${it.type==='new'?'＋ New':'－ Cleared'} ${esc(it.lab)} · <b>Rm ${it.rm}</b></div>`;
+    });
+  } else if(delta){
+    h+=secHead('🔺 What changed since last huddle');
+    h+=`<div class="meetRow">No changes since last huddle — steady.</div>`;
+  }
+  // ── Watch: complex patients (risk combinations) ──
+  const risks=huddleRiskCombos();
+  if(risks.length){
+    h+=secHead('⚠️ Watch — most complex patients');
+    risks.slice(0,6).forEach(x=>h+=`<div class="meetRow warn"><b>Rm ${x.rm}</b>: ${esc(x.items.join(' + '))}</div>`);
+  }
   h+=secHead('At a glance');
   h+=`<div class="meetRow">Census <b>${d.census}/${TOTAL_BEDS}</b> · Open now <b>${d.open.length}</b></div>`;
   if(d.open.length){ const parts=[]; if(d.openIso.length)parts.push(`iso ${d.openIso.join(', ')}`); if(d.openLift.length)parts.push(`lift ${d.openLift.join(', ')}`); if(d.openStd.length)parts.push(`standard ${d.openStd.join(', ')}`); h+=`<div class="meetRow" style="font-size:12px;color:var(--ink-soft)">Beds: ${parts.join(' · ')}</div>`; }
   h+=`<div class="meetRow ${d.canTake>0?'ok':''}">Net <b>${d.netAfter>=0?'+':''}${d.netAfter}</b> after D/Cs &amp; admits · can take <b>~${d.canTake}</b> admit${d.canTake!==1?'s':''} once they clear</div>`;
   if(d.adm.length) h+=`<div class="meetRow warn">Pending admits: <b>${d.adm.map(r=>r.id+(r.acuity>=4?' (high)':'')).join(', ')}</b></div>`;
-  if(d.iso.length) h+=`<div class="meetRow">Isolation: <b>${d.iso.join(', ')}</b></div>`;
-  if(d.sit.length) h+=`<div class="meetRow">1:1 / sitters: <b>${d.sit.length}</b> (${d.sit.join(', ')})</div>`;
   h+=`<div class="meetRow">Staffing: <b>${nurses.length}</b> RN · <b>${pcts.length}</b> PCT · <b>${sitters.length}</b> sitter</div>`;
+  // ── Safety inventory (from flags) ──
+  const s=d.safety;
+  h+=secHead('Safety inventory (from flags)');
+  const invRow=(lab,arr,extra)=>`<div class="meetRow"><span class="invlab">${lab}</span> <b>${arr.length}</b>${arr.length?` <span class="invrooms">${extra||arr.join(', ')}</span>`:''}</div>`;
+  const isoTypes=Object.keys(s.isoByType);
+  h+=`<div class="meetRow"><span class="invlab">Isolation</span> <b>${d.iso.length}</b>${isoTypes.length?` <span class="invrooms">${isoTypes.map(t=>`${t}: ${s.isoByType[t].join(', ')}`).join(' · ')}</span>`:''}</div>`;
+  const clExtra=(()=>{ const p=[]; if(s.cvc.length)p.push(`CVC ${s.cvc.length}`); if(s.picc.length)p.push(`PICC ${s.picc.length}`); if(s.port.length)p.push(`Port ${s.port.length}`); if(s.hdc.length)p.push(`HD ${s.hdc.length}`); return `${p.join(', ')} — ${s.clAll.join(', ')}`; })();
+  h+=invRow('Central lines', s.clAll, clExtra);
+  h+=invRow('Foleys', s.foley);
+  h+=invRow('Restraints', s.restr);
+  h+=invRow('1:1 / sitters', d.sit);
+  h+=invRow('Pressure injuries', s.pu);
+  h+=invRow('Behavioral', s.beh);
+  // ── Trends (need a couple of prior captures) ──
+  const trend=huddleTrend();
+  if(trend.length){
+    h+=secHead('📈 Trend vs recent shifts');
+    trend.forEach(t=>{ if(t.changed||t.series.length>=3) h+=`<div class="meetRow"><span class="invlab">${esc(t.lab)}</span> ${t.series.join(' → ')} <b>${t.arrow}</b></div>`; });
+  }
   h+=secHead('Discharges & barriers');
   if(!d.dc.length) h+=`<div class="meetRow">No pending discharges. Flag a room D/C on the Score tab to add one.</div>`;
   d.dc.forEach(r=>{
@@ -4349,6 +4391,7 @@ function shareMeetingPrep(){
 let BED_CAP={ iso:[], lift:[] };          // room numbers that are iso-capable / lift-equipped (set once, remembered)
 let DC_BARRIERS={};                        // { roomId: ['ride','hh',...] }
 let HUDDLE_NOTE='';                         // free escalations line
+let HUDDLE_HISTORY=[];                      // rolling captures for "what changed" + trends (last ~12)
 const BARRIERS=[
   ['Transport', [['ride','Needs ride'],['transport','Awaiting transport'],['wcvan','WC van / stretcher']]],
   ['Home setup',[['hh','HH not set'],['dme','DME pending'],['walker','Needs walker']]],
@@ -4490,14 +4533,88 @@ function huddleData(){
   // discharges sorted by time (timed first, then untimed)
   const timed=dc.filter(r=>r.dcTime).sort((a,b)=>String(a.dcTime).localeCompare(String(b.dcTime)));
   const untimed=dc.filter(r=>!r.dcTime);
-  return {census,open,dc,adm,iso,sit,oos,openIso,openLift,openStd,netAfter,canTake,timedDC:timed,untimedDC:untimed};
+  // ── Safety inventory (mirrors the Daily Patient Safety Huddle) — all from flags, room-level ──
+  const rmsWith=f=>occ.filter(r=>r.flags.includes(f)).map(r=>r.id).sort((a,b)=>a-b);
+  const restr=rmsWith('restr');
+  const foley=rmsWith('foley');
+  const pu=rmsWith('pu');
+  const beh=rmsWith('beh');
+  const cvc=rmsWith('cvl'), picc=rmsWith('picc'), port=rmsWith('port'), hdc=rmsWith('hdcath');
+  const clAll=[...new Set([...cvc,...picc,...port,...hdc])].sort((a,b)=>a-b);
+  // isolation grouped by type (Contact/Droplet/Protective/Airborne)
+  const isoByType={};
+  occ.forEach(r=>{ if(r.flags.includes('iso')||r.flags.includes('airb')){ const t=r.flags.includes('airb')?'Airborne':(r.isoType||'Contact'); (isoByType[t]=isoByType[t]||[]).push(r.id); } });
+  Object.values(isoByType).forEach(a=>a.sort((x,y)=>x-y));
+  const safety={restr,foley,pu,beh,cvc,picc,port,hdc,clAll,isoByType};
+  return {census,open,dc,adm,iso,sit,oos,openIso,openLift,openStd,netAfter,canTake,timedDC:timed,untimedDC:untimed,safety};
+}
+/* Snapshot the current safety inventory so the NEXT huddle can show what changed + trends.
+   Captured once per shift (re-capturing the same shift updates it). */
+function captureHuddleSnapshot(){
+  const s=huddleData().safety;
+  const snap={ ts:Date.now(), date:shiftDate, shift:shiftType,
+    counts:{ foley:s.foley.length, cl:s.clAll.length, iso:Object.values(s.isoByType).reduce((a,b)=>a+b.length,0), restr:s.restr.length, sit:huddleData().sit.length, pu:s.pu.length, beh:s.beh.length },
+    rooms:{ foley:s.foley, cl:s.clAll, restr:s.restr, pu:s.pu, beh:s.beh,
+      iso:[].concat(...Object.values(s.isoByType)).sort((a,b)=>a-b), sit:huddleData().sit.slice().sort((a,b)=>a-b) } };
+  const i=HUDDLE_HISTORY.findIndex(h=>h.date===shiftDate && h.shift===shiftType);
+  if(i>=0) HUDDLE_HISTORY[i]=snap; else HUDDLE_HISTORY.push(snap);
+  HUDDLE_HISTORY=HUDDLE_HISTORY.slice(-12);
+  scheduleSave();
+}
+/* Compare current live inventory to the most recent PRIOR capture (not this shift). */
+function huddleDelta(){
+  const prior=HUDDLE_HISTORY.filter(h=>!(h.date===shiftDate && h.shift===shiftType)).slice(-1)[0];
+  if(!prior) return null;
+  const d=huddleData(); const s=d.safety;
+  const cur={ iso:[].concat(...Object.values(s.isoByType)).sort((a,b)=>a-b), cl:s.clAll, foley:s.foley, restr:s.restr, sit:d.sit.slice().sort((a,b)=>a-b), pu:s.pu, beh:s.beh };
+  const lab={iso:'isolation',cl:'central line',foley:'foley',restr:'restraints',sit:'1:1',pu:'pressure injury',beh:'behavioral'};
+  const out=[];
+  Object.keys(lab).forEach(k=>{
+    const was=(prior.rooms&&prior.rooms[k])||[]; const now=cur[k]||[];
+    const added=now.filter(x=>!was.includes(x)); const gone=was.filter(x=>!now.includes(x));
+    added.forEach(rm=>out.push({type:'new',k,lab:lab[k],rm}));
+    gone.forEach(rm=>out.push({type:'gone',k,lab:lab[k],rm}));
+  });
+  return {prior, items:out};
+}
+/* Trend per category over the last few captures + current. */
+function huddleTrend(){
+  const d=huddleData(); const s=d.safety;
+  const curCounts={ foley:s.foley.length, cl:s.clAll.length, iso:Object.values(s.isoByType).reduce((a,b)=>a+b.length,0), restr:s.restr.length, sit:d.sit.length, pu:s.pu.length, beh:s.beh.length };
+  const hist=HUDDLE_HISTORY.filter(h=>!(h.date===shiftDate && h.shift===shiftType)).slice(-3);
+  const lab={foley:'Foleys',cl:'Central lines',iso:'Isolation',restr:'Restraints',sit:'1:1',pu:'Pressure inj',beh:'Behavioral'};
+  const rows=[];
+  Object.keys(lab).forEach(k=>{
+    const series=hist.map(h=>h.counts[k]!=null?h.counts[k]:0).concat(curCounts[k]);
+    if(series.length<2) return;
+    const prev=series[series.length-2], now=series[series.length-1];
+    const arrow = now>prev?'↑':(now<prev?'↓':'→');
+    if(hist.length) rows.push({k,lab:lab[k],series,arrow,changed:now!==prev});
+  });
+  return rows;
+}
+/* Patients carrying multiple high-risk items — the complex ones a supervisor wants surfaced. */
+const RISK_ITEMS=[['line',['cvl','picc','port','hdcath'],'central line'],['foley',['foley'],'foley'],['restr',['restr'],'restraints'],['iso',['iso','airb'],'isolation'],['sit',['sit'],'1:1'],['tot',['tot'],'total care'],['pu',['pu'],'pressure injury'],['trach',['trach'],'trach'],['chest',['chest'],'chest tube']];
+function huddleRiskCombos(){
+  const occ=occupied(); const out=[];
+  occ.forEach(r=>{
+    const have=RISK_ITEMS.filter(([,codes])=>codes.some(c=>r.flags.includes(c))).map(([,,lab])=>lab);
+    if(have.length>=3) out.push({rm:r.id, items:have});
+  });
+  return out.sort((a,b)=>b.items.length-a.items.length);
 }
 function huddleText(){
   const d=huddleData(); const when=new Date();
   const hhmm=String(when.getHours()).padStart(2,'0')+String(when.getMinutes()).padStart(2,'0');
   const L=[];
-  L.push(`${FLOOR.unit} — ${shiftType} Bed Huddle · ${shiftDate} ${hhmm}`);
+  L.push(`${FLOOR.unit} — ${shiftType} unit picture · ${shiftDate} ${hhmm}`);
   L.push(`Reported by: ${chargeName||'Charge RN'}`);
+  // what changed
+  const delta=huddleDelta();
+  if(delta && delta.items.length){ L.push(''); L.push('What changed since last huddle:'); delta.items.slice(0,12).forEach(it=>L.push(`  ${it.type==='new'?'+ New':'- Cleared'} ${it.lab} · Rm ${it.rm}`)); }
+  // complex patients
+  const risks=huddleRiskCombos();
+  if(risks.length){ L.push(''); L.push('Watch — most complex patients:'); risks.slice(0,6).forEach(x=>L.push(`  Rm ${x.rm}: ${x.items.join(' + ')}`)); }
   L.push('');
   L.push(`Census: ${d.census}/${TOTAL_BEDS} · Open now: ${d.open.length}`);
   // beds by capability
@@ -4511,14 +4628,29 @@ function huddleText(){
     d.untimedDC.forEach(r=>{ const b=(DC_BARRIERS[r.id]||[]).map(barrierLabel); L.push(`  Rm ${r.id} (time TBD)${b.length?' — '+b.join(', '):''}`); });
   } else L.push('Discharges: none pending');
   if(d.adm.length){ L.push(`Pending admits (${d.adm.length}): ${d.adm.map(r=>r.id+(r.acuity>=4?' (high acuity)':'')).join(', ')}`); }
-  if(d.iso.length) L.push(`Isolation: ${d.iso.join(', ')}`);
-  if(d.sit.length) L.push(`1:1 / sitters: ${d.sit.length} (rooms ${d.sit.join(', ')})`);
+  // ── Safety inventory ──
+  const s=d.safety;
+  L.push('');
+  L.push('— Safety inventory (from flags) —');
+  // isolation by type
+  const isoTypes=Object.keys(s.isoByType);
+  if(isoTypes.length){ L.push(`Isolation (${d.iso.length}): ${isoTypes.map(t=>`${t} ${s.isoByType[t].join(', ')}`).join(' · ')}`); }
+  else L.push('Isolation: 0');
+  // central lines with breakdown
+  if(s.clAll.length){ const parts=[]; if(s.cvc.length)parts.push(`CVC ${s.cvc.length}`); if(s.picc.length)parts.push(`PICC ${s.picc.length}`); if(s.port.length)parts.push(`Port ${s.port.length}`); if(s.hdc.length)parts.push(`HD ${s.hdc.length}`); L.push(`Central lines (${s.clAll.length}): ${parts.join(', ')} — rooms ${s.clAll.join(', ')}`); }
+  else L.push('Central lines: 0');
+  L.push(`Foleys (${s.foley.length})${s.foley.length?': '+s.foley.join(', '):''}`);
+  L.push(`Restraints (${s.restr.length})${s.restr.length?': '+s.restr.join(', '):''}`);
+  L.push(`1:1 / sitters (${d.sit.length})${d.sit.length?': '+d.sit.join(', '):''}`);
+  L.push(`Pressure injuries (${s.pu.length})${s.pu.length?': '+s.pu.join(', '):''}`);
+  L.push(`Behavioral flags (${s.beh.length})${s.beh.length?': '+s.beh.join(', '):''}`);
   // staffing counts
   L.push(`Staffing: ${nurses.length} RN · ${pcts.length} PCT · ${sitters.length} sitter`);
   if(HUDDLE_NOTE.trim()) L.push(`Escalations: ${HUDDLE_NOTE.trim()}`);
   return L.join('\n');
 }
 function emailHuddle(){
+  captureHuddleSnapshot();   // record this huddle so the next shift can show what changed
   const subject=`${FLOOR.unit} ${shiftType} Bed Huddle — ${shiftDate}`;
   const url='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(huddleText());
   try{ window.location.href=url; }catch(e){ copyMeetingPrep(); }
