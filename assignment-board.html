@@ -673,6 +673,9 @@
   .flsec .rubfield input{width:100%;font-variant-numeric:tabular-nums;}
   .fltot{font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);text-align:right;padding:4px 2px;}
   .mycard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);}
+  .welcomecard{background:linear-gradient(135deg,var(--teal-wash),var(--bg));border:1.5px solid var(--teal);border-radius:16px;padding:20px 20px 22px;margin-bottom:14px;}
+  .welcometop{font-family:var(--display);font-weight:800;font-size:24px;line-height:1.2;color:var(--teal-deep);}
+  .welcomesub{font-size:17px;color:var(--ink);margin-top:8px;line-height:1.45;font-weight:500;}
   .mycard h3{font-family:var(--display);font-weight:800;font-size:15px;margin:0 0 11px;color:var(--ink);}
   .sitline{font-size:13px;color:var(--ink-soft);margin-top:9px;line-height:1.5;}
   .unitlink{font-family:var(--body);font-size:12px;color:var(--teal-deep);background:var(--teal-wash);border:1px solid var(--teal);border-radius:9px;padding:9px 11px;word-break:break-all;text-align:center;}
@@ -1854,6 +1857,24 @@ function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})
 const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos'];
 function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
 function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
+/* A warm one-liner when a staff member opens their own assignment. Rotates by day so it
+   feels fresh but stays the same across a shift. First name only. */
+const WELCOME_LINES=[
+  'Glad you\u2019re here today. Have a great shift! 💙',
+  'Thanks for all you do. Wishing you a smooth shift ahead.',
+  'Here\u2019s your assignment — you\u2019ve got this. 🌟',
+  'Welcome! Take it one patient at a time today.',
+  'Your patients are lucky to have you today.',
+  'Hope you have a good one. Lean on your team when you need to.',
+  'Ready when you are. Make it a good shift! ☕',
+  'Thank you for being here. Take care of yourself too today.'
+];
+function staffWelcome(name){
+  const first=(name||'').trim().split(/\s+/)[0]||'';
+  const d=new Date(shiftDate||Date.now()); const idx=(d.getDate()+(shiftType==='Night'?1:0))%WELCOME_LINES.length;
+  const greet = shiftType==='Night' ? 'Good evening' : 'Good morning';
+  return `<div class="welcomecard"><div class="welcometop">${greet}${first?', '+esc(first):''} 👋</div><div class="welcomesub">${WELCOME_LINES[idx]}</div></div>`;
+}
 function renderMyPCT(){
   const id=viewAs.slice(2), p=pcts.find(x=>x.id===id);
   const z=pctZones().find(z=>z.pct.id===id);
@@ -1861,7 +1882,7 @@ function renderMyPCT(){
   const nnames=[...new Set(rms.map(r=>rooms[r]&&rooms[r].nurse).filter(Boolean))].map(nid=>{ const n=nurses.find(x=>x.id===nid); return n?n.name:null; }).filter(Boolean);
   let buddy=[]; buddyPairsPCT().forEach(g=>{ if(g.some(x=>x.id===id)) buddy=g.filter(x=>x.id!==id).map(x=>x.name); });
   const c=document.getElementById('nurses');
-  if(c) c.innerHTML=`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}</h3>`+
+  if(c) c.innerHTML=staffWelcome(p?p.name:'')+`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}</h3>`+
     `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); return `<div class="zroom"><span class="rmnum">${r}</span>${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
     (nnames.length?`<div class="sitline">Nurses in your zone: <b>${nnames.map(esc).join(', ')}</b></div>`:'')+
     (buddy.length?`<div class="sitline">\ud83e\udd1d Break buddy: <b>${buddy.map(esc).join(', ')}</b></div>`:'')+
@@ -1878,7 +1899,7 @@ function renderMySitter(){
     const cov=sitterCoverage().find(x=>x.room===+s.room);
     body=`<div class="zonerooms"><span class="rmnum">${s.room}</span></div><div class="sitline">Your 1:1 patient</div>`+(cov?`<div class="sitline">Break <b>${cov.window}</b> → covered by <b>${esc(cov.cover.name)}</b>${cov.cover.role?' · '+cov.cover.role:''}</div>`:'');
   } else body='<div class="sitline">No room set yet — ask charge to assign your 1:1.</div>';
-  c.innerHTML=`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(()=>{ const v=vocForSitter(id); const slot=sitters.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · Sitter ${slot}</div>`:''; })()}${breakPickerHTML(id,true)}</div>`;
+  c.innerHTML=staffWelcome(s.name)+`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(()=>{ const v=vocForSitter(id); const slot=sitters.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · Sitter ${slot}</div>`:''; })()}${breakPickerHTML(id,true)}</div>`;
 }
 function renderAssign(){
   if(!chargeMode){
@@ -1906,7 +1927,8 @@ function renderAssign(){
     const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
     const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
   } else {
-  document.getElementById('nurses').innerHTML=shown.map(n=>{
+  const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
+  document.getElementById('nurses').innerHTML=welcome+shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id));
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
