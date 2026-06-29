@@ -62,6 +62,42 @@
   .lockchip{border:none;background:transparent;cursor:pointer;font-size:12px;padding:0 1px 0 3px;line-height:1;opacity:.55;}
   .lockchip.on{opacity:1;}
   .chip.locked{box-shadow:inset 0 0 0 1.5px var(--teal);}
+  .chip.isdc{background:#E8F6EC;border-color:#9BD3AC;}
+  .chip.isdc .rm{color:#1B7A3D;}
+  .chip.isadm{background:#FDF1DC;border-color:#EFC988;}
+  .chip.isadm .rm{color:#9A6512;}
+  .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+  .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
+  .dcadot.dcd{background:#9BD3AC;}
+  .dcadot.adm{background:#EFC988;margin-left:8px;}
+  .qhadd{width:100%;padding:11px;border:1.5px dashed var(--line-strong);background:var(--surface);border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;margin-bottom:12px;}
+  .qhcard{background:#FFF8E8;border:1.5px solid #EBCF86;border-radius:14px;padding:13px 15px;margin-bottom:12px;}
+  .qhtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .qhttl{font-family:var(--display);font-weight:800;font-size:14px;color:#8A6A12;}
+  .qhstamp{font-size:10.5px;color:#A98A48;white-space:nowrap;}
+  .qhbody{font-size:14px;color:var(--ink);line-height:1.45;white-space:pre-wrap;}
+  .qhackbtn{margin-top:10px;padding:9px 16px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}
+  .qhackd{margin-top:10px;font-size:12.5px;font-weight:600;color:#1B7A3D;}
+  .qhstale{margin-top:10px;font-size:12px;font-weight:600;color:#9A6512;}
+  .pulsecard{background:linear-gradient(135deg,#EEF4FF,var(--bg));border:1.5px solid #BFD4F2;border-radius:16px;padding:16px;margin-bottom:12px;text-align:center;}
+  .pulseq{font-family:var(--display);font-weight:800;font-size:15px;color:#2A4A7A;margin-bottom:12px;}
+  .pulsefaces{display:flex;justify-content:center;gap:8px;}
+  .pulseface{font-size:30px;background:#fff;border:1.5px solid #D4E0F0;border-radius:12px;padding:6px 10px;cursor:pointer;line-height:1;transition:.1s;}
+  .pulseface:active{transform:scale(1.15);}
+  .pulsefair{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;}
+  .pulsefairbtn{background:#fff;border:1.5px solid #BFD4F2;border-radius:10px;padding:10px 16px;font-family:inherit;font-size:14px;font-weight:700;color:#2A4A7A;cursor:pointer;}
+  .pulsefairbtn:active{background:var(--teal);color:#fff;}
+  .pulseskip{margin-top:10px;background:none;border:none;color:var(--ink-soft);font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline;}
+  .pulseanon{margin-top:10px;font-size:11.5px;color:#5C6B78;}
+  .survblock{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:14px;margin-bottom:14px;}
+  .survhead{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14px;color:var(--ink);margin-bottom:6px;}
+  .survstat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+  .survbig{background:var(--bg);border-radius:10px;padding:11px;font-size:22px;font-weight:800;color:var(--teal-deep);text-align:center;}
+  .survbig span{display:block;font-size:11px;font-weight:600;color:var(--ink-soft);margin-top:3px;}
+  .qhackrow{margin-top:10px;padding-top:9px;border-top:1px solid #EBCF86;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .qhedit{padding:5px 12px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;}
+  .qhacklist{font-size:11px;color:#8A6A12;}
+  .qhacklist.none{color:#A98A48;font-style:italic;}
   .rcard .rno{font-family:var(--display);font-weight:700;font-size:15px;}
   .rcard .acu{font-family:var(--display);font-weight:700;font-size:22px;line-height:1;margin-top:6px;}
   .rcard .acu small{font-size:11px;font-weight:600;color:var(--ink-soft);}
@@ -1017,7 +1053,7 @@
 <div class="wrap">
   <header class="appbar">
     <div class="ab-brand">
-      <span class="logo" aria-hidden="true">
+      <span class="logo" id="appLogo" aria-hidden="true">
         <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
           <rect x="2.5" y="2.5" width="35" height="35" rx="11" fill="#1A2433"/>
           <rect x="8" y="17" width="24" height="9" rx="4.5" fill="none" stroke="#5B8DEF" stroke-width="1.7"/>
@@ -1130,6 +1166,7 @@
       <button class="hucvocbtn" onclick="openVoceraGated()">📟 Vocera phones <small>HUC — needs code</small></button>
     </div>
     <div class="postbanner" id="postBanner2" style="display:none;"></div>
+    <div id="quickHits"></div>
     <div class="acureview chargeOnly" id="balanceBanner" style="display:none;"></div>
     <div class="boardstack">
       <div id="cardStack"></div>
@@ -1196,11 +1233,33 @@
   </div>
 </div>
 
+<div class="scrim" id="devScrim" onclick="if(event.target===this)closeDev()">
+  <div class="modal" style="max-width:460px;">
+    <div class="mhead"><span class="rt">🛠️ Developer settings</span><button class="btn" onclick="closeDev()">Close</button></div>
+    <div class="mbody">
+      <p class="covnote">Backend configuration. This is a developer-only screen — managers and charge nurses never need it. The board already auto-connects; only change this to point a unit at a different database.</p>
+      <details class="cloudset" open>
+        <summary>Cloud connection</summary>
+        <p class="covnote" style="margin-top:8px;">From supabase.com: run the setup SQL, then Project Settings → API. Paste the two values here — they save on this device.</p>
+        <label class="rubfield" style="margin-bottom:8px;">Project URL<input id="sbUrl" placeholder="https://xxxx.supabase.co"></label>
+        <label class="rubfield" style="margin-bottom:8px;">anon public key<input id="sbKey" placeholder="eyJhbGciOi…"></label>
+        <div class="rsharebtns"><button class="btn primary" onclick="saveCloudKeys()">Connect</button></div>
+        <div id="cloudMsg" class="rmsg"></div>
+      </details>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);">
+        <label class="rubfield" style="margin-bottom:6px;">Developer code <span class="flhint">change the code that opens this screen</span><input id="devCodeIn" inputmode="numeric" placeholder="New developer code"></label>
+        <div class="rsharebtns"><button class="btn" onclick="setDevCode()">Save developer code</button></div>
+        <div id="devCodeMsg" class="rmsg" style="color:var(--ink-soft)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="scrim" id="unitScrim" onclick="if(event.target===this)closeUnitQR()">
   <div class="modal">
     <div class="mhead"><span class="rt">Unit link &amp; QR</span><button class="btn" onclick="closeUnitQR()">Close</button></div>
     <div class="mbody">
-      <label class="rubfield" style="margin-bottom:10px;">Unit code<input id="unitInput" oninput="updateUnitLink()" placeholder="e.g. 10-green"></label>
+      <label class="rubfield chargeOnly" style="margin-bottom:10px;">Unit code<input id="unitInput" oninput="updateUnitLink()" placeholder="e.g. 10-green"></label>
       <p class="covnote" id="unitState">Offline mode — this device only. Add your Supabase keys (see setup) to make the board live and shareable.</p>
       <div id="unitQR" style="display:flex;justify-content:center;padding:14px 0;"></div>
       <div class="unitlink" id="unitLinkTxt"></div>
@@ -1211,14 +1270,6 @@
         <div class="rsharebtns"><button class="btn" onclick="setUnitPass()">Save access code</button></div>
         <div id="unitPassMsg" class="rmsg" style="color:var(--ink-soft)"></div>
       </div>
-      <details class="cloudset">
-        <summary>Cloud setup (one time)</summary>
-        <p class="covnote" style="margin-top:8px;">From supabase.com (in this browser is fine): run the setup SQL, then Project Settings → API. Paste the two values here — they save on this device.</p>
-        <label class="rubfield" style="margin-bottom:8px;">Project URL<input id="sbUrl" placeholder="https://xxxx.supabase.co"></label>
-        <label class="rubfield" style="margin-bottom:8px;">anon public key<input id="sbKey" placeholder="eyJhbGciOi…"></label>
-        <div class="rsharebtns"><button class="btn primary" onclick="saveCloudKeys()">Connect</button></div>
-        <div id="cloudMsg" class="rmsg"></div>
-      </details>
     </div>
   </div>
 </div>
@@ -1268,6 +1319,18 @@
         <button class="btn" onclick="copyMeetingPrep()">Copy as text</button>
       </div>
       <div id="meetCopyMsg" class="hint" style="min-height:14px;margin-top:6px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="quickScrim" onclick="if(event.target===this)closeQuickEdit()">
+  <div class="modal" style="max-width:460px;">
+    <div class="mhead"><span class="rt">📣 Quick hits — unit handoff</span><button class="btn" onclick="closeQuickEdit()">Close</button></div>
+    <div class="mbody">
+      <p class="covnote">General shift communication for the next charge and staff — falls, manager concerns, reminders, equipment. No patient names — room numbers only.</p>
+      <textarea id="quickText" class="hudnote" style="min-height:120px;" placeholder="e.g. 2 falls overnight (Rm 41, 58). Manager wants hourly rounding documented. Glucometer #3 out for repair."></textarea>
+      <div class="hudactions"><button class="btn primary" onclick="saveQuickHits()">Post to unit</button><button class="btn" onclick="clearQuickHits()">Clear</button></div>
+      <div id="quickMsg" class="hint" style="margin-top:8px;"></div>
     </div>
   </div>
 </div>
@@ -1855,7 +1918,8 @@ function rnChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(miniFlag).join(' ');
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
   const scored=r.acuity>0;
-  return `<span class="chip rntap${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?r.acuity.toFixed(1):'tap'}</span></span>`;
+  const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
+  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?r.acuity.toFixed(1):'tap'}</span></span>`;
 }
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(miniFlag).join(' ');
@@ -1863,7 +1927,8 @@ function roomChip(r){
   const lockBtn = chargeMode
     ? `<button class="lockchip ${r.lock?'on':''}" onclick="event.stopPropagation(); toggleRoomLock(${r.id})" title="${r.lock?'Locked to this nurse — tap to unlock':'Lock this room to this nurse (won\u2019t move on re-generate)'}">${r.lock?'🔒':'🔓'}</button>`
     : (r.lock?'<span title="continuity / requested nurse">🔒</span>':'');
-  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${lockBtn}</span>`;
+  const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
+  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${lockBtn}</span>`;
 }
 function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r||!r.occupied) return;
   if(r.lock){ r.lock=null; }
@@ -1899,7 +1964,7 @@ function renderMyPCT(){
   const nnames=[...new Set(rms.map(r=>rooms[r]&&rooms[r].nurse).filter(Boolean))].map(nid=>{ const n=nurses.find(x=>x.id===nid); return n?n.name:null; }).filter(Boolean);
   let buddy=[]; buddyPairsPCT().forEach(g=>{ if(g.some(x=>x.id===id)) buddy=g.filter(x=>x.id!==id).map(x=>x.name); });
   const c=document.getElementById('nurses');
-  if(c) c.innerHTML=staffWelcome(p?p.name:'')+`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}</h3>`+
+  if(c) c.innerHTML=staffWelcome(p?p.name:'')+staffPulseCard(p?p.name:'')+`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}</h3>`+
     `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); return `<div class="zroom"><span class="rmnum">${r}</span>${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
     (nnames.length?`<div class="sitline">Nurses in your zone: <b>${nnames.map(esc).join(', ')}</b></div>`:'')+
     (buddy.length?`<div class="sitline">\ud83e\udd1d Break buddy: <b>${buddy.map(esc).join(', ')}</b></div>`:'')+
@@ -1916,9 +1981,10 @@ function renderMySitter(){
     const cov=sitterCoverage().find(x=>x.room===+s.room);
     body=`<div class="zonerooms"><span class="rmnum">${s.room}</span></div><div class="sitline">Your 1:1 patient</div>`+(cov?`<div class="sitline">Break <b>${cov.window}</b> → covered by <b>${esc(cov.cover.name)}</b>${cov.cover.role?' · '+cov.cover.role:''}</div>`:'');
   } else body='<div class="sitline">No room set yet — ask charge to assign your 1:1.</div>';
-  c.innerHTML=staffWelcome(s.name)+`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(()=>{ const v=vocForSitter(id); const slot=sitters.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · Sitter ${slot}</div>`:''; })()}${breakPickerHTML(id,true)}</div>`;
+  c.innerHTML=staffWelcome(s.name)+staffPulseCard(s.name)+`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(()=>{ const v=vocForSitter(id); const slot=sitters.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · Sitter ${slot}</div>`:''; })()}${breakPickerHTML(id,true)}</div>`;
 }
 function renderAssign(){
+  renderQuickHits();
   if(!chargeMode){
     const role=lockedRole();
     const c=document.getElementById('nurses');
@@ -1947,7 +2013,8 @@ function renderAssign(){
   const soloStaff = (selfRN && shown.length===1);
   const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
   const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
-  document.getElementById('nurses').innerHTML=welcome+shown.map(n=>{
+  const pulse = soloStaff && shown[0] ? staffPulseCard(shown[0].name) : '';
+  document.getElementById('nurses').innerHTML=welcome+pulse+shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id));
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
@@ -2190,6 +2257,129 @@ function applyReturning(){
   scheduleSave(); if(assignVisible()) renderAssign();
 }
 function goShare(){ if(typeof openShare==='function') openShare(); else show('assign'); }
+// ── Quick Hits: shift handoff communication (charge → next charge + staff). No PHI. ──
+let QUICK_HITS={ text:'', at:0, by:'' };
+let QUICK_ACKS={};   // { name: timestamp } for the CURRENT message; resets when text is replaced
+function openQuickEdit(){ if(!chargeMode) return; const t=document.getElementById('quickText'); if(t) t.value=QUICK_HITS.text||''; const m=document.getElementById('quickMsg'); if(m) m.textContent=''; document.getElementById('quickScrim').classList.add('on'); }
+function closeQuickEdit(){ const s=document.getElementById('quickScrim'); if(s) s.classList.remove('on'); }
+function saveQuickHits(){
+  const v=(document.getElementById('quickText').value||'').trim();
+  const changed = v!==QUICK_HITS.text;
+  // Quick hits are a living list — charge keeps some, removes some, adds some.
+  // We KEEP acknowledgments; if the text changed, QUICK_HITS.at advances so prior
+  // acks read as "earlier version" and staff are prompted to re-acknowledge.
+  QUICK_HITS={ text:v, at: changed?Date.now():(QUICK_HITS.at||Date.now()), by: changed?(chargeName||'Charge'):QUICK_HITS.by };
+  scheduleSave(); renderQuickHits(); closeQuickEdit();
+}
+function clearQuickHits(){ QUICK_HITS={ text:'', at:0, by:'' }; QUICK_ACKS={}; scheduleSave(); renderQuickHits(); closeQuickEdit(); }
+function ackQuickHits(name){ if(!name) return; QUICK_ACKS[name]=Date.now(); scheduleSave(); renderQuickHits(); }
+function _qhTime(ts){ try{ return new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+function renderQuickHits(){
+  const el=document.getElementById('quickHits'); if(!el) return;
+  const has=QUICK_HITS.text && QUICK_HITS.text.trim();
+  if(!has){
+    el.innerHTML = chargeMode ? `<button class="qhadd" onclick="openQuickEdit()">📣 Add quick hits for the unit</button>` : '';
+    return;
+  }
+  const stamp = `Updated ${_qhTime(QUICK_HITS.at)}${QUICK_HITS.by?' · '+esc(QUICK_HITS.by):''}`;
+  let h=`<div class="qhcard"><div class="qhtop"><span class="qhttl">📣 Quick hits</span><span class="qhstamp">${stamp}</span></div><div class="qhbody">${esc(QUICK_HITS.text).replace(/\n/g,'<br>')}</div>`;
+  // staff: acknowledge button (uses the name of the card being viewed)
+  const viewerName = _quickViewerName();
+  if(!chargeMode && viewerName){
+    const ackTs = QUICK_ACKS[viewerName];
+    const current = ackTs && ackTs >= (QUICK_HITS.at||0);
+    if(current){ h+=`<div class="qhackd">✓ You acknowledged this ${_qhTime(ackTs)}</div>`; }
+    else {
+      if(ackTs) h+=`<div class="qhstale">↻ Updated since you last read it — please re-acknowledge.</div>`;
+      h+=`<button class="qhackbtn" onclick="ackQuickHits('${esc(viewerName).replace(/'/g,"\\'")}')">✓ Acknowledge</button>`;
+    }
+  }
+  // charge/manager: who has acknowledged (current vs earlier version)
+  if(chargeMode){
+    const names=Object.keys(QUICK_ACKS);
+    h+=`<div class="qhackrow"><button class="qhedit" onclick="openQuickEdit()">Edit</button>`;
+    if(names.length){
+      const parts=names.map(n=>{ const cur=QUICK_ACKS[n]>=(QUICK_HITS.at||0); return `${esc(n)} (${_qhTime(QUICK_ACKS[n])}${cur?'':' · earlier'})`; });
+      h+=`<span class="qhacklist">Acknowledged: ${parts.join(' · ')}</span>`;
+    } else h+=`<span class="qhacklist none">No acknowledgments yet</span>`;
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  el.innerHTML=h;
+}
+// Name of the person whose card is being viewed (for acknowledgment)
+function _quickViewerName(){
+  if(chargeMode) return '';
+  if(viewAs && viewAs.startsWith('n-')){ const n=nurses.find(x=>'n-'+x.id===viewAs); return n?n.name:''; }
+  if(viewAs && viewAs.startsWith('p-')){ const p=pcts.find(x=>'p-'+x.id===viewAs); return p?p.name:''; }
+  if(viewAs && viewAs.startsWith('s-')){ const s=sitters.find(x=>'s-'+x.id===viewAs); return s?s.name:''; }
+  return '';
+}
+// ── Quick pulse survey (retention check-in). Anonymous. Manager toggles on/off. ──
+let SURVEY_ON=false;            // manager opts in
+let SURVEY_RESPONSES=[];        // anonymous: [{ts,date,shift,mood,fair}] — no names
+let _pulseMood=null, _pulseFair=null, _pulseSupport=null;   // transient: answers in progress
+const PULSE_FACES=[['1','😣'],['2','😕'],['3','😐'],['4','🙂'],['5','😄']];
+const PULSE_FAIR=[['heavy','Too heavy'],['ok','About right'],['light','Light']];
+const PULSE_SUPPORT=[['yes','Yes'],['some','Somewhat'],['no','No']];
+const PULSE_BREAKS=[['yes','Yes'],['partial','Partial'],['no','No']];
+function pulseRespondedKey(name){ return `evenshift_pulse_${unitId}_${shiftDate}_${shiftType}_${(name||'anon').toLowerCase()}`; }
+function pulseAlreadyDone(name){ try{ return !!localStorage.getItem(pulseRespondedKey(name)); }catch(e){ return false; } }
+function pulsePickMood(m){ _pulseMood=m; renderAssign(); }
+function pulsePickFair(f){ _pulseFair=f; renderAssign(); }
+function pulsePickSupport(s){ _pulseSupport=s; renderAssign(); }
+function submitPulse(breaks){
+  if(_pulseMood===null||_pulseFair===null||_pulseSupport===null) return;
+  SURVEY_RESPONSES.push({ ts:Date.now(), date:shiftDate, shift:shiftType, mood:+_pulseMood, fair:_pulseFair, support:_pulseSupport, breaks });
+  try{ localStorage.setItem(pulseRespondedKey(_quickViewerName()),'1'); }catch(e){}
+  _pulseMood=null; _pulseFair=null; _pulseSupport=null; scheduleSave(); renderAssign();
+}
+function dismissPulse(){ try{ localStorage.setItem(pulseRespondedKey(_quickViewerName()),'1'); }catch(e){} _pulseMood=null; _pulseFair=null; _pulseSupport=null; renderAssign(); }
+/* Card shown on a staff member's own assignment when the survey is on and they haven't answered this shift. */
+function staffPulseCard(name){
+  if(!SURVEY_ON) return '';
+  if(pulseAlreadyDone(name)) return '';
+  const wrap=(q,inner,anon,skip)=>`<div class="pulsecard"><div class="pulseq">${q}</div>${inner}<div class="pulseanon">🔒 ${anon||'Anonymous'}</div>${skip?`<button class="pulseskip" onclick="dismissPulse()">Skip</button>`:''}</div>`;
+  if(_pulseMood===null){
+    return wrap(`Quick check-in — how's your shift going?`,
+      `<div class="pulsefaces">${PULSE_FACES.map(([v,e])=>`<button class="pulseface" onclick="pulsePickMood('${v}')" title="${v}">${e}</button>`).join('')}</div>`,
+      'Anonymous — your name is never attached.', true);
+  }
+  if(_pulseFair===null){
+    return wrap(`How was your workload?`,
+      `<div class="pulsefair">${PULSE_FAIR.map(([v,l])=>`<button class="pulsefairbtn" onclick="pulsePickFair('${v}')">${l}</button>`).join('')}</div>`);
+  }
+  if(_pulseSupport===null){
+    return wrap(`Did you feel supported today?`,
+      `<div class="pulsefair">${PULSE_SUPPORT.map(([v,l])=>`<button class="pulsefairbtn" onclick="pulsePickSupport('${v}')">${l}</button>`).join('')}</div>`);
+  }
+  return wrap(`Last one — did you get your breaks?`,
+    `<div class="pulsefair">${PULSE_BREAKS.map(([v,l])=>`<button class="pulsefairbtn" onclick="submitPulse('${v}')">${l}</button>`).join('')}</div>`);
+}
+function toggleSurvey(){ SURVEY_ON=!SURVEY_ON; scheduleSave(); const b=document.getElementById('surveyToggleBtn'); if(b){ b.textContent=SURVEY_ON?'On':'Off'; b.className='btn '+(SURVEY_ON?'primary':''); } const r=document.getElementById('surveyResults'); if(r) r.innerHTML=surveyResultsHTML(); }
+function surveyResultsHTML(){
+  const rs=SURVEY_RESPONSES;
+  if(!rs.length) return '<div class="hint">No check-ins yet. When staff respond, anonymous results show here.</div>';
+  const n=rs.length;
+  const avgMood=(rs.reduce((s,r)=>s+(r.mood||0),0)/n);
+  const fairCount=rs.filter(r=>r.fair==='ok').length;
+  const heavyCount=rs.filter(r=>r.fair==='heavy').length;
+  const supYes=rs.filter(r=>r.support==='yes').length;
+  const supNo=rs.filter(r=>r.support==='no').length;
+  const brkYes=rs.filter(r=>r.breaks==='yes').length;
+  const brkNo=rs.filter(r=>r.breaks==='no').length;
+  const moodFace=PULSE_FACES[Math.max(0,Math.min(4,Math.round(avgMood)-1))][1];
+  const pct=x=>Math.round(x/n*100)+'%';
+  // only show the support/breaks tiles if those questions have data (older responses may lack them)
+  const hasSup=rs.some(r=>r.support!=null), hasBrk=rs.some(r=>r.breaks!=null);
+  return `<div class="survstat"><div class="survbig">${moodFace} ${avgMood.toFixed(1)}<span>/5 avg mood</span></div>`
+    +`<div class="survbig">${pct(fairCount)}<span>workload "about right"</span></div>`
+    +(hasSup?`<div class="survbig">${pct(supYes)}<span>felt supported</span></div>`:'')
+    +(hasBrk?`<div class="survbig">${pct(brkYes)}<span>got their breaks</span></div>`:'')
+    +`<div class="survbig">${pct(heavyCount)}<span>load "too heavy"</span></div>`
+    +`<div class="survbig">${n}<span>check-ins</span></div></div>`
+    +`<div class="hint" style="margin-top:8px;">Anonymous — no names stored. Rising "too heavy," low "supported," or missed breaks are early burnout signals.</div>`;
+}
 let _reportCat='';
 const REPORT_CATS=[['gen',"Assignment won't generate"],['save',"Can't see / use Save"],['count','Wrong nurse or patient count'],['voc','Vocera number wrong/missing'],['flag','Flag or score problem'],['sync',"Board didn't sync / update"],['other','Something else']];
 function reportContext(){
@@ -2486,6 +2676,18 @@ function jumpRoom(val, force){
 
 /* Draft vs Final: charge taps Post so staff know the board is final & safe to read */
 let boardPosted=false, lastUpdatedAt=0, lastUpdatedBy='';
+let DEV_CODE='2468';   // developer-only code for backend settings (changeable in the dev panel). Long-press the top-left corner to reach it.
+function openDevGate(){
+  const v=(prompt('Developer settings (backend config).\nEnter the developer code:')||'').trim();
+  if(v==='') return;
+  if(v!==DEV_CODE){ alert('That code didn\u2019t match the developer code.'); return; }
+  const u=document.getElementById('sbUrl'), k=document.getElementById('sbKey'), dc=document.getElementById('devCodeIn');
+  try{ const saved=JSON.parse(localStorage.getItem('evenshift_cloud')||'{}'); if(u)u.value=saved.url||''; if(k)k.value=saved.key||''; }catch(e){}
+  if(dc) dc.value='';
+  document.getElementById('devScrim').classList.add('on');
+}
+function closeDev(){ const s=document.getElementById('devScrim'); if(s) s.classList.remove('on'); }
+function setDevCode(){ const v=(document.getElementById('devCodeIn').value||'').trim(); if(v.length<3){ const m=document.getElementById('devCodeMsg'); if(m) m.textContent='Use at least 3 digits.'; return; } DEV_CODE=v; try{ localStorage.setItem('evenshift_devcode', v); }catch(e){} const m=document.getElementById('devCodeMsg'); if(m) m.textContent='✓ Developer code updated.'; }
 // The charge shown ON the assignment (which is for the NEXT shift) is the oncoming charge.
 // Falls back to the preparer only if no oncoming charge was entered.
 function assignmentCharge(){ return (chargeOncoming&&chargeOncoming.trim()) ? chargeOncoming.trim() : (chargeName||''); }
@@ -2511,7 +2713,7 @@ function updatePostUI(){
     const ban=document.getElementById(id); if(!ban) return;
     if(!chargeMode){
       if(boardPosted){
-        const chargeLine = chargeOncoming ? ` <span class="pb-charge">· Charge next shift: <b>${esc(chargeOncoming)}</b></span>` : '';
+        const chargeLine = chargeOncoming ? ` <span class="pb-charge">· Charge: <b>${esc(chargeOncoming)}</b></span>` : '';
         ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${chargeLine}${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
         ban.className='postbanner final'; ban.style.display='';
       } else {
@@ -3994,7 +4196,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -4029,6 +4231,10 @@ function applyState(st){
   if(st.bedCap){ BED_CAP={iso:st.bedCap.iso||[],lift:st.bedCap.lift||[]}; }
   if(st.dcBarriers) DC_BARRIERS=st.dcBarriers; HUDDLE_NOTE=st.huddleNote||'';
   if(Array.isArray(st.huddleHistory)) HUDDLE_HISTORY=st.huddleHistory;
+  if(st.quickHits && typeof st.quickHits==='object') QUICK_HITS=st.quickHits;
+  if(st.quickAcks && typeof st.quickAcks==='object') QUICK_ACKS=st.quickAcks;
+  if(typeof st.surveyOn==='boolean') SURVEY_ON=st.surveyOn;
+  if(Array.isArray(st.surveyResponses)) SURVEY_RESPONSES=st.surveyResponses;
   STAFFREQ_OR=st.staffReqOR||''; STAFFREQ_NOTE=st.staffReqNote||'';
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
@@ -4928,9 +5134,10 @@ async function loadHistory(){
     const sl=document.getElementById('histSummaryLine');
     if(sl&&n) sl.innerHTML=`<b>${n} shift${n>1?'s':''}</b> in this range · tap <b>Share report</b> to send it, or <b>View report</b> to see it first.`;
     if(list){
-      if(!n){ list.innerHTML='<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>'; return; }
+      if(!n){ list.innerHTML=`<div class="survblock"><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`+'<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>'; return; }
       const ag=aggregateSnaps(_histSnaps);
-      list.innerHTML = dashboardHTML(ag,n) + attentionHTML(ag) + patternsHTML(ag) +
+      list.innerHTML = `<div class="survblock"><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous. Toggle off anytime.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`
+        + dashboardHTML(ag,n) + attentionHTML(ag) + patternsHTML(ag) +
         `<details class="logwrap"><summary class="logsum">📋 Shift-by-shift log (${n})</summary>`+
         _histSnaps.map(({snap},i)=>renderSnapRow(snap,'',i)).join('')+`</details>`;
     }
@@ -5346,7 +5553,20 @@ function assignText(){
     L.push(`  ${n.name}${n.level==='Orienting'?' (or)':''}: ${rs.join(', ')||'\u2014'}`); });
   const un=occupied().filter(r=>!r.nurse).map(r=>r.id); if(un.length) L.push(`  Unassigned: ${un.join(', ')}`);
   const z=pctZones(); if(z.length){ L.push('','PCT ZONES'); z.forEach(x=>L.push(`  ${x.pct.name}: ${x.rooms.slice().sort((a,b)=>a-b).join(', ')||'\u2014'}`)); }
-  const cov=sitterCoverage(); if(cov.length){ L.push('','1:1 SITTERS'); cov.forEach(c=>L.push(`  Rm ${c.room} ${c.sitter} \u2014 break ${c.window}, covered by ${c.cover.name}`)); }
+  // 1:1 sitters
+  if(sitters.length){ L.push('','1:1 SITTERS');
+    sitters.forEach(s=>{ const v=vocForSitter?vocForSitter(s.id):''; L.push(`  ${s.name}${s.room?` \u2014 Rm ${s.room}`:''}${v?` \u00b7 Vocera ${v}`:''}`); });
+  }
+  // HUC
+  if(hucs.length){ L.push('','HUC'); hucs.forEach(hk=>{ const v=vocForHuc?vocForHuc(hk.id):''; L.push(`  ${hk.name}${v?` \u00b7 Vocera ${v}`:''}`); }); }
+  // Break buddies
+  const nb=buddyPairs(); if(nb.length){ L.push('','BREAK BUDDIES');
+    nb.forEach(g=>{ if(g.length>1) L.push(`  ${g.map(n=>n.name).join(' \u2194 ')}`); });
+  }
+  // Code team
+  const ct=codeTeam(); const ctFilled=ct.filter(r=>r.who); if(ctFilled.length){ L.push('','CODE TEAM');
+    ctFilled.forEach(r=>L.push(`  ${r.role}: ${r.who}`));
+  }
   const dn=occupied().filter(r=>r.flags.includes('dnar')).map(r=>r.id).sort((a,b)=>a-b); if(dn.length) L.push('',`DNAR: ${dn.join(', ')}`);
   return L.join('\n');
 }
@@ -5585,7 +5805,17 @@ function renderQR(){
 }
 
 buildLegend();
-(async function init(){ applyDarkPref(); let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); applyGate(); setTimeout(maybeShowIntro,400); })();
+(async function init(){ applyDarkPref();
+  try{ const dc=localStorage.getItem('evenshift_devcode'); if(dc) DEV_CODE=dc; }catch(e){}
+  // Hidden developer gesture: long-press (~900ms) the logo in the top-left corner.
+  const logo=document.getElementById('appLogo');
+  if(logo){ let t=null;
+    const start=()=>{ t=setTimeout(openDevGate,900); };
+    const cancel=()=>{ if(t){ clearTimeout(t); t=null; } };
+    logo.addEventListener('touchstart',start,{passive:true}); logo.addEventListener('touchend',cancel); logo.addEventListener('touchmove',cancel);
+    logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
+  }
+  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); applyGate(); setTimeout(maybeShowIntro,400); })();
 // Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
 document.addEventListener('click',function(e){
   document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
