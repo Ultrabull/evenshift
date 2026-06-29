@@ -1876,7 +1876,7 @@ function toggleQuick(key){ if((modalTally[key]||0)>0) delete modalTally[key]; el
 function setExpress(v){ modalExpress=parseFloat(v); document.getElementById('expNum').textContent=modalExpress.toFixed(2); recalc(); _refreshSwing(); }
 function cssid(k){return k.replace(/[^a-zA-Z0-9]/g,'_');}
 function bump(key,d){ modalTally[key]=Math.max(0,(modalTally[key]||0)+d); if(modalTally[key]===0) delete modalTally[key]; const sp=document.getElementById('c-'+cssid(key)); if(sp){sp.textContent=modalTally[key]||0; sp.parentElement.classList.toggle('active',(modalTally[key]||0)>0);} recalc(); _refreshSwing(); }
-function togFlag(f){ if(!chargeMode)return; const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1); document.getElementById('ft-'+f).classList.toggle('on'); }
+function togFlag(f){ if(!chargeMode && !canScoreRoom(modalRoom))return; const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1); document.getElementById('ft-'+f).classList.toggle('on'); }
 function recalc(){
   if(modalMode==='express'){ document.getElementById('mPts').textContent='—'; document.getElementById('mHrs').textContent=Number(modalExpress!=null?modalExpress:0).toFixed(2); return; }
   let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0);
