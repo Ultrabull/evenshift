@@ -67,6 +67,7 @@
   .chip.isadm{background:#FDF1DC;border-color:#EFC988;}
   .chip.isadm .rm{color:#9A6512;}
   .editby{font-size:9.5px;font-weight:700;color:#6B5BA8;background:#EFEBFA;border-radius:5px;padding:1px 5px;margin-left:3px;}
+  .saveattrib{font-size:11.5px;color:var(--ink-soft);padding:8px 16px 0;text-align:center;}
   .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
   .dcadot.dcd{background:#9BD3AC;}
@@ -1463,6 +1464,7 @@
       <div class="mtot"><div><div class="num" id="mPts">0</div><div class="lbl">Total pts</div></div><div><div class="num" id="mHrs">0.0</div><div class="lbl">Nursing hrs</div></div></div>
     </div>
     <div class="mbody" id="mBody"></div>
+    <div class="saveattrib" id="saveAttrib" style="display:none;"></div>
     <div class="mfoot"><button class="btn chargeOnly" onclick="markEmpty()">Discharge / empty</button>
       <div style="display:flex;gap:9px;"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary savebig" onclick="saveScore()">✓ Save score</button></div>
     </div>
@@ -1783,6 +1785,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   document.getElementById('mRoom').textContent='Room '+rn+(r.occupied?'':' · admit');
   if(chargeMode && r.editedBy && r.editedBy!=='Charge'){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · last edit by '+r.editedBy+(r.editedAt?' ('+_qhTime(r.editedAt)+')':''); }
   renderModalBody(); document.getElementById('scrim').classList.add('on');
+  const sa=document.getElementById('saveAttrib'); if(sa){ if(!chargeMode && _quickViewerName()){ sa.style.display=''; const who=(r.editedBy||_quickViewerName()||'').split(' ')[0]; sa.textContent = r.editedAt ? ('Updated by '+who+' · '+_qhTime(r.editedAt)) : ''; } else sa.style.display='none'; }
 }
 function currentHrs(){ let p=0; for(const k in modalTally) p+=(modalTally[k]||0)*(POINTS[k]||0); return Math.round(p/DIVISOR*4)/4; }
 function setMode(m){
