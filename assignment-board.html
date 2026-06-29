@@ -68,6 +68,9 @@
   .chip.isadm .rm{color:#9A6512;}
   .editby{font-size:9.5px;font-weight:700;color:#6B5BA8;background:#EFEBFA;border-radius:5px;padding:1px 5px;margin-left:3px;}
   .saveattrib{font-size:11.5px;color:var(--ink-soft);padding:8px 16px 0;text-align:center;}
+  .zroom.tappable{cursor:pointer;border:1px solid var(--line);transition:.1s;}
+  .zroom.tappable:active{background:var(--teal-wash);}
+  .zbsc{background:#E8E2F6;color:#5B3FA8;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;margin-left:6px;}
   .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
   .dcadot.dcd{background:#9BD3AC;}
@@ -1328,6 +1331,18 @@
   </div>
 </div>
 
+<div class="scrim" id="pctScoreScrim" onclick="if(event.target===this)closePctScore()">
+  <div class="modal" style="max-width:440px;">
+    <div class="mhead"><span class="rt" id="pctScoreRoom">Room</span><button class="btn" onclick="closePctScore()">Close</button></div>
+    <div class="mbody">
+      <p class="covnote">Tap the care this patient needs. This balances PCT zones by workload — not just room count.</p>
+      <div class="flagrow" id="pctFlagRow"></div>
+      <div class="saveattrib" id="pctSaveAttrib" style="display:none;"></div>
+    </div>
+    <div class="mfoot"><span></span><div style="display:flex;gap:9px;"><button class="btn" onclick="closePctScore()">Cancel</button><button class="btn primary savebig" onclick="savePctScore()">✓ Save</button></div></div>
+  </div>
+</div>
+
 <div class="scrim" id="quickScrim" onclick="if(event.target===this)closeQuickEdit()">
   <div class="modal" style="max-width:460px;">
     <div class="mhead"><span class="rt">📣 Quick hits — unit handoff</span><button class="btn" onclick="closeQuickEdit()">Close</button></div>
@@ -1979,8 +1994,9 @@ function renderMyPCT(){
   const nnames=[...new Set(rms.map(r=>rooms[r]&&rooms[r].nurse).filter(Boolean))].map(nid=>{ const n=nurses.find(x=>x.id===nid); return n?n.name:null; }).filter(Boolean);
   let buddy=[]; buddyPairsPCT().forEach(g=>{ if(g.some(x=>x.id===id)) buddy=g.filter(x=>x.id!==id).map(x=>x.name); });
   const c=document.getElementById('nurses');
-  if(c) c.innerHTML=staffWelcome(p?p.name:'')+staffPulseCard(p?p.name:'')+`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}</h3>`+
-    `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); return `<div class="zroom"><span class="rmnum">${r}</span>${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
+  if(c) c.innerHTML=staffWelcome(p?p.name:'')+staffPulseCard(p?p.name:'')+`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}${PCT_MODE?` \u00b7 load ${pctZoneBurden(rms).toFixed(0)}`:''}</h3>`+
+    (PCT_MODE?`<div class="covsub" style="margin:-2px 0 8px;">Tap a room to score the care it needs.</div>`:'')+
+    `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); const b=PCT_MODE?pctRoomBurden(rooms[r]):0; return `<div class="zroom${PCT_MODE?' tappable':''}"${PCT_MODE?` onclick="openPctScore(${r})"`:''}><span class="rmnum">${r}</span>${PCT_MODE&&b>0?`<span class="zbsc">${b.toFixed(0)}</span>`:''}${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
     (nnames.length?`<div class="sitline">Nurses in your zone: <b>${nnames.map(esc).join(', ')}</b></div>`:'')+
     (buddy.length?`<div class="sitline">\ud83e\udd1d Break buddy: <b>${buddy.map(esc).join(', ')}</b></div>`:'')+
     ((()=>{ const v=vocForPct(id); const slot=pcts.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · PCT ${slot}</div>`:''; })())+
@@ -2031,7 +2047,7 @@ function renderAssign(){
   const pulse = soloStaff && shown[0] ? staffPulseCard(shown[0].name) : '';
   document.getElementById('nurses').innerHTML=welcome+shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
-    const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id));
+    const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id);
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
     const hn=nurseHallNums(n.id); const wings=nurseWings(n.id);
     const hcov = hn.length? hn.map(x=>HALL_LABEL[x]).join(' + ') : '—';
@@ -2367,6 +2383,7 @@ function staffPulseCard(name){
   return wrap(`Last one — did you get your breaks?`,
     `<div class="pulsefair">${PULSE_BREAKS.map(([v,l])=>`<button class="pulsefairbtn" onclick="submitPulse('${v}')">${l}</button>`).join('')}</div>`);
 }
+function togglePctMode(){ PCT_MODE=!PCT_MODE; scheduleSave(); const b=document.getElementById('pctModeBtn'); if(b){ b.textContent=PCT_MODE?'On':'Off'; b.className='btn '+(PCT_MODE?'primary':''); } if(cloudOn()&&chargeMode) pushMeta(); renderAssign(); }
 function toggleSurvey(){ SURVEY_ON=!SURVEY_ON; scheduleSave(); const b=document.getElementById('surveyToggleBtn'); if(b){ b.textContent=SURVEY_ON?'On':'Off'; b.className='btn '+(SURVEY_ON?'primary':''); } const r=document.getElementById('surveyResults'); if(r) r.innerHTML=surveyResultsHTML(); }
 function surveyResultsHTML(){
   const rs=SURVEY_RESPONSES;
@@ -3683,8 +3700,58 @@ function partitionEven(items, k){
   while(rem>0){ sizes[lo]++; rem--; if(rem>0 && hi!==lo){ sizes[hi]++; rem--; } lo++; hi--; if(lo>hi){ lo=0; hi=k-1; } }
   const out=[]; let idx=0; for(let i=0;i<k;i++){ out.push(items.slice(idx,idx+sizes[i])); idx+=sizes[i]; } return out;
 }
+/* Split a walk-ordered room list into k CONTIGUOUS groups with the most even total burden.
+   Contiguity preserves geography (two-hall). Greedy: walk the rooms, start a new group when the
+   running burden passes the per-group target, leaving enough rooms for the groups still to come. */
+function partitionByBurden(items, k){
+  if(k<=1) return [items.slice()];
+  const w=items.map(rn=>Math.max(0.2, pctRoomBurden(rooms[rn])));   // floor so empty rooms still count a little
+  const total=w.reduce((a,b)=>a+b,0); const target=total/k;
+  const out=[]; let i=0;
+  for(let g=0; g<k; g++){
+    const groupsLeft=k-g; const roomsLeft=items.length-i;
+    if(g===k-1){ out.push(items.slice(i)); break; }
+    let acc=0, take=0;
+    // always leave at least one room per remaining group
+    const maxTake=roomsLeft-(groupsLeft-1);
+    while(take<maxTake){
+      acc+=w[i+take]; take++;
+      // stop once we've reached the target and there's more than one room left to place
+      if(acc>=target && take>=1) break;
+    }
+    if(take<1) take=1;
+    out.push(items.slice(i, i+take)); i+=take;
+  }
+  return out;
+}
 /* manual mid-shift overrides: room id -> pct id. Auto-zones apply to everything not overridden. */
 let PCT_OVERRIDE={};
+// ── PCT workload mode (manager-toggled). PCTs score care-burden; zones balance by it within two halls. ──
+let PCT_MODE=false;
+const PCT_RUBRIC=[
+  ['iso','Isolation',2],['totalcare','Total care',3],['freqclean','Frequent cleaning',2],
+  ['totalfeed','Total feed',2],['turns','Q2 turns',2],['ambulate','Ambulation assist',1.5],
+  ['toilet','Frequent toileting',1.5],['vitals','Frequent vitals',1],['behavioral','Behavioral',2]
+];
+function pctRoomBurden(r){ if(!r||!r.pctFlags) return 0; let s=0; PCT_RUBRIC.forEach(([c,,w])=>{ if(r.pctFlags.includes(c)) s+=w; }); return s; }
+function pctZoneBurden(rms){ return rms.reduce((s,rn)=>s+pctRoomBurden(rooms[rn]),0); }
+let _pctScoreRoom=null, _pctScoreFlags=[];
+// who can score a room's PCT burden: a PCT whose zone includes it, or the charge
+function canPctScore(rn){ if(chargeMode) return true; if(!PCT_MODE) return false; const vn=_quickViewerName(); if(!vn) return false; const z=pctZones().find(z=>z.pct.name===vn); return !!(z && z.rooms.includes(+rn)); }
+function openPctScore(rn){ if(!canPctScore(rn)) return; const r=rooms[rn]; if(!r) return; _pctScoreRoom=rn; _pctScoreFlags=[...(r.pctFlags||[])]; renderPctScore(); document.getElementById('pctScoreScrim').classList.add('on');
+  const el=document.getElementById('pctScoreRoom'); if(el) el.textContent='Room '+rn+(r.pctEditedBy?' · by '+(r.pctEditedBy.split(' ')[0])+(r.pctEditedAt?' '+_qhTime(r.pctEditedAt):''):'');
+  const sa=document.getElementById('pctSaveAttrib'); if(sa){ if(!chargeMode){ sa.style.display=''; sa.textContent=r.pctEditedAt?('Updated by '+((r.pctEditedBy||_quickViewerName()||'').split(' ')[0])+' · '+_qhTime(r.pctEditedAt)):''; } else sa.style.display='none'; }
+}
+function closePctScore(){ const s=document.getElementById('pctScoreScrim'); if(s) s.classList.remove('on'); _pctScoreRoom=null; }
+function renderPctScore(){ const el=document.getElementById('pctFlagRow'); if(!el) return;
+  el.innerHTML=PCT_RUBRIC.map(([c,lab])=>`<button class="ftog ${_pctScoreFlags.includes(c)?'on':''}" id="pf-${c}" onclick="togPctFlag('${c}')">${lab}</button>`).join('');
+}
+function togPctFlag(c){ const i=_pctScoreFlags.indexOf(c); if(i<0)_pctScoreFlags.push(c); else _pctScoreFlags.splice(i,1); document.getElementById('pf-'+c).classList.toggle('on'); }
+function savePctScore(){ if(_pctScoreRoom==null) return; const r=rooms[_pctScoreRoom]; if(!r) return;
+  r.pctFlags=_pctScoreFlags.slice(); r.pctBurden=pctRoomBurden(r);
+  r.pctEditedBy = chargeMode ? 'Charge' : (_quickViewerName()||'PCT'); r.pctEditedAt=Date.now();
+  closePctScore(); renderAssign(); if(cloudOn()){ pushAcuity(); } else scheduleSave();
+}
 let CODE_OVERRIDE={};   // role -> staff name chosen by charge (overrides auto-fill; e.g. swap out someone who can't do CPR)
 function setCodeRole(role,name){ if(name) CODE_OVERRIDE[role]=name; else delete CODE_OVERRIDE[role]; scheduleSave(); renderAssign(); }
 function pctZones(){
@@ -3695,7 +3762,7 @@ function pctZones(){
   const valid=new Set(pcts.map(p=>p.id));
   const overridden=occ.filter(rn=>PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn]));
   const autoPool=occ.filter(rn=>!(PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn])));
-  const chunks=partitionEven(autoPool, k);   // contiguous runs along the floor walk
+  const chunks=PCT_MODE ? partitionByBurden(autoPool, k) : partitionEven(autoPool, k);   // contiguous runs along the floor walk
   const byPct={}; pcts.forEach((p,i)=>{ byPct[p.id]=(chunks[i]||[]).slice(); });
   overridden.forEach(rn=>{ byPct[PCT_OVERRIDE[rn]].push(rn); });
   return pcts.map(p=>{ const rms=(byPct[p.id]||[]).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);
@@ -4183,13 +4250,13 @@ async function cloudInit(){
 }
 function acuityObj(){
   const a={};
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
   if(!row) return;
   if(row.meta) applyState(row.meta);                                   // charge-owned: roster, rubric, floor, assignments, shift, pin
-  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; } }   // acuity always wins; note field removed (HIPAA)
+  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; } }   // acuity always wins; note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
 function cloudRerender(){ applyShiftUI(); refreshViewOptions(); updateUnitTag(); updateRubricTag(); updateScoreTab(); renderAcuity(); renderAssign(); applyGate(); }
@@ -4206,8 +4273,8 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -4246,6 +4313,7 @@ function applyState(st){
   if(st.quickAcks && typeof st.quickAcks==='object') QUICK_ACKS=st.quickAcks;
   if(typeof st.surveyOn==='boolean') SURVEY_ON=st.surveyOn;
   if(Array.isArray(st.surveyResponses)) SURVEY_RESPONSES=st.surveyResponses;
+  if(typeof st.pctMode==='boolean') PCT_MODE=st.pctMode;
   STAFFREQ_OR=st.staffReqOR||''; STAFFREQ_NOTE=st.staffReqNote||'';
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
@@ -4914,7 +4982,7 @@ function getMeetText(){
 function buildSnapshot(){
   const occ=occupied();
   const nurseSnap=nurses.map(n=>{
-    const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id)).map(r=>r.id);
+    const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id).map(r=>r.id);
     const load=nurseLoad(n.id);
     return {id:n.id,name:n.name,level:n.level,rooms:rs,
             hrs:Math.round(load.hrs*100)/100,adj:Math.round(load.adj*100)/100};
@@ -5147,7 +5215,7 @@ async function loadHistory(){
     if(list){
       if(!n){ list.innerHTML=`<div class="survblock"><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`+'<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>'; return; }
       const ag=aggregateSnaps(_histSnaps);
-      list.innerHTML = `<div class="survblock"><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous. Toggle off anytime.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`
+      list.innerHTML = `<div class="survblock"><div class="survhead"><span>🧑‍⚕️ PCT workload balancing</span><button id="pctModeBtn" class="btn ${PCT_MODE?'primary':''}" onclick="togglePctMode()">${PCT_MODE?'On':'Off'}</button></div><div class="hint" style="margin-bottom:12px;">When on, PCTs score each patient's care needs and zones balance by workload (within two halls), not just room count.</div><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous. Toggle off anytime.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`
         + dashboardHTML(ag,n) + attentionHTML(ag) + patternsHTML(ag) +
         `<details class="logwrap"><summary class="logsum">📋 Shift-by-shift log (${n})</summary>`+
         _histSnaps.map(({snap},i)=>renderSnapRow(snap,'',i)).join('')+`</details>`;
@@ -5560,25 +5628,31 @@ function assignText(){
   const L=[`${FLOOR.unit} \u2014 ${shiftType} \u00b7 ${shiftDate}  (Census ${occupied().length}/${TOTAL_BEDS})`];
   if(assignmentCharge().trim()) L.push(`Charge: ${assignmentCharge().trim()}`);
   L.push('','NURSES');
-  nurses.forEach(n=>{ const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id)).map(r=>r.id);
+  nurses.forEach(n=>{ const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id).map(r=>r.id);
     L.push(`  ${n.name}${n.level==='Orienting'?' (or)':''}: ${rs.join(', ')||'\u2014'}`); });
   const un=occupied().filter(r=>!r.nurse).map(r=>r.id); if(un.length) L.push(`  Unassigned: ${un.join(', ')}`);
   const z=pctZones(); if(z.length){ L.push('','PCT ZONES'); z.forEach(x=>L.push(`  ${x.pct.name}: ${x.rooms.slice().sort((a,b)=>a-b).join(', ')||'\u2014'}`)); }
-  // 1:1 sitters
+  // 1:1 sitters — with break window + who covers the patient
   if(sitters.length){ L.push('','1:1 SITTERS');
-    sitters.forEach(s=>{ const v=vocForSitter?vocForSitter(s.id):''; L.push(`  ${s.name}${s.room?` \u2014 Rm ${s.room}`:''}${v?` \u00b7 Vocera ${v}`:''}`); });
+    const cov=(typeof sitterCoverage==='function')?sitterCoverage():[];
+    sitters.forEach(s=>{ const v=vocForSitter?vocForSitter(s.id):'';
+      const c=cov.find(x=>x.sitter===s.name || x.room==s.room);
+      const brk=c?` \u00b7 break ${c.window}${c.cover?`, covered by ${c.cover.name||c.cover}`:''}`:'';
+      L.push(`  ${s.name}${s.room?` \u2014 Rm ${s.room}`:''}${v?` \u00b7 Vocera ${v}`:''}${brk}`);
+    });
   }
   // HUC
   if(hucs.length){ L.push('','HUC'); hucs.forEach(hk=>{ const v=vocForHuc?vocForHuc(hk.id):''; L.push(`  ${hk.name}${v?` \u00b7 Vocera ${v}`:''}`); }); }
-  // Break buddies
-  const nb=buddyPairs(); if(nb.length){ L.push('','BREAK BUDDIES');
-    nb.forEach(g=>{ if(g.length>1) L.push(`  ${g.map(n=>n.name).join(' \u2194 ')}`); });
+  // Break buddies — RNs and PCTs
+  const nb=buddyPairs(); const pb=(typeof buddyPairsPCT==='function')?buddyPairsPCT():[];
+  if((nb&&nb.length)||(pb&&pb.length)){ L.push('','BREAK BUDDIES');
+    if(nb&&nb.length){ nb.forEach(g=>{ if(g.length>1) L.push(`  RN: ${g.map(n=>n.name).join(' \u2194 ')}`); }); }
+    if(pb&&pb.length){ pb.forEach(g=>{ if(g.length>1) L.push(`  PCT: ${g.map(n=>n.name).join(' \u2194 ')}`); }); }
   }
   // Code team
   const ct=codeTeam(); const ctFilled=ct.filter(r=>r.who); if(ctFilled.length){ L.push('','CODE TEAM');
     ctFilled.forEach(r=>L.push(`  ${r.role}: ${r.who}`));
   }
-  const dn=occupied().filter(r=>r.flags.includes('dnar')).map(r=>r.id).sort((a,b)=>a-b); if(dn.length) L.push('',`DNAR: ${dn.join(', ')}`);
   return L.join('\n');
 }
 function setChargeName(v){ chargeName=v; scheduleSave(); }
@@ -5670,7 +5744,7 @@ function buildPrint(){
   // nurses
   const vocCol=shiftType==='Day'?'AM':'PM';
   h+=`<div class="prcap">Nurses</div><table class="prt"><tr><th class="sw"></th><th>RN</th><th class="vc">Voc ${vocCol}</th><th>Rooms</th><th class="brk">Break</th><th class="ld">Load</th></tr>`;
-  nurses.forEach(n=>{ const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id)).map(r=>r.id);
+  nurses.forEach(n=>{ const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id).map(r=>r.id);
     const tag=n.level==='Orienting'?' <small>(or)</small>':(n.level==='Senior'?' <small>(sr)</small>':(n.level==='Float'?' <small>(float)</small>':''));
     const pct=Math.round(nurseLoad(n.id).adj/mx*100); const voc=esc(shiftType==='Day'?(n.vocAM||''):(n.vocPM||''));
     h+=`<tr><td class="sw" style="background:${NC[n.id]}">${NI[n.id]}</td><td class="nm">${esc(n.name)}${tag}</td><td class="vc">${voc}</td><td>${rs.join(', ')||'\u2014'}</td><td class="brk">${bk[n.id]?bk[n.id].window:''}</td><td class="ld"><span class="ldbar"><i style="width:${pct}%"></i></span></td></tr>`; });
