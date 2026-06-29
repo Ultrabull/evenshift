@@ -71,6 +71,8 @@
   .zroom.tappable{cursor:pointer;border:1px solid var(--line);transition:.1s;}
   .zroom.tappable:active{background:var(--teal-wash);}
   .zbsc{background:#E8E2F6;color:#5B3FA8;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;margin-left:6px;}
+  .staffsub{font-family:var(--display);font-weight:800;font-size:13px;color:var(--ink-soft);margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--line);}
+  .staffsub:first-child{margin-top:0;padding-top:0;border-top:none;}
   .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
   .dcadot.dcd{background:#9BD3AC;}
@@ -3768,8 +3770,8 @@ function pctZones(){
   return pcts.map(p=>{ const rms=(byPct[p.id]||[]).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);
     return { pct:p, rooms:rms, halls:[...new Set(rms.map(rn=>RHALL[rn]))].sort((a,b)=>a-b) }; });
 }
-function setPctRoom(room,pctId){ if(pctId) PCT_OVERRIDE[+room]=pctId; else delete PCT_OVERRIDE[+room]; scheduleSave(); renderAssign(); }
-function rebalancePct(){ if(!confirm('Re-split all PCT zones evenly across the PCTs on now? This clears any manual room moves.')) return; PCT_OVERRIDE={}; scheduleSave(); renderAssign(); }
+function setPctRoom(room,pctId){ if(!chargeMode)return; if(pctId) PCT_OVERRIDE[+room]=pctId; else delete PCT_OVERRIDE[+room]; scheduleSave(); renderAssign(); }
+function rebalancePct(){ if(!chargeMode)return; if(!confirm('Re-split all PCT zones evenly across the PCTs on now? This clears any manual room moves.')) return; PCT_OVERRIDE={}; scheduleSave(); renderAssign(); }
 /* tidy label: lead with the main hall, note any stray corner room */
 function zoneLabel(rms){
   if(!rms.length) return '—';
@@ -4012,7 +4014,7 @@ function codeTeam(){
 
 /* ===== BOARD CARD STACK — tiles that expand to editable cards ===== */
 let selectedPctRoom=null;   // tap a room in a PCT card, then tap a PCT card to move it
-let boardCard='pct';        // which support card is expanded under the tiles
+let boardCard='staff';        // which support card is expanded under the tiles
 let PREV_SHIFT=null;        // snapshot of last shift's assignments for returning-staff continuity
 let RET={ done:false, nurses:{}, pcts:{}, sitters:{} };  // returning-staff picks: {nurseId:[roomsKept], pctId:true, sitterId:true}
 function selectPctRoom(rm){ if(!chargeMode)return; selectedPctRoom=(selectedPctRoom===rm)?null:rm; renderAssign(); }
@@ -4127,11 +4129,14 @@ function renderSupport(){
 
   // ---- the tiles (selector), grouped under titles, big like the Build tab ----
   const nurseCount=nurses.length;
+  const staffTotal = nurseCount + pcts.length + sitters.length + hucs.length;
+  // Merged Staff view: PCT zones, sitters, HUC stacked together (nurse cards render in #nurses above this).
+  const staffInner =
+    (pcts.length?`<div class="staffsub">🧑‍⚕️ PCTs · zones & moves</div>${pctInner}`:'')
+    + (sitters.length?`<div class="staffsub">👤 Sitters · 1:1 coverage</div>${sitInner}`:'')
+    + (hucs.length?`<div class="staffsub">🗂️ HUC · desk coverage</div>${hucInner}`:'');
   const staffDefs=[
-    ['nurses','👩‍⚕️','Nurses','the assignment',nurseCount,null],
-    ['pct','🧑‍⚕️','PCTs','zones & moves',pcts.length,pctInner],
-    ['sitters','👤','Sitters','1:1 coverage',sitters.length,sitInner],
-    ['huc','🗂️','HUC','desk coverage',hucs.length,hucInner],
+    ['staff','👥','Staff','nurses · PCTs · sitters · HUC',staffTotal,staffInner],
   ];
   const covDefs=[
     ['buddies','🤝','Buddies','break partners',(nbPairs.length+pbPairs.length)||'',budInner],
@@ -4141,7 +4146,7 @@ function renderSupport(){
     ['pending','🆕','Pending','waiting for a nurse',pend.length||'',pendInner],
   ];
   const allDefs=[...staffDefs,...covDefs];
-  if(!allDefs.some(d=>d[0]===boardCard)) boardCard='nurses';
+  if(!allDefs.some(d=>d[0]===boardCard)) boardCard='staff';
   const bigtile=([k,emoji,label,sub,badge])=>{
     const on=boardCard===k;
     return `<button class="btile ${on?'on':''}" onclick="showBoardCard('${k}')">`+
@@ -4159,7 +4164,7 @@ function renderSupport(){
       h+='<div class="cardsec">Staff assignments</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
       h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+'</div>';
       const sel0=allDefs.find(d=>d[0]===boardCard);
-      if(sel0 && sel0[0]!=='nurses' && sel0[5]){ h+=`<div class="expcard"><div class="expcardh">${sel0[1]} ${sel0[2]}</div><div class="expcardbody">${sel0[5]}</div></div>`; }
+      if(sel0 && sel0[5]){ h+=`<div class="expcard"><div class="expcardh">${sel0[1]} ${sel0[2]}</div><div class="expcardbody">${sel0[5]}</div></div>`; }
     }
     sp.innerHTML=h;
     const nz0=document.getElementById('nurses'); if(nz0) nz0.style.display='';
@@ -4169,10 +4174,10 @@ function renderSupport(){
   h='<div class="cardsec">Staff assignments</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
   h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+'</div>';
   const sel=allDefs.find(d=>d[0]===boardCard);
-  if(sel && sel[0]!=='nurses' && sel[5]){ h+=`<div class="expcard"><div class="expcardh">${sel[1]} ${sel[2]}</div><div class="expcardbody">${sel[5]}</div></div>`; }
+  if(sel && sel[5]){ h+=`<div class="expcard"><div class="expcardh">${sel[1]} ${sel[2]}</div><div class="expcardbody">${sel[5]}</div></div>`; }
   sp.innerHTML=h;
-  // nurse cards show only when the Nurses tile is active (charge view); staff always see their own card
-  const nz=document.getElementById('nurses'); if(nz) nz.style.display=(!chargeMode||boardCard==='nurses')?'':'none';
+  // nurse cards show when the Staff tile is active (charge view); staff always see their own card
+  const nz=document.getElementById('nurses'); if(nz) nz.style.display=(!chargeMode||boardCard==='staff')?'':'none';
 
   // Post + after-final actions at the very bottom (finalize lives on the Board)
   const pf=document.getElementById('postFinalWrap');
