@@ -66,6 +66,7 @@
   .chip.isdc .rm{color:#1B7A3D;}
   .chip.isadm{background:#FDF1DC;border-color:#EFC988;}
   .chip.isadm .rm{color:#9A6512;}
+  .editby{font-size:9.5px;font-weight:700;color:#6B5BA8;background:#EFEBFA;border-radius:5px;padding:1px 5px;margin-left:3px;}
   .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
   .dcadot.dcd{background:#9BD3AC;}
@@ -1780,6 +1781,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   if(r.occupied && r.acuity!=null && !hasTally){ modalMode='express'; modalExpress=r.acuity; }
   else { modalMode='quick'; if(!hasTally) modalTally['Assessment & Meds|0']=1; }
   document.getElementById('mRoom').textContent='Room '+rn+(r.occupied?'':' · admit');
+  if(chargeMode && r.editedBy && r.editedBy!=='Charge'){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · last edit by '+r.editedBy+(r.editedAt?' ('+_qhTime(r.editedAt)+')':''); }
   renderModalBody(); document.getElementById('scrim').classList.add('on');
 }
 function currentHrs(){ let p=0; for(const k in modalTally) p+=(modalTally[k]||0)*(POINTS[k]||0); return Math.round(p/DIVISOR*4)/4; }
@@ -1899,6 +1901,9 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   if(!r.flags.includes('adm')) r.admTime='';
   r.avoid=modalAvoid.slice(); r.lock=modalPin||null; if(modalPin){ r.nurse=modalPin; r.avoid=r.avoid.filter(x=>x!==modalPin); }
   r.capCarried=false;  // re-scoring this room acknowledges the ratio-cap reminder
+  // Record who last touched this room and when — so the charge can spot a wrong/impersonated edit.
+  r.editedBy = chargeMode ? 'Charge' : (_quickViewerName() || 'Staff');
+  r.editedAt = Date.now();
   if(hrs>0){ r.occupied=true; r.acuity=Math.round(hrs*100)/100; r.scoredBy=chargeMode?'charge':(viewAs||'rn');
     r.nextAcuity = (modalNext!=null) ? Math.round(modalNext*100)/100 : r.acuity; }
   if(swingInfo().big){ r.acuityReason=modalReason; r.acuityReasonOther=(modalReason==='Other')?modalReasonOther.trim():''; }
@@ -1931,7 +1936,8 @@ function roomChip(r){
     ? `<button class="lockchip ${r.lock?'on':''}" onclick="event.stopPropagation(); toggleRoomLock(${r.id})" title="${r.lock?'Locked to this nurse — tap to unlock':'Lock this room to this nurse (won\u2019t move on re-generate)'}">${r.lock?'🔒':'🔓'}</button>`
     : (r.lock?'<span title="continuity / requested nurse">🔒</span>':'');
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
-  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${lockBtn}</span>`;
+  const editTag = (chargeMode && r.editedBy && r.editedBy!=='Charge') ? `<span class="editby" title="Last edited by ${esc(r.editedBy)}${r.editedAt?' · '+_qhTime(r.editedAt):''}">✎ ${esc((r.editedBy||'').split(' ')[0])}</span>` : '';
+  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${editTag}${lockBtn}</span>`;
 }
 function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r||!r.occupied) return;
   if(r.lock){ r.lock=null; }
@@ -4174,13 +4180,13 @@ async function cloudInit(){
 }
 function acuityObj(){
   const a={};
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
   if(!row) return;
   if(row.meta) applyState(row.meta);                                   // charge-owned: roster, rubric, floor, assignments, shift, pin
-  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; } }   // acuity always wins; note field removed (HIPAA)
+  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; } }   // acuity always wins; note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
 function cloudRerender(){ applyShiftUI(); refreshViewOptions(); updateUnitTag(); updateRubricTag(); updateScoreTab(); renderAcuity(); renderAssign(); applyGate(); }
@@ -4197,7 +4203,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
