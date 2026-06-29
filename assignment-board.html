@@ -1180,6 +1180,7 @@
     <div class="boardstack">
       <div id="cardStack"></div>
       <div class="nurses" id="nurses"></div>
+      <div id="staffExtras"></div>
       <div id="quickHits"></div>
       <div class="chargeOnly" id="postFinalWrap"></div>
     </div>
@@ -4164,20 +4165,25 @@ function renderSupport(){
       h+='<div class="cardsec">Staff assignments</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
       h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+'</div>';
       const sel0=allDefs.find(d=>d[0]===boardCard);
-      if(sel0 && sel0[5]){ h+=`<div class="expcard"><div class="expcardh">${sel0[1]} ${sel0[2]}</div><div class="expcardbody">${sel0[5]}</div></div>`; }
+      const ex0=document.getElementById('staffExtras');
+      if(ex0) ex0.innerHTML=staffInner;   // nurses → PCT → sitter → HUC flow
+      if(sel0 && sel0[0]!=='staff' && sel0[5]){ h+=`<div class="expcard"><div class="expcardh">${sel0[1]} ${sel0[2]}</div><div class="expcardbody">${sel0[5]}</div></div>`; }
     }
+    else { const ex0=document.getElementById('staffExtras'); if(ex0) ex0.innerHTML=''; }
     sp.innerHTML=h;
     const nz0=document.getElementById('nurses'); if(nz0) nz0.style.display='';
     const pf0=document.getElementById('postFinalWrap'); if(pf0) pf0.innerHTML='';
     return;
   }
-  h='<div class="cardsec">Staff assignments</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
+  h='<div class="cardsec">Staff assignment</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
   h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+'</div>';
   const sel=allDefs.find(d=>d[0]===boardCard);
-  if(sel && sel[5]){ h+=`<div class="expcard"><div class="expcardh">${sel[1]} ${sel[2]}</div><div class="expcardbody">${sel[5]}</div></div>`; }
+  const ex=document.getElementById('staffExtras');
+  if(ex) ex.innerHTML=staffInner;   // nurses → PCT → sitter → HUC always flows in order
+  if(sel && sel[0]!=='staff' && sel[5]){ h+=`<div class="expcard"><div class="expcardh">${sel[1]} ${sel[2]}</div><div class="expcardbody">${sel[5]}</div></div>`; }
   sp.innerHTML=h;
   // nurse cards show when the Staff tile is active (charge view); staff always see their own card
-  const nz=document.getElementById('nurses'); if(nz) nz.style.display=(!chargeMode||boardCard==='staff')?'':'none';
+  const nz=document.getElementById('nurses'); if(nz) nz.style.display='';   // nurse cards are the core board — always visible to charge & staff
 
   // Post + after-final actions at the very bottom (finalize lives on the Board)
   const pf=document.getElementById('postFinalWrap');
