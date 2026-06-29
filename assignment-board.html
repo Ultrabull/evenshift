@@ -1953,6 +1953,9 @@ const WELCOME_LINES=[
 ];
 function staffWelcome(name){
   const first=(name||'').trim().split(/\s+/)[0]||'';
+  // Show the greeting only once per person per day on this device; next day it returns with a different line.
+  const key=`evenshift_welcome_${unitId}_${shiftDate}_${(name||'').toLowerCase()}`;
+  try{ if(localStorage.getItem(key)) return ''; localStorage.setItem(key,'1'); }catch(e){}
   const d=new Date(shiftDate||Date.now()); const idx=(d.getDate()+(shiftType==='Night'?1:0))%WELCOME_LINES.length;
   const greet = shiftType==='Night' ? 'Good evening' : 'Good morning';
   return `<div class="welcomecard autofade" id="welcomeCard"><div class="welcometop">${greet}${first?', '+esc(first):''} 👋</div><div class="welcomesub">${WELCOME_LINES[idx]}</div></div>`;
@@ -2014,7 +2017,7 @@ function renderAssign(){
   const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
   const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
   const pulse = soloStaff && shown[0] ? staffPulseCard(shown[0].name) : '';
-  document.getElementById('nurses').innerHTML=welcome+pulse+shown.map(n=>{
+  document.getElementById('nurses').innerHTML=welcome+shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>posOf(a.id)-posOf(b.id));
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
@@ -2040,7 +2043,7 @@ function renderAssign(){
       ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
         return `<button class="donebtn ${done?'done':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${done?'✓ You\u2019re done — scores sent':(unscored>0?`Score your ${unscored} remaining, then tap “I\u2019m done”`:'✓ Tap when all your patients are scored')}</button>`; })():''}
       <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
-  }).join('');
+  }).join('')+pulse;
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
   const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
   const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
