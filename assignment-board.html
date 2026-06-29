@@ -71,10 +71,13 @@
   .dcadot.dcd{background:#9BD3AC;}
   .dcadot.adm{background:#EFC988;margin-left:8px;}
   .qhadd{width:100%;padding:11px;border:1.5px dashed var(--line-strong);background:var(--surface);border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;margin-bottom:12px;}
-  .qhcard{background:#FFF8E8;border:1.5px solid #EBCF86;border-radius:14px;padding:13px 15px;margin-bottom:12px;}
-  .qhtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .qhcard{background:#FFF8E8;border:1.5px solid #EBCF86;border-radius:14px;margin-bottom:12px;overflow:hidden;}
+  .qhsum{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;list-style:none;}
+  .qhsum::-webkit-details-marker{display:none;}
   .qhttl{font-family:var(--display);font-weight:800;font-size:14px;color:#8A6A12;}
+  .qhdot{color:#D9534F;font-size:11px;vertical-align:middle;}
   .qhstamp{font-size:10.5px;color:#A98A48;white-space:nowrap;}
+  .qhinner{padding:0 15px 14px;}
   .qhbody{font-size:14px;color:var(--ink);line-height:1.45;white-space:pre-wrap;}
   .qhackbtn{margin-top:10px;padding:9px 16px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}
   .qhackd{margin-top:10px;font-size:12.5px;font-weight:600;color:#1B7A3D;}
@@ -1166,11 +1169,11 @@
       <button class="hucvocbtn" onclick="openVoceraGated()">📟 Vocera phones <small>HUC — needs code</small></button>
     </div>
     <div class="postbanner" id="postBanner2" style="display:none;"></div>
-    <div id="quickHits"></div>
     <div class="acureview chargeOnly" id="balanceBanner" style="display:none;"></div>
     <div class="boardstack">
       <div id="cardStack"></div>
       <div class="nurses" id="nurses"></div>
+      <div id="quickHits"></div>
       <div class="chargeOnly" id="postFinalWrap"></div>
     </div>
     <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
@@ -2285,38 +2288,34 @@ function renderQuickHits(){
     return;
   }
   const stamp = `Updated ${_qhTime(QUICK_HITS.at)}${QUICK_HITS.by?' · '+esc(QUICK_HITS.by):''}`;
-  let h=`<div class="qhcard"><div class="qhtop"><span class="qhttl">📣 Quick hits</span><span class="qhstamp">${stamp}</span></div><div class="qhbody">${esc(QUICK_HITS.text).replace(/\n/g,'<br>')}</div>`;
-  // staff: acknowledge button (uses the name of the card being viewed)
+  // unacknowledged badge for staff who haven't acked the current version
   const viewerName = _quickViewerName();
+  const needsAck = !chargeMode && viewerName && !(QUICK_ACKS[viewerName] && QUICK_ACKS[viewerName]>=(QUICK_HITS.at||0));
+  let inner=`<div class="qhbody">${esc(QUICK_HITS.text).replace(/\n/g,'<br>')}</div>`;
   if(!chargeMode && viewerName){
     const ackTs = QUICK_ACKS[viewerName];
     const current = ackTs && ackTs >= (QUICK_HITS.at||0);
-    if(current){ h+=`<div class="qhackd">✓ You acknowledged this ${_qhTime(ackTs)}</div>`; }
+    if(current){ inner+=`<div class="qhackd">✓ You acknowledged this ${_qhTime(ackTs)}</div>`; }
     else {
-      if(ackTs) h+=`<div class="qhstale">↻ Updated since you last read it — please re-acknowledge.</div>`;
-      h+=`<button class="qhackbtn" onclick="ackQuickHits('${esc(viewerName).replace(/'/g,"\\'")}')">✓ Acknowledge</button>`;
+      if(ackTs) inner+=`<div class="qhstale">↻ Updated since you last read it — please re-acknowledge.</div>`;
+      inner+=`<button class="qhackbtn" onclick="event.stopPropagation(); ackQuickHits('${esc(viewerName).replace(/'/g,"\\'")}')">✓ Acknowledge</button>`;
     }
   }
-  // charge/manager: who has acknowledged (current vs earlier version)
   if(chargeMode){
     const names=Object.keys(QUICK_ACKS);
-    h+=`<div class="qhackrow"><button class="qhedit" onclick="openQuickEdit()">Edit</button>`;
-    if(names.length){
-      const parts=names.map(n=>{ const cur=QUICK_ACKS[n]>=(QUICK_HITS.at||0); return `${esc(n)} (${_qhTime(QUICK_ACKS[n])}${cur?'':' · earlier'})`; });
-      h+=`<span class="qhacklist">Acknowledged: ${parts.join(' · ')}</span>`;
-    } else h+=`<span class="qhacklist none">No acknowledgments yet</span>`;
-    h+=`</div>`;
+    inner+=`<div class="qhackrow"><button class="qhedit" onclick="openQuickEdit()">Edit</button>`;
+    if(names.length){ const parts=names.map(n=>{ const cur=QUICK_ACKS[n]>=(QUICK_HITS.at||0); return `${esc(n)} (${_qhTime(QUICK_ACKS[n])}${cur?'':' · earlier'})`; }); inner+=`<span class="qhacklist">Acknowledged: ${parts.join(' · ')}</span>`; }
+    else inner+=`<span class="qhacklist none">No acknowledgments yet</span>`;
+    inner+=`</div>`;
   }
-  h+=`</div>`;
-  el.innerHTML=h;
+  el.innerHTML=`<details class="qhcard"${needsAck?' open':''}><summary class="qhsum"><span class="qhttl">📣 Quick hits${needsAck?' <span class="qhdot">●</span>':''}</span><span class="qhstamp">${stamp}</span></summary><div class="qhinner">${inner}</div></details>`;
 }
 // Name of the person whose card is being viewed (for acknowledgment)
 function _quickViewerName(){
-  if(chargeMode) return '';
-  if(viewAs && viewAs.startsWith('n-')){ const n=nurses.find(x=>'n-'+x.id===viewAs); return n?n.name:''; }
-  if(viewAs && viewAs.startsWith('p-')){ const p=pcts.find(x=>'p-'+x.id===viewAs); return p?p.name:''; }
-  if(viewAs && viewAs.startsWith('s-')){ const s=sitters.find(x=>'s-'+x.id===viewAs); return s?s.name:''; }
-  return '';
+  if(chargeMode || !viewAs || viewAs==='charge') return '';
+  if(viewAs.indexOf('p:')===0){ const p=pcts.find(x=>'p:'+x.id===viewAs); return p?p.name:''; }
+  if(viewAs.indexOf('s:')===0){ const s=sitters.find(x=>'s:'+x.id===viewAs); return s?s.name:''; }
+  const n=nurses.find(x=>x.id===viewAs); return n?n.name:'';
 }
 // ── Quick pulse survey (retention check-in). Anonymous. Manager toggles on/off. ──
 let SURVEY_ON=false;            // manager opts in
