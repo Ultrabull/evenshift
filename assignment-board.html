@@ -73,6 +73,15 @@
   .zbsc{background:#E8E2F6;color:#5B3FA8;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;margin-left:6px;}
   .staffsub{font-family:var(--display);font-weight:800;font-size:13px;color:var(--ink-soft);margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--line);}
   .staffsub:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .unitlist{display:flex;flex-direction:column;gap:7px;}
+  .unitrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);}
+  .unitrow.cur{border-color:var(--teal);background:var(--teal-wash);}
+  .unitnm{font-weight:700;font-size:13.5px;color:var(--ink);}
+  .unitcur{color:var(--teal-deep);font-weight:700;font-size:11px;}
+  .unitcode{font-size:11px;color:var(--ink-soft);font-family:monospace;}
+  .unitbtns{margin-left:auto;display:flex;gap:5px;}
+  .btn.sm{padding:5px 10px;font-size:12px;}
+  .btn.sm.danger{color:#B03A3A;}
   .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
   .dcadot.dcd{background:#9BD3AC;}
@@ -1249,6 +1258,14 @@
     <div class="mhead"><span class="rt">🛠️ Developer settings</span><button class="btn" onclick="closeDev()">Close</button></div>
     <div class="mbody">
       <p class="covnote">Backend configuration. This is a developer-only screen — managers and charge nurses never need it. The board already auto-connects; only change this to point a unit at a different database.</p>
+      <details class="cloudset" open>
+        <summary>Units at this hospital</summary>
+        <p class="covnote" style="margin-top:8px;">Same database — each unit is kept separate by its code. Staff open their unit's own link/QR. Add a unit, then share its link.</p>
+        <div id="unitList" class="unitlist"></div>
+        <label class="rubfield" style="margin:10px 0 6px;">Add a unit <span class="flhint">e.g. "14 Blue"</span><input id="newUnitName" placeholder="Unit name"></label>
+        <div class="rsharebtns"><button class="btn primary" onclick="addUnit()">Add unit</button></div>
+        <div id="unitMsg" class="rmsg" style="color:var(--ink-soft);word-break:break-all;"></div>
+      </details>
       <details class="cloudset" open>
         <summary>Cloud connection</summary>
         <p class="covnote" style="margin-top:8px;">From supabase.com: run the setup SQL, then Project Settings → API. Paste the two values here — they save on this device.</p>
@@ -2708,6 +2725,41 @@ function jumpRoom(val, force){
 /* Draft vs Final: charge taps Post so staff know the board is final & safe to read */
 let boardPosted=false, lastUpdatedAt=0, lastUpdatedBy='';
 let DEV_CODE='2468';   // developer-only code for backend settings (changeable in the dev panel). Long-press the top-left corner to reach it.
+// Units at this hospital — same database, separated by unit code. Add more from the dev panel.
+const DEFAULT_UNITS=[
+  {name:'10 Green', code:'10-green'},
+  {name:'10 Orange', code:'10-orange'},
+  {name:'12 Orange', code:'12-orange'},
+  {name:'12 Green', code:'12-green'},
+];
+function knownUnits(){ try{ const saved=JSON.parse(localStorage.getItem('evenshift_units')||'null'); if(Array.isArray(saved)&&saved.length) return saved; }catch(e){} return DEFAULT_UNITS.slice(); }
+function saveUnits(list){ try{ localStorage.setItem('evenshift_units', JSON.stringify(list)); }catch(e){} }
+function unitLinkFor(code){ const base=location.origin+location.pathname; return `${base}?u=${encodeURIComponent(code)}`; }
+function switchUnit(code){ if(!code) return; if(code===unitId){ closeDev(); return; } if(!confirm(`Switch this device to unit "${code}"? The board will reload showing that unit.`)) return; try{ localStorage.setItem('ev_unit', code); }catch(e){} location.href=unitLinkFor(code); }
+function addUnit(){
+  const name=(document.getElementById('newUnitName').value||'').trim();
+  if(!name){ const m=document.getElementById('unitMsg'); if(m) m.textContent='Enter a unit name.'; return; }
+  const code=name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  const list=knownUnits(); if(list.some(u=>u.code===code)){ const m=document.getElementById('unitMsg'); if(m) m.textContent='That unit already exists.'; return; }
+  list.push({name, code}); saveUnits(list);
+  document.getElementById('newUnitName').value=''; renderUnitPicker();
+  const m=document.getElementById('unitMsg'); if(m) m.textContent=`✓ Added ${name}. Link: ${unitLinkFor(code)}`;
+}
+function removeUnit(code){ if(!confirm('Remove this unit from the picker? (Its saved board is not deleted — you can re-add the code anytime.)')) return; const list=knownUnits().filter(u=>u.code!==code); saveUnits(list); renderUnitPicker(); }
+function copyUnitLinkFor(code){ const url=unitLinkFor(code); try{ navigator.clipboard.writeText(url); }catch(e){} const m=document.getElementById('unitMsg'); if(m) m.textContent='✓ Link copied: '+url; }
+function renderUnitPicker(){
+  const el=document.getElementById('unitList'); if(!el) return;
+  el.innerHTML=knownUnits().map(u=>{
+    const cur=u.code===unitId;
+    return `<div class="unitrow${cur?' cur':''}"><span class="unitnm">${esc(u.name)}${cur?' <span class="unitcur">· current</span>':''}</span>`
+      +`<span class="unitcode">${esc(u.code)}</span>`
+      +`<span class="unitbtns">`
+      +(cur?'':`<button class="btn sm" onclick="switchUnit('${esc(u.code)}')">Open</button>`)
+      +`<button class="btn sm" onclick="copyUnitLinkFor('${esc(u.code)}')">Copy link</button>`
+      +`<button class="btn sm danger" onclick="removeUnit('${esc(u.code)}')">✕</button>`
+      +`</span></div>`;
+  }).join('');
+}
 function openDevGate(){
   const v=(prompt('Developer settings (backend config).\nEnter the developer code:')||'').trim();
   if(v==='') return;
@@ -2716,6 +2768,7 @@ function openDevGate(){
   try{ const saved=JSON.parse(localStorage.getItem('evenshift_cloud')||'{}'); if(u)u.value=saved.url||''; if(k)k.value=saved.key||''; }catch(e){}
   if(dc) dc.value='';
   document.getElementById('devScrim').classList.add('on');
+  renderUnitPicker();
 }
 function closeDev(){ const s=document.getElementById('devScrim'); if(s) s.classList.remove('on'); }
 function setDevCode(){ const v=(document.getElementById('devCodeIn').value||'').trim(); if(v.length<3){ const m=document.getElementById('devCodeMsg'); if(m) m.textContent='Use at least 3 digits.'; return; } DEV_CODE=v; try{ localStorage.setItem('evenshift_devcode', v); }catch(e){} const m=document.getElementById('devCodeMsg'); if(m) m.textContent='✓ Developer code updated.'; }
@@ -4678,7 +4731,6 @@ function renderHuddleTab(){
     +`<div class="hudcaprow"><span class="hudcaplab">Lift bed</span><div class="hudbars">${allRooms.slice().sort((a,b)=>a-b).map(rn=>`<button class="hudbar ${(BED_CAP.lift||[]).includes(rn)?'on':''}" onclick="toggleBedCap('lift',${rn})">${rn}</button>`).join('')}</div></div>`
     +`</div></details>`;
   h+=`<div class="hudactions"><button class="btn primary" onclick="emailHuddle()">📧 Email to house supervisor</button><button class="btn" onclick="copyMeetingPrep()">Copy</button></div>`;
-  h+=`<div id="meetCopyMsg" class="hint" style="margin-top:6px;"></div>`;
   h+=`</div>`;
   el.innerHTML=h;
 }
@@ -4817,7 +4869,6 @@ function renderStaffReqTab(){
   h+=`<textarea class="hudnote" placeholder="Notes (optional)" oninput="setStaffReqNote(this.value)">${esc(STAFFREQ_NOTE)}</textarea>`;
   h+=`<div class="meetRow" style="font-size:11px;color:var(--ink-soft);margin-top:8px">Traveler / agency / PRN / on-call / OT / call-in splits stay blank for you to fill on the fax — the app can\u2019t know those.</div>`;
   h+=`<div class="hudactions"><button class="btn primary" onclick="emailStaffReq()">📧 Email staffing office</button><button class="btn" onclick="copyMeetingPrep()">Copy</button></div>`;
-  h+=`<div id="meetCopyMsg" class="hint" style="margin-top:6px;"></div>`;
   h+=`</div>`;
   el.innerHTML=h;
 }
@@ -5224,7 +5275,7 @@ async function loadHistory(){
     const sl=document.getElementById('histSummaryLine');
     if(sl&&n) sl.innerHTML=`<b>${n} shift${n>1?'s':''}</b> in this range · tap <b>Share report</b> to send it, or <b>View report</b> to see it first.`;
     if(list){
-      if(!n){ list.innerHTML=`<div class="survblock"><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`+'<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>'; return; }
+      if(!n){ list.innerHTML=`<div class="survblock"><div class="survhead"><span>🧑‍⚕️ PCT workload balancing</span><button id="pctModeBtn" class="btn ${PCT_MODE?'primary':''}" onclick="togglePctMode()">${PCT_MODE?'On':'Off'}</button></div><div class="hint" style="margin-bottom:12px;">When on, PCTs score each patient's care needs and zones balance by workload (within two halls), not just room count.</div><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`+'<div class="hint">No shifts saved in this range yet. Shifts are recorded automatically when the charge taps <b>Next shift</b>.</div>'; return; }
       const ag=aggregateSnaps(_histSnaps);
       list.innerHTML = `<div class="survblock"><div class="survhead"><span>🧑‍⚕️ PCT workload balancing</span><button id="pctModeBtn" class="btn ${PCT_MODE?'primary':''}" onclick="togglePctMode()">${PCT_MODE?'On':'Off'}</button></div><div class="hint" style="margin-bottom:12px;">When on, PCTs score each patient's care needs and zones balance by workload (within two halls), not just room count.</div><div class="survhead"><span>💬 Staff pulse check-in</span><button id="surveyToggleBtn" class="btn ${SURVEY_ON?'primary':''}" onclick="toggleSurvey()">${SURVEY_ON?'On':'Off'}</button></div><div class="hint" style="margin-bottom:8px;">A 2-tap, ~9-second check-in on the staff's own assignment. Anonymous. Toggle off anytime.</div><div id="surveyResults">${surveyResultsHTML()}</div></div>`
         + dashboardHTML(ag,n) + attentionHTML(ag) + patternsHTML(ag) +
