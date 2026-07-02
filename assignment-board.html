@@ -1636,13 +1636,36 @@ const hallOf = rn => Object.keys(HALLS).find(h=>HALLS[h].rooms.includes(rn));
 const hallColor = rn => { const h=hallOf(rn); return h?HALLS[h].color:'#9aa3b2'; };
 const posOf = rn => PATH.indexOf(rn);
 /* walking distance: same hall = step difference; different hall = walk each in to the station,
-   then across (cheap within a wing, expensive across wings). */
-function roomDist(a,b){ if(RHALL[a]===RHALL[b]) return Math.abs(RD[a]-RD[b]); const base=RD[a]+RD[b]; return rwing(a)===rwing(b) ? base+1 : base+3; }
+   then across. Same-wing crosses (halls 1+2 or 3+4) are cheap; cross-wing is expensive.
+   Crossing via far-from-station rooms costs extra, so a two-hall nurse hugs the station. */
+function roomDist(a,b){
+  if(RHALL[a]===RHALL[b]) return Math.abs(RD[a]-RD[b]);
+  const base=RD[a]+RD[b];                       // sum of each room's walk to the station
+  const sameWing = rwing(a)===rwing(b);
+  // crossing "cost" scales with how far from the station the two rooms are:
+  // near the station (low RD) → cheap to cross; far ends → expensive.
+  const cross = sameWing ? 2 : 6;
+  return base + cross;
+}
 function groupGeo(g){
   let s=0; for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++) s+=roomDist(g[i].id,g[j].id);
-  const halls=new Set(g.map(r=>RHALL[r.id])).size, wings=new Set(g.map(r=>rwing(r.id))).size;
-  return s + (halls-1)*8     /* 1) prefer one hall; 2) else two halls, but the cheap cross is at low-d station rooms */
-           + (wings-1)*60;   /* never split a nurse across wings unless <=0.5 truly forces it */
+  const hallsSet=new Set(g.map(r=>RHALL[r.id]));
+  const wings=new Set(g.map(r=>rwing(r.id))).size;
+  const halls=hallsSet.size;
+  let extra = (halls-1)*10        /* 1) strongly prefer one hall */
+            + (wings-1)*90;       /* never split across wings unless hours truly force it */
+  // 2) if a group spans two halls, the crossover rooms should be NEAR the station.
+  //    Charge for how deep into a second hall the nurse reaches (deepest far room = worst).
+  if(halls>1){
+    // per hall, how far the deepest room sits from the station; the two-hall reach is the
+    // sum of the two smallest \"max depths\" — a tight station-side cluster keeps this low.
+    const depthByHall={};
+    g.forEach(r=>{ const h=RHALL[r.id]; depthByHall[h]=Math.max(depthByHall[h]||0, RD[r.id]); });
+    const depths=Object.values(depthByHall).sort((x,y)=>x-y);
+    // the secondary hall(s) beyond the primary: reward shallow reach into them
+    for(let k=0;k<depths.length-1;k++) extra += depths[k]*6;   // deeper into a 2nd hall = costlier
+  }
+  return s + extra;
 }
 let rooms={};
 function blankRoom(rn){ return {id:rn,acuity:null,prevAcuity:null,occupied:false,tally:{},flags:[],note:'',nurse:null,lock:null,tags:[],avoid:[],isoType:'',dcTime:'',admTime:''}; }
@@ -2864,6 +2887,24 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
   const BW=curBurdenW();   // shift-aware: Day or Night weight profile
   const btag={}; occ.forEach(r=>{ const s={}; patientTags(r).forEach(t=>{ if(BW[t]) s[t]=1; }); btag[r.id]=s; });
   const burden=()=>{ let c=0; for(const g of G){ const cnt={}; for(const r of g){ const s=btag[r.id]; for(const t in s) cnt[t]=(cnt[t]||0)+1; } for(const t in cnt) c+=BW[t]*cnt[t]*cnt[t]; } return c; };
+  // Handoff continuity: map each room to the nurse who had it last shift, so we can keep
+  // each outgoing nurse's cluster with as few oncoming nurses as possible (fewer reports to give).
+  const prevOwner={};
+  if(PREV_SHIFT && (PREV_SHIFT.nurses||[]).length){
+    PREV_SHIFT.nurses.forEach(rec=>{ (rec.rooms||[]).forEach(rn=>{ prevOwner[rn]=rec.id; }); });
+  }
+  const hasHandoff = Object.keys(prevOwner).length>0;
+  // Penalty grows with how scattered each outgoing nurse's patients become. If Anna's 4 rooms
+  // land with 1 oncoming nurse → 0 penalty; split across 3 → charged for the 2 extra reports.
+  const handoff=()=>{
+    if(!hasHandoff) return 0;
+    const byPrev={};   // prevNurse -> Set of current group indices holding their rooms
+    G.forEach((g,gi)=>{ for(const r of g){ const pv=prevOwner[r.id]; if(pv==null) continue; (byPrev[pv]||(byPrev[pv]=new Set())).add(gi); } });
+    let c=0; for(const pv in byPrev){ c += (byPrev[pv].size-1); }   // extra handoffs beyond the first
+    return c;
+  };
+  // Low weight so BALANCE wins — this only tightens handoff among near-equal-cost solutions (free grouping).
+  const HANDOFF_W=6;
   // safety caps: spread the heaviest patients (5+), behavioral and confused; don't stack a discharge AND a fresh admit on one nurse.
   // cap = the fewest each nurse can hold (1 when there are <= one per nurse), so violations only appear when the floor truly forces them.
   const totHeavy=occ.filter(r=>r.acuity>=5).length, totBeh=occ.filter(r=>r.flags.includes('beh')).length, totConf=occ.filter(r=>r.flags.includes('conf')).length;
@@ -2875,7 +2916,7 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
       if(cf>capConf)  c+=(cf-capConf)*55;     // #5 spread confused / fall-risk
       if(dc>0&&adm>0) c+=Math.min(dc,adm)*40; // #4 don't pair a discharge with a fresh admit
     } return c; };
-  const cost=()=>Math.max(0,spread()-0.5)*450 + safety() + geo() + 2*burden() + flagRuleCost();   // hours first (strong), then safety caps, then geography + even burden mix + per-unit flag rules
+  const cost=()=>Math.max(0,spread()-0.5)*450 + safety() + geo() + 2*burden() + HANDOFF_W*handoff() + flagRuleCost();   // hours first (strong), then safety caps, geography, even burden, then handoff continuity (soft — free grouping only)
   // per-unit flag rules: spread (penalize clustering) or cap (penalize exceeding max)
   const ruleCodes=getActiveFlags().map(x=>x[0]).filter(c=>{ const r=flagRule(c); return r.mode==='spread'||r.mode==='cap'; });
   const ruleTotals={}; ruleCodes.forEach(c=>{ ruleTotals[c]=occ.filter(r=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).length; });
@@ -2937,10 +2978,13 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
     return true; };
   const sc=n=>(pinRoomOf(n.id)!=null?10:0)+(n.level==='Orienting'?5:0)+(n.level==='Float'?4:0);
   const ord=[...freeNurses].sort((a,b)=>sc(b)-sc(a));
+  // For each group, which still-working nurse owned the most of its rooms last shift (for continuity).
+  const groupPrevOwner=G.map(g=>{ const tally={}; for(const r of g){ const pv=prevOwner[r.id]; if(pv!=null && freeNurses.some(n=>n.id===pv)) tally[pv]=(tally[pv]||0)+1; } let best=null,bn=0; for(const pv in tally){ if(tally[pv]>bn){ bn=tally[pv]; best=pv; } } return best; });
   const gHrs=G.map(hrs); const assign=new Array(M).fill(null);
   (function bt(oi){ if(oi>=ord.length) return true; const nid=ord[oi].id;
     let cands=[]; for(let gi=0;gi<M;gi++) if(assign[gi]==null && can(nid,gi)) cands.push(gi);
     if(ord[oi].level==='Orienting'||ord[oi].level==='Float') cands.sort((x,y)=>gHrs[x]-gHrs[y]);
+    else cands.sort((x,y)=>(groupPrevOwner[y]===nid?1:0)-(groupPrevOwner[x]===nid?1:0));   // keep same nurse on their own group if working back-to-back
     for(const gi of cands){ assign[gi]=nid; if(bt(oi+1)) return true; assign[gi]=null; }
     return false; })(0);
   const finalIds = assign.every(x=>x!=null) ? assign : G.map((g,gi)=>{ const f=g.find(r=>r.lock); return f?f.lock:freeNurses[gi%M].id; });
