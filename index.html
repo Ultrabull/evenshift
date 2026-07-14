@@ -73,6 +73,7 @@
   .hohead{font-weight:700;font-size:12.5px;margin-bottom:4px;}
   .horow{font-size:12px;padding:1px 0;}
   .horow.warn{color:#9A6512;font-weight:600;}
+  .horow.ok{color:var(--good);font-weight:600;}
   .zroom.tappable{cursor:pointer;border:1px solid var(--line);transition:.1s;}
   .zroom.tappable:active{background:var(--teal-wash);}
   .zbsc{background:#E8E2F6;color:#5B3FA8;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;margin-left:6px;}
@@ -2853,7 +2854,7 @@ function markScoredDone(nid){
   renderAssign(); scheduleSave();
 }
 
-function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
+function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
   // Build the NEXT shift off each patient's predicted acuity. Swap it in for the run, restore the live "now" after.
   const _savedAcu={}; occupied().forEach(r=>{ _savedAcu[r.id]=r.acuity; if(r.nextAcuity!=null) r.acuity=r.nextAcuity; });
   const _restoreAcu=()=>{ Object.keys(_savedAcu).forEach(id=>{ if(rooms[id]) rooms[id].acuity=_savedAcu[id]; }); };
@@ -2952,8 +2953,29 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
     if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*1200; } }
     return c;
   }
+  // ── TOTAL SWAP FIRST: if last shift's whole groups still balance on the new acuities,
+  //    hand each outgoing nurse's entire group to one oncoming nurse (1 report each) and skip the shuffle.
+  //    Acuity stays boss: accepted only when spread ≤ 0.5 and every safety/ratio cap holds.
+  let swapIds=null;
+  if(hasHandoff){
+    // hard caps only: per-nurse flag caps and ratio caps (soft 'spread' fairness never blocks a swap)
+    const capsOK=()=>{
+      for(const code of ruleCodes){ const rule=flagRule(code); if(rule.mode!=='cap') continue; const cap=Math.max(1,rule.cap||1);
+        for(const g of G){ let k=0; for(const r of g){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)) k++; } if(k>cap) return false; } }
+      if(ratiocapCodes.length){ for(const g of G){ if(g.length>groupRatioCap(g)) return false; } }
+      return true;
+    };
+    const swap=buildTotalSwapG(occ, freeNurses);
+    if(swap){
+      const seedG=G; G=swap.G;
+      const sp=spread();
+      if(sp<=TARGET_SPREAD+1e-9 && safety()===0 && capsOK()){ swapIds=swap.ids; LAST_GEN_SWAP={ok:true,spread:sp}; }
+      else { LAST_GEN_SWAP={ok:false,reason:'hours',spread:sp}; G=seedG; }
+    } else LAST_GEN_SWAP={ok:false,reason:'staffing'};
+  }
   // One-tap best: run several independent annealing restarts and keep the best of all.
   // Each restart shuffles the seed, so a single tap now does what repeated taps used to.
+  if(!swapIds){
   let bestC=Infinity, best=G.map(g=>g.slice());
   const RESTARTS=5;
   for(let pass=0; pass<RESTARTS; pass++){
@@ -2980,7 +3002,10 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
     G=passBest.map(g=>g.slice());   // carry forward this pass's best as the base for reshuffling
   }
   G=best;
+  }   // end !swapIds — a total swap keeps last shift's groups verbatim
   // --- match nurses to groups: pins, won't-take, orienting limits ---
+  let finalIds=swapIds;   // a total swap already carries its own nurse-per-group matching
+  if(!finalIds){
   const pinRoomOf=nid=>{ const r=occ.find(x=>x.lock===nid); return r?r.id:null; };
   const lockOwnerOf=gi=>{ const r=G[gi].find(x=>x.lock); return r?r.lock:null; };
   const can=(nid,gi)=>{ const n=nurseObj(nid), g=G[gi];
@@ -3001,14 +3026,15 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
     else cands.sort((x,y)=>(groupPrevOwner[y]===nid?1:0)-(groupPrevOwner[x]===nid?1:0));   // keep same nurse on their own group if working back-to-back
     for(const gi of cands){ assign[gi]=nid; if(bt(oi+1)) return true; assign[gi]=null; }
     return false; })(0);
-  const finalIds = assign.every(x=>x!=null) ? assign : G.map((g,gi)=>{ const f=g.find(r=>r.lock); return f?f.lock:freeNurses[gi%M].id; });
+  finalIds = assign.every(x=>x!=null) ? assign : G.map((g,gi)=>{ const f=g.find(r=>r.lock); return f?f.lock:freeNurses[gi%M].id; });
+  }   // end !swapIds matcher
   occ.forEach(r=>{ r.nurse=null; });
   G.forEach((g,gi)=>{ const nid=finalIds[gi]; g.forEach(r=>{ r.nurse=nid; }); });
   occ.forEach(r=>{ if(r.lock) r.nurse=r.lock; });
   // restore kept nurses' assignments
   occupied().forEach(r=>{ if(keptIds.has(r.lock)) r.nurse=r.lock; });
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
-  geoPolish();   // equal-acuity swaps to pull each nurse's rooms together (free — hours unchanged)
+  if(!swapIds) geoPolish();   // equal-acuity swaps to tidy geography (skipped on a total swap — groups stay verbatim)
   selectedRoom=null;
   balanceReport();   // runs while acuity = predicted, so the banner reflects the next-shift load
   _restoreAcu();     // put the live "now" scores back; assignment (r.nurse) stays
@@ -3794,6 +3820,61 @@ function roomsHint(ids){
 }
 
 /* ---- shift-change reports: who gives report to whom (PREV_SHIFT → current board) ---- */
+let LAST_GEN_SWAP=null;   // outcome of the total-swap-first check on the most recent Make Assignment (transient)
+/* Total-swap builder: try to hand each outgoing nurse's ENTIRE group to one oncoming nurse.
+   Returns {G, ids} (groups aligned with the nurse ids that must take them) or null when a
+   total swap is structurally impossible (staffing changed, lock conflicts, no safe matching). */
+function buildTotalSwapG(occ, freeNurses){
+  if(!PREV_SHIFT || !(PREV_SHIFT.nurses||[]).length) return null;
+  const M=freeNurses.length;
+  const byId={}; occ.forEach(r=>byId[r.id]=r);
+  const groups=PREV_SHIFT.nurses.map(rec=>({prevId:rec.id, rooms:(rec.rooms||[]).map(rn=>byId[rn]).filter(Boolean)})).filter(g=>g.rooms.length);
+  if(!groups.length || groups.length>M) return null;              // fewer oncoming nurses than outgoing groups → impossible
+  while(groups.length<M) groups.push({prevId:null, rooms:[]});    // extra nurses get empty groups (hours check will judge)
+  // lock consistency: a group may carry at most ONE lock owner, and one nurse's locks can't span two groups
+  const owners=groups.map(g=>{ const o=[...new Set(g.rooms.filter(r=>r.lock).map(r=>r.lock))]; return o.length>1?'!':(o[0]||null); });
+  if(owners.includes('!')) return null;
+  const ownedBy={}; for(let i=0;i<owners.length;i++){ if(owners[i]){ if(ownedBy[owners[i]]!=null) return null; ownedBy[owners[i]]=i; } }
+  // leftover rooms (new admits etc.): locked ones bind to their nurse's group now, free ones dealt after matching
+  const inGroup=new Set(); groups.forEach(g=>g.rooms.forEach(r=>inGroup.add(r.id)));
+  const leftovers=occ.filter(r=>!inGroup.has(r.id));
+  for(const r of leftovers.filter(x=>x.lock)){
+    let gi=ownedBy[r.lock];
+    if(gi==null){ gi=owners.findIndex((o,k)=>!o&&!groups[k].prevId); if(gi<0) gi=owners.findIndex(o=>!o); if(gi<0) return null;
+      owners[gi]=r.lock; ownedBy[r.lock]=gi; }
+    groups[gi].rooms.push(r);
+  }
+  // match groups → nurses: locks, won't-take, orientee/float safety; prefer the same person keeping her own group
+  const gOK=(n,gi)=>{
+    if(owners[gi] && owners[gi]!==n.id) return false;
+    if(ownedBy[n.id]!=null && ownedBy[n.id]!==gi) return false;
+    for(const r of groups[gi].rooms){
+      if((r.avoid||[]).includes(n.id)) return false;
+      if(n.level==='Orienting' && (r.acuity>=5||r.flags.includes('beh'))) return false;
+      if(n.level==='Float' && (r.acuity>=5||r.flags.includes('beh')||r.flags.includes('sit'))) return false;
+    }
+    return true;
+  };
+  const ids=new Array(M).fill(null), used=new Set();
+  const bt=gi=>{ if(gi>=M) return true;
+    const own=freeNurses.findIndex(n=>n.id===groups[gi].prevId);
+    const cands=freeNurses.map((_,i)=>i).filter(i=>!used.has(i)&&gOK(freeNurses[i],gi))
+      .sort((a,b)=>(a===own?0:1)-(b===own?0:1));
+    for(const ni of cands){ used.add(ni); ids[gi]=freeNurses[ni].id; if(bt(gi+1)) return true; used.delete(ni); ids[gi]=null; }
+    return false;
+  };
+  if(!bt(0)) return null;
+  // free leftovers → lightest eligible group by hours
+  for(const r of leftovers.filter(x=>!x.lock)){
+    let best=-1,bh=Infinity;
+    for(let gi=0;gi<M;gi++){ const n=freeNurses.find(x=>x.id===ids[gi]);
+      if(!n||!eligible(n,r)) continue;
+      const h=groups[gi].rooms.reduce((s,x)=>s+x.acuity,0); if(h<bh){bh=h;best=gi;} }
+    if(best<0) return null;
+    groups[best].rooms.push(r);
+  }
+  return {G:groups.map(g=>g.rooms.slice()), ids};
+}
 /* One entry per OUTGOING nurse whose patients are still on the floor and assigned:
    {id, name, to:[{id, name, n} ...]} — `to` lists the oncoming nurses taking their rooms. */
 function handoffMap(){
@@ -3828,7 +3909,13 @@ function handoffReportHTML(){
   }).join('');
   // best case: an outgoing nurse not working on gives exactly 1 report; one still working could give 0
   const ideal=hm.filter(h=>!nurses.some(n=>n.id===h.id)).length;
-  return `<div class="hobox"><div class="hohead">🗣 Shift-change reports: <b>${total}</b> total · best possible ${ideal}</div>${rows}</div>`;
+  let swapLine='';
+  if(LAST_GEN_SWAP){
+    swapLine = LAST_GEN_SWAP.ok
+      ? `<div class="horow ok">✓ Total swap — each oncoming nurse took one outgoing nurse's whole group (hours within ±${(LAST_GEN_SWAP.spread||0).toFixed(1)})</div>`
+      : `<div class="horow">Total swap checked first — not possible (${LAST_GEN_SWAP.reason==='hours'?('hours would be ±'+(LAST_GEN_SWAP.spread||0).toFixed(1)):'staffing / locks changed'}); built a fresh balanced board instead.</div>`;
+  }
+  return `<div class="hobox"><div class="hohead">🗣 Shift-change reports: <b>${total}</b> total · best possible ${ideal}</div>${swapLine}${rows}</div>`;
 }
 
 /* a 1:1-sitter room needs far less PCT attention (the sitter does the watching/ADLs),
