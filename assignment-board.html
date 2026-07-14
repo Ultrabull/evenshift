@@ -1971,7 +1971,12 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   else { r.acuityReason=''; r.acuityReasonOther=''; }
   closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
 }
-function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom]; r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null; closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
+function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom];
+  r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;
+  // wipe the rest of the outgoing patient's data so the next admit starts clean
+  r.tags=[];r.avoid=[];r.nextAcuity=null;r.prevAcuity=null;r.isoType='';r.dcTime='';r.admTime='';
+  r.acuityReason='';r.acuityReasonOther='';r.capCarried=false;r.pctFlags=[];r.editedBy=null;r.editedAt=null;
+  closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
 function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
@@ -2366,7 +2371,7 @@ function renderQuickHits(){
     if(current){ inner+=`<div class="qhackd">✓ You acknowledged this ${_qhTime(ackTs)}</div>`; }
     else {
       if(ackTs) inner+=`<div class="qhstale">↻ Updated since you last read it — please re-acknowledge.</div>`;
-      inner+=`<button class="qhackbtn" onclick="event.stopPropagation(); ackQuickHits('${esc(viewerName).replace(/'/g,"\\'")}')">✓ Acknowledge</button>`;
+      inner+=`<button class="qhackbtn" onclick="event.stopPropagation(); ackQuickHits(_quickViewerName())">✓ Acknowledge</button>`;
     }
   }
   if(chargeMode){
@@ -2484,7 +2489,8 @@ async function submitReport(){
   const msg=document.getElementById('reportMsg'); if(msg) msg.textContent='Sending…';
   if(cloudOn()){
     try{
-      await sb.from('reports').insert(row);
+      const {error}=await sb.from('reports').insert(row);
+      if(error) throw error;
       if(msg) msg.textContent='✓ Sent — thank you. Neo will see this.';
       setTimeout(closeReport,1200); return;
     }catch(e){ /* fall through to email fallback */ }
@@ -3351,7 +3357,9 @@ function assignAllNew(){ if(!chargeMode)return;
 
 /* ---------- staff roster ---------- */
 let _wn=[],_wp=[],_ws=[],_wh=[];
-function esc(s){ return (s||'').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+/* boards saved by an older build used "Orientee"; the engine's safety rules check "Orienting" */
+function normLevel(l){ return l==='Orientee'?'Orienting':(l||'RN'); }
 /* ═══════════════════════════════════════════════════════════
    WHO'S COMING ON — quick roster swap for the next shift
    ═══════════════════════════════════════════════════════════ */
@@ -3560,7 +3568,7 @@ function renderRosterTab(occRooms){
       row+=`<div class="rchipedit">`
         +`<input id="${t==='n'?'sn':t==='p'?'pp':t==='s'?'ss':'hh'}-${i}" class="sin" value="${esc(x.name)}" placeholder="Name" autofocus>`
         +`<div class="srow2b">`
-        + (t==='n'?`<select id="sl-${i}" class="ssel">${['RN','Senior','Float','Orientee'].map(l=>`<option ${x.level===l?'selected':''}>${l}</option>`).join('')}</select>`:'')
+        + (t==='n'?`<select id="sl-${i}" class="ssel">${['RN','Senior','Float','Orienting'].map(l=>`<option ${x.level===l?'selected':''}>${l}</option>`).join('')}</select>`:'')
         + (t==='s'?`<select id="sr-${i}" class="ssel"><option value="">room…</option>${occRooms.map(rm=>`<option value="${rm}" ${String(x.room)===String(rm)?'selected':''}>${rm}</option>`).join('')}</select>`:'')
         + shiftSel(t,i,x)
         +`</div>`
@@ -3645,7 +3653,7 @@ function mapRows(rows){
     const roleRaw=(iRole>=0?String(cells[iRole]||''):'').toLowerCase();
     let role='Nurse'; if(/pct|tech|aide|cna/.test(roleRaw))role='PCT'; else if(/sit/.test(roleRaw))role='Sitter'; else if(/huc|unit clerk|clerk|hucs/.test(roleRaw))role='HUC';
     const lvlRaw=(iLevel>=0?String(cells[iLevel]||''):'').toLowerCase();
-    let level='RN'; if(/sr|senior/.test(lvlRaw))level='Senior'; else if(/float|pool/.test(lvlRaw))level='Float'; else if(/orient/.test(lvlRaw))level='Orientee';
+    let level='RN'; if(/sr|senior/.test(lvlRaw))level='Senior'; else if(/float|pool/.test(lvlRaw))level='Float'; else if(/orient/.test(lvlRaw))level='Orienting';
     const shRaw=(iShift>=0?String(cells[iShift]||''):'').toLowerCase();
     let shift='Day'; if(/night|noc|pm/.test(shRaw)&&!/day/.test(shRaw))shift='Night';
     out.push({name,role,level,shift,vocAM:iAM>=0?String(cells[iAM]||'').trim():'',vocPM:iPM>=0?String(cells[iPM]||'').trim():''});
@@ -3696,7 +3704,7 @@ function applyImport(mode){
 }
 /* ---- roster sharing between devices (no backend) ---- */
 const RCODE_PREFIX='EVSHIFT-ROSTER-1:';
-function rosterPayload(){ return RCODE_PREFIX+btoa(unescape(encodeURIComponent(JSON.stringify({v:1,rosterN,rosterP,rosterS})))); }
+function rosterPayload(){ return RCODE_PREFIX+btoa(unescape(encodeURIComponent(JSON.stringify({v:1,rosterN,rosterP,rosterS,rosterH})))); }
 function rmsg(t){ const e=document.getElementById('rshareMsg'); if(e)e.textContent=t||''; }
 function openRShare(){ const ta=document.getElementById('rosterCode'); if(ta)ta.value=''; rmsg(''); document.getElementById('rshareScrim').classList.add('on'); }
 function closeRShare(){ document.getElementById('rshareScrim').classList.remove('on'); }
@@ -3734,9 +3742,10 @@ function loadRoster(){
   }
   if(!obj.rosterN.length){ rmsg('That doesn\u2019t look like a roster.'); return; }
   if(!confirm('Replace the current roster with the imported one? Today\u2019s assignments will clear.')) return;
-  rosterN=obj.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,vocAM:n.vocAM||'',vocPM:n.vocPM||''}));
-  rosterP=(obj.rosterP||[]).map(p=>({id:p.id,name:p.name,on:p.on!==false,vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
-  rosterS=(obj.rosterS||[]).map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,vocAM:s.vocAM||'',vocPM:s.vocPM||''}));
+  rosterN=obj.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||''}));
+  rosterP=(obj.rosterP||[]).map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||''}));
+  rosterS=(obj.rosterS||[]).map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||''}));
+  if(Array.isArray(obj.rosterH)) rosterH=obj.rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
   syncWorking();
   occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });
   if(viewAs!=='charge'&&!nurses.find(x=>x.id===viewAs))viewAs='charge';
@@ -3746,7 +3755,7 @@ function loadRoster(){
 }
 function saveStaff(){
   syncStaffDOM();
-  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:n.level||'RN',cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||''}));
+  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
   if(cleanN.length<1){ alert('Add at least one nurse.'); return; }
   if(!cleanN.some(n=>n.on!==false)){ alert('Mark at least one nurse “On” for today.'); return; }
   rosterN=cleanN;
@@ -4376,8 +4385,8 @@ function cloudSubscribe(){
     })
     .subscribe();
 }
-async function pushMeta(){ if(!cloudOn())return; try{ await sb.from('boards').upsert({unit:unitId, meta:stateObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
-async function pushAcuity(){ if(!cloudOn())return; try{ await sb.from('boards').upsert({unit:unitId, acuity:acuityObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
+async function pushMeta(){ if(!cloudOn())return; try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:stateObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error; setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
+async function pushAcuity(){ if(!cloudOn())return; try{ const {error}=await sb.from('boards').upsert({unit:unitId, acuity:acuityObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error; setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
 
 function stateObj(){
   const rs={};
@@ -4389,11 +4398,11 @@ function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Savi
 function applyState(st){
   if(st.floor && st.floor.halls){ FLOOR=st.floor; applyFloor(); updateUnitTag(); }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
-  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
+  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
-  if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',coverBy:p.coverBy||''}));
+  if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
   else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true,shift:'Day'}));
-  if(Array.isArray(st.rosterS)) rosterS=st.rosterS.map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',coverBy:s.coverBy||''}));
+  if(Array.isArray(st.rosterS)) rosterS=st.rosterS.map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''}));
   else if(Array.isArray(st.sitters)) rosterS=st.sitters.map(s=>({id:s.id,name:s.name,room:s.room||'',on:true,shift:'Day'}));
   if(Array.isArray(st.rosterH)) rosterH=st.rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
   syncWorking();
@@ -5137,9 +5146,17 @@ async function pushHistory(){
     return;
   }
   try{
-    await sb.from('shift_history').insert({unit:unitId,shift_date:shiftDate,shift_type:shiftType,
+    const {error}=await sb.from('shift_history').insert({unit:unitId,shift_date:shiftDate,shift_type:shiftType,
       charge_name:chargeName||'',census:snap.census,total_beds:snap.totalBeds,snapshot:snap});
-  }catch(e){ console.warn('history save failed',e); }
+    if(error) throw error;
+  }catch(e){ console.warn('history save failed',e);
+    // cloud write failed — fall back to the local file download so the shift record isn't lost
+    try{ const fname=`evenshift-${unitId}-${shiftDate}-${shiftType}.json`;
+      const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    }catch(_){}
+  }
 }
 // kept for the manual "save now" path if needed elsewhere
 function downloadSnapshot(){ pushHistory(); }
@@ -5177,7 +5194,8 @@ async function loadReportsView(){
   if(!cloudOn()){ body.innerHTML='<div class="hint">Bug reports need the cloud connected.</div>'; return; }
   body.innerHTML='<div class="hint">Loading reports…</div>';
   try{
-    const { data } = await sb.from('reports').select('*').order('created_at',{ascending:false}).limit(100);
+    const { data, error } = await sb.from('reports').select('*').order('created_at',{ascending:false}).limit(100);
+    if(error) throw error;
     if(!data||!data.length){ body.innerHTML='<div class="hint">No reports yet. When staff hit 🐞 Report a problem, they show up here.</div>'; return; }
     body.innerHTML=data.map(r=>{
       const when=r.created_at?new Date(r.created_at).toLocaleString():'';
@@ -5196,7 +5214,8 @@ async function loadHouse(){
   if(!cloudOn()){ body.innerHTML='<div class="hint">House View needs the cloud connected — it reads every unit\u2019s live board. Connect the unit link first.</div>'; return; }
   body.innerHTML='<div class="hint">Loading units…</div>';
   try{
-    const { data } = await sb.from('boards').select('unit,meta,acuity,updated_at');
+    const { data, error } = await sb.from('boards').select('unit,meta,acuity,updated_at');
+    if(error) throw error;
     _houseRows=(data||[]).map(row=>summarizeUnitState(row)).filter(Boolean).sort((a,b)=>a.unit.localeCompare(b.unit));
     renderHouse();
   }catch(e){ body.innerHTML=`<div class="hint" style="color:var(--bad)">Couldn\u2019t load units: ${esc(e.message||'error')}</div>`; }
@@ -5849,6 +5868,8 @@ function buildPrint(){
      `<div class="prwing"><span class="prwlab">Right wing \u25b6</span>${hrow(3)}${hrow(4)}</div></div>`;
   // nurses
   const vocCol=shiftType==='Day'?'AM':'PM';
+  const mx=Math.max(0.1,...lds);        // heaviest load — scales the little load bars
+  const bk=nurseBreaks();               // break window per nurse
   h+=`<div class="prcap">Nurses</div><table class="prt"><tr><th class="sw"></th><th>RN</th><th class="vc">Voc ${vocCol}</th><th>Rooms</th><th class="brk">Break</th><th class="ld">Load</th></tr>`;
   nurses.forEach(n=>{ const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id).map(r=>r.id);
     const tag=n.level==='Orienting'?' <small>(or)</small>':(n.level==='Senior'?' <small>(sr)</small>':(n.level==='Float'?' <small>(float)</small>':''));
