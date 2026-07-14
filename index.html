@@ -68,6 +68,11 @@
   .chip.isadm .rm{color:#9A6512;}
   .editby{font-size:9.5px;font-weight:700;color:#6B5BA8;background:#EFEBFA;border-radius:5px;padding:1px 5px;margin-left:3px;}
   .saveattrib{font-size:11.5px;color:var(--ink-soft);padding:8px 16px 0;text-align:center;}
+  /* shift-change report block inside the balance banner */
+  .hobox{margin-top:8px;padding-top:7px;border-top:1px dashed var(--line-strong);}
+  .hohead{font-weight:700;font-size:12.5px;margin-bottom:4px;}
+  .horow{font-size:12px;padding:1px 0;}
+  .horow.warn{color:#9A6512;font-weight:600;}
   .zroom.tappable{cursor:pointer;border:1px solid var(--line);transition:.1s;}
   .zroom.tappable:active{background:var(--teal-wash);}
   .zbsc{background:#E8E2F6;color:#5B3FA8;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;margin-left:6px;}
@@ -2109,6 +2114,7 @@ function renderAssign(){
       <div class="nhead"><span class="name">${n.name}</span><span class="badge ${bcls}">${n.level}</span><button class="keepbtn ${kept?'on':''}" onclick="event.stopPropagation(); keepGroup('${n.id}')" title="${kept?'Releasing — let re-generate reshuffle':'Keep this nurse\u2019s patients across re-generate (returning nurse)'}">${kept?'🔒 kept':'keep'}</button>${chargeMode?`<button class="qhelp" onclick="event.stopPropagation(); showHelp('keep')" title="What's this?">?</button>`:''}</div>
       <div class="hcov ${wings.length>1?'warn':''}">${hcov}</div>
       ${bud.length?`<div class="buddyline">🤝 Buddy: ${bud.map(esc).join(', ')}</div>`:''}
+      ${(chargeMode&&viewAs==='charge')?(()=>{ const src=reportSources(n.id); return src.length?`<div class="buddyline">🗣 Report from: ${src.map(s=>esc(s.name)+' ('+s.n+')').join(' · ')}</div>`:''; })():''}
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${selfRN?breakPickerHTML(n.id,false):(myBreak?`<div class="buddyline">🍽 Your break ~${myBreak.window}${myBreak.cover.length?` · ${myBreak.cover.map(esc).join(', ')} covers`:''}</div>`:'')}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
@@ -2910,6 +2916,8 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false;
     return c;
   };
   // Low weight so BALANCE wins — this only tightens handoff among near-equal-cost solutions (free grouping).
+  // Unit policy: priority is hours ▸ safety ▸ geography ▸ burden ▸ handoff (LAST). Keep this the weakest
+  // term — never trade acuity balance or room-grouping for fewer shift-change reports.
   const HANDOFF_W=6;
   // safety caps: spread the heaviest patients (5+), behavioral and confused; don't stack a discharge AND a fresh admit on one nurse.
   // cap = the fewest each nurse can hold (1 when there are <= one per nurse), so violations only appear when the floor truly forces them.
@@ -3062,13 +3070,14 @@ function balanceReport(){
   // 1:1 rooms with no sitter covering them — surface even if balance is fine
   const uncovered=occupied().filter(r=>r.flags.includes('sit')||r.flags.includes('1:1')).map(r=>r.id).filter(rid=>!sitters.find(s=>String(s.room)===String(rid)));
   let sitWarn = uncovered.length ? `<div class="balsit">⚠ 1:1 room${uncovered.length>1?'s':''} <b>${uncovered.join(', ')}</b> ${uncovered.length>1?'have':'has'} no sitter assigned. Set one in 👥 Who\u2019s Working.</div>` : '';
+  const hoBlock=handoffReportHTML();   // who gives report to whom — shown even when balance is fine
   const withRooms=nurses.map(n=>({n, rs:occupied().filter(r=>r.nurse===n.id)})).filter(x=>x.rs.length);
-  if(withRooms.length<2){ if(sitWarn){ banner.innerHTML=sitWarn; banner.style.display=''; } else banner.style.display='none'; return; }
+  if(withRooms.length<2){ if(sitWarn||hoBlock){ banner.innerHTML=sitWarn+hoBlock; banner.style.display=''; } else banner.style.display='none'; return; }
   const load=x=>x.rs.reduce((s,r)=>s+r.acuity,0);
   const sorted=withRooms.slice().sort((a,b)=>load(b)-load(a));
   const hi=sorted[0], lo=sorted[sorted.length-1];
   const gap=load(hi)-load(lo);
-  if(gap < 2.0){ if(sitWarn){ banner.innerHTML=sitWarn; banner.style.display=''; } else banner.style.display='none'; return; }
+  if(gap < 2.0){ if(sitWarn||hoBlock){ banner.innerHTML=sitWarn+hoBlock; banner.style.display=''; } else banner.style.display='none'; return; }
   const hiKept=hi.rs.filter(r=>r.lock===hi.n.id);
   const hiKeptHrs=hiKept.reduce((s,r)=>s+r.acuity,0);
   let msg='';
@@ -3085,7 +3094,7 @@ function balanceReport(){
       msg=`Board is uneven by <b>${gap.toFixed(1)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
     }
   }
-  banner.innerHTML = sitWarn + `<span class="rose-icon">⚖️</span> ${msg}`;
+  banner.innerHTML = sitWarn + `<span class="rose-icon">⚖️</span> ${msg}` + hoBlock;
   banner.style.display='';
 }
 function balanceMove(rn,nid){ if(!chargeMode)return; pushUndo(); const r=rooms[rn]; if(r){ r.nurse=nid; if(r.lock&&r.lock!==nid)r.lock=null; } renderAssign(); scheduleSave(); checkFlagViolations(); balanceReport(); }
@@ -3782,6 +3791,44 @@ function roomsHint(ids){
   const allOdd=rs.every(r=>r%2), allEven=rs.every(r=>r%2===0);
   const par = allOdd?'odd ' : allEven?'even ' : '';
   return par+rs[0]+'–'+rs[rs.length-1];
+}
+
+/* ---- shift-change reports: who gives report to whom (PREV_SHIFT → current board) ---- */
+/* One entry per OUTGOING nurse whose patients are still on the floor and assigned:
+   {id, name, to:[{id, name, n} ...]} — `to` lists the oncoming nurses taking their rooms. */
+function handoffMap(){
+  if(!PREV_SHIFT || !(PREV_SHIFT.nurses||[]).length) return [];
+  return PREV_SHIFT.nurses.map(rec=>{
+    const tally={};   // oncoming nurse id → how many of this outgoing nurse's rooms they took
+    (rec.rooms||[]).forEach(rn=>{ const r=rooms[rn]; if(r&&r.occupied&&r.nurse) tally[r.nurse]=(tally[r.nurse]||0)+1; });
+    const to=Object.entries(tally).map(([nid,n])=>{ const nn=nurses.find(x=>x.id===nid); return nn?{id:nid,name:nn.name,n}:null; })
+      .filter(Boolean).sort((a,b)=>b.n-a.n);
+    return {id:rec.id,name:rec.name,to};
+  }).filter(x=>x.to.length);
+}
+/* inverse read: which outgoing nurses this oncoming nurse takes report FROM (not herself) */
+function reportSources(nid){
+  const out=[];
+  handoffMap().forEach(h=>{ if(h.id===nid) return; const t=h.to.find(x=>x.id===nid); if(t) out.push({name:h.name,n:t.n}); });
+  return out.sort((a,b)=>b.n-a.n);
+}
+/* charge-facing block for the balance banner: one line per outgoing nurse + a totals line.
+   A back-to-back nurse keeping her own rooms gives no report for those — shown as "keeps N". */
+function handoffReportHTML(){
+  const hm=handoffMap(); if(!hm.length) return '';
+  let total=0;
+  const rows=hm.map(h=>{
+    const self=h.to.find(t=>t.id===h.id), others=h.to.filter(t=>t.id!==h.id);
+    total+=others.length;
+    const many=others.length>=3;
+    const parts=[];
+    if(self) parts.push(`keeps ${self.n}`);
+    if(others.length) parts.push(`${others.length} report${others.length>1?'s':''}: ${others.map(t=>esc(t.name)+' ('+t.n+')').join(' + ')}`);
+    return `<div class="horow${many?' warn':''}">${many?'⚠ ':''}${esc(h.name)} — ${parts.join(' · ')||'—'}</div>`;
+  }).join('');
+  // best case: an outgoing nurse not working on gives exactly 1 report; one still working could give 0
+  const ideal=hm.filter(h=>!nurses.some(n=>n.id===h.id)).length;
+  return `<div class="hobox"><div class="hohead">🗣 Shift-change reports: <b>${total}</b> total · best possible ${ideal}</div>${rows}</div>`;
 }
 
 /* a 1:1-sitter room needs far less PCT attention (the sitter does the watching/ADLs),
