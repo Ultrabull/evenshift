@@ -2257,7 +2257,8 @@ function updateStepGuide(){
 function chargeNextStep(){
   const occ=occupied(); const total=occ.length, scored=occ.filter(r=>r.acuity>0).length;
   const haveStaff=nurses.length>0;
-  const anyAssigned=occ.some(r=>r.nurse);
+  // 'assignment made' must ignore kept/locked rooms — returning staff's keeps alone don't count
+  const anyAssigned=occ.some(r=>r.nurse&&!r.lock);
   const hasPrev=PREV_SHIFT&&(PREV_SHIFT.nurses||[]).length>0;
   const retAck=!hasPrev||RET.done;
   // 1 · are the scores in? (staff score their own patients; charge chases the stragglers)
@@ -2269,10 +2270,12 @@ function chargeNextStep(){
   if(!haveStaff || !CREW_OK) return {label:'Step 3 · Pick who’s working', hint:(haveStaff?'confirm this shift’s crew — check the names, then Save staff':'tap Go to open the staff list'), act:"openStaff()", view:'build'};
   // 4 · returning staff keep their patients
   if(!retAck)        return {label:'Step 4 · Check returning staff', hint:'who stays on and keeps their patients?', act:"openReturning()", view:'build'};
-  // 5 · build
-  if(!anyAssigned)   return {label:'Step 5 · Make the assignment', hint:'one tap — the balanced board builds itself', act:"generate()", view:'build'};
-  // 6 · post
-  if(!boardPosted)   return {label:'Step 6 · Review & post', hint:'check the board, then tap 📌 Post at the bottom', act:"show('assign')", view:'assign'};
+  // 5 · vocera phones
+  if(!vocConfirmed)  return {label:'Step 5 · Vocera phones', hint:'check the device numbers, then tap Done', act:"openVocera()", view:'build'};
+  // 6 · build
+  if(!anyAssigned)   return {label:'Step 6 · Make the assignment', hint:'one tap — the balanced board builds itself', act:"generate()", view:'build'};
+  // 7 · post
+  if(!boardPosted)   return {label:'Step 7 · Review & post', hint:'check the board, then tap 📌 Post at the bottom', act:"show('assign')", view:'assign'};
   return null;   // everything done
 }
 function markScoresOK(){ if(!chargeMode) return; SCORES_OK=true; renderNextStep(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); }
@@ -2288,11 +2291,11 @@ function renderNextStep(){
   }
   el.style.display='';
 }
-/* On unlock (or opening the app as charge), land on the tab for the current step — no hunting. */
+/* On unlock (or opening the app as charge), always land on the Score page —
+   the guide bar at the top names the next step and its Go button jumps there. */
 function jumpToNextStep(){
   if(!chargeMode) return;
-  const s=chargeNextStep();
-  show(s ? s.view : 'assign');
+  show('acuity');
 }
 /* Big tappable tiles — the whole Build tab. Names chosen so a brand-new nurse knows each one. */
 let vocConfirmed=false;   // turns the Vocera tile green once charge taps Done in the popup
@@ -2339,11 +2342,11 @@ function renderBuildTiles(){
   el.innerHTML=h; el.style.display='';
 }
 function openVocera(){ const b=document.getElementById('vocCardBody'); if(b) b.innerHTML=renderVoceraCard(); document.getElementById('vocScrim').classList.add('on'); }
-function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); vocConfirmed=true; renderBuildTiles(); }
+function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); vocConfirmed=true; renderBuildTiles(); renderNextStep(); scheduleSave(); }
 
 /* ===== Returning staff — keep last shift's patients/zones/rooms for staff who are back ===== */
 function openReturning(){ if(!chargeMode)return; renderReturning(); document.getElementById('retScrim').classList.add('on'); }
-function closeReturning(){ applyReturning(); document.getElementById('retScrim').classList.remove('on'); RET.done=true; renderBuildTiles(); const ss=document.getElementById('staffScrim'); if(ss&&ss.classList.contains('on')) renderStaffModal(); }
+function closeReturning(){ applyReturning(); document.getElementById('retScrim').classList.remove('on'); RET.done=true; renderBuildTiles(); renderNextStep(); const ss=document.getElementById('staffScrim'); if(ss&&ss.classList.contains('on')) renderStaffModal(); }
 function retNurseRooms(nid){ // last shift's rooms for this nurse that still exist & are occupied
   if(!PREV_SHIFT) return [];
   const rec=(PREV_SHIFT.nurses||[]).find(x=>x.id===nid); if(!rec) return [];
@@ -4624,7 +4627,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ const {error}=await sb.f
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -4644,7 +4647,7 @@ function applyState(st){
   if(st.shiftType) shiftType=st.shiftType;
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.chargeOncoming==='string') chargeOncoming=st.chargeOncoming;
-  boardPosted=!!st.boardPosted; SCORES_OK=!!st.scoresOk; CREW_OK=!!st.crewOk; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
+  boardPosted=!!st.boardPosted; SCORES_OK=!!st.scoresOk; CREW_OK=!!st.crewOk; vocConfirmed=!!st.vocOk; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
   if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{}};
