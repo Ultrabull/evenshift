@@ -2360,7 +2360,8 @@ function renderReturning(){
   if(retP.length){
     h+=`<div class="grp"><h4>PCTs · keep zone</h4>`;
     retP.forEach(rec=>{ const on=!!RET.pcts[rec.id]; const live=rec.rooms.filter(rn=>rooms[rn]&&rooms[rn].occupied);
-      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnPct('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">${live.join(', ')}</span></label>`; });
+      const onCrew=!!pcts.find(p=>p.id===rec.id);
+      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnPct('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">${live.join(', ')}${!onCrew&&!on?' · not on this crew yet — checking adds them':(on&&RET.added&&RET.added[rec.id]?' · added to crew':'')}</span></label>`; });
     h+=`</div>`;
   }
   // Sitters
@@ -2368,7 +2369,8 @@ function renderReturning(){
   if(retS.length){
     h+=`<div class="grp"><h4>Sitters · keep 1:1 room</h4>`;
     retS.forEach(rec=>{ const on=!!RET.sitters[rec.id];
-      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnSitter('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">Rm ${rec.room}</span></label>`; });
+      const onCrew=!!sitters.find(s=>s.id===rec.id);
+      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnSitter('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">Rm ${rec.room}${!onCrew&&!on?' · not on this crew yet — checking adds them':(on&&RET.added&&RET.added[rec.id]?' · added to crew':'')}</span></label>`; });
     h+=`</div>`;
   }
   if(!retN.length&&!retP.length&&!retS.length) h+=`<div class="hint">Last shift\u2019s staff are no longer on the roster, or their patients have left the floor \u2014 no one to keep.</div>`;
