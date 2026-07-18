@@ -1586,7 +1586,7 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Fall risk","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","BS checks","Blood sugar checks"],["sleep","Sleep promo","Sleep promotion 11PM\u20136AM"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -1618,7 +1618,7 @@ function getActiveFlags(){
   const base=FLAGS.filter(([code])=>!UNIT_FLAG_CONFIG.hidden.includes(code)||ENGINE_FLAG_CODES.has(code));
   const renamed=base.map(([code,label,full])=>{ const r=UNIT_FLAG_CONFIG.renames[code]; return r?[code,r.label||label,r.full||full]:[code,label,full]; });
   const custom=(UNIT_FLAG_CONFIG.custom||[]).map(c=>[c.code,c.label||c.code,c.full||c.label||c.code]);
-  return [...renamed,...custom];
+  return [...renamed,...custom].sort((a,b)=>a[1].localeCompare(b[1]));   // alphabetical by label everywhere
 }
 function getFlagLabel(code){ const f=getActiveFlags().find(x=>x[0]===code); return f?f[1]:code; }
 let RUBRIC_FLAT=[], POINTS={}, COMMON=[];
@@ -1872,6 +1872,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   const hasTally=Object.keys(modalTally).length>0;
   if(r.occupied && r.acuity!=null && !hasTally){ modalMode='express'; modalExpress=r.acuity; }
   else { modalMode='quick'; if(!hasTally) modalTally['Assessment & Meds|0']=1; }
+  if(!chargeMode){ modalMode='full'; modalExpress=null; if(!hasTally) modalTally['Assessment & Meds|0']=1; }   // staff always tally the full list; Quick/Express are charge shortcuts
   document.getElementById('mRoom').textContent='Room '+rn+(r.occupied?'':' · admit');
   if(chargeMode && r.editedBy && r.editedBy!=='Charge'){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · last edit by '+r.editedBy+(r.editedAt?' ('+_qhTime(r.editedAt)+')':''); }
   renderModalBody(); document.getElementById('scrim').classList.add('on');
@@ -1879,6 +1880,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
 }
 function currentHrs(){ let p=0; for(const k in modalTally) p+=(modalTally[k]||0)*(POINTS[k]||0); return Math.round(p/DIVISOR*4)/4; }
 function setMode(m){
+  if(!chargeMode && m!=='full') return;   // Quick/Express are charge-only
   if(modalMode==='express' && m!=='express'){ modalExpress=null; if(Object.keys(modalTally).length===0) modalTally['Assessment & Meds|0']=1; }
   if(m==='express' && modalExpress==null){ modalExpress=currentHrs(); }
   modalMode=m; renderModalBody();
@@ -1913,7 +1915,9 @@ function setPin(v){ modalPin=v||''; if(modalPin) modalAvoid=modalAvoid.filter(x=
 function togPin(id){ if(modalAvoid.includes(id)) return; modalPin=(modalPin===id)?'':id; if(modalPin) modalAvoid=modalAvoid.filter(x=>x!==modalPin); renderModalBody(); }
 function togAvoid(id){ if(modalPin===id) return; const i=modalAvoid.indexOf(id); if(i<0)modalAvoid.push(id); else modalAvoid.splice(i,1); const b=document.getElementById('av-'+id); if(b)b.classList.toggle('avoidon'); }
 function renderModalBody(){
-  const seg=`<div class="seg"><button class="${modalMode==='quick'?'on':''}" onclick="setMode('quick')">Quick</button><button class="${modalMode==='full'?'on':''}" onclick="setMode('full')">Full list</button><button class="${modalMode==='express'?'on':''}" onclick="setMode('express')">Express</button></div>`;
+  const seg = chargeMode
+    ? `<div class="seg"><button class="${modalMode==='quick'?'on':''}" onclick="setMode('quick')">Quick</button><button class="${modalMode==='full'?'on':''}" onclick="setMode('full')">Full list</button><button class="${modalMode==='express'?'on':''}" onclick="setMode('express')">Express</button></div>`
+    : '';   // staff score with the full tally only
   let body=seg;
   if(modalMode==='quick'){
     body+=`<div class="hint" style="margin:2px 0 8px;">Tap what applies — baseline assessment is already counted.</div><div class="qgrid">`;
@@ -2060,7 +2064,7 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
   scheduleSave(); renderAssign();
 }
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
-const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos'];
+const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos','npo','q2t','bs','hfr','sleep'];
 function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
 function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
 /* A warm one-liner when a staff member opens their own assignment. Rotates by day so it
