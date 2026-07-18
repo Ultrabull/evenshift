@@ -1775,6 +1775,7 @@ let balancePriority='hallway';   // 'hallway' = keep halls tight; 'hours' = chas
 let HOME={};                      // each nurse's home hall, frozen after the first pass
 let viewAs='charge';              // 'charge' sees everything; a nurse id sees only their patients
 function acuClass(h){if(h<2.5)return'L';if(h<3.5)return'M';if(h<5)return'H';return'X';}
+function acuFmt(x){ return (Math.round((+x||0)*100)/100).toFixed(2).replace(/(\.\d)0$/,'$1'); }   // 2.75 stays 2.75; 2.50 -> 2.5; 3 -> 3.0
 function acuLabel(h){return{L:'Low',M:'Moderate',H:'High',X:'Intensive'}[acuClass(h)];}
 
 function assignVisible(){ const b=document.getElementById('v-build'), a=document.getElementById('v-assign'); return (b&&b.classList.contains('on'))||(a&&a.classList.contains('on')); }
@@ -1825,13 +1826,13 @@ function renderAcuity(){
   if(viewAs!=='charge'){
     const n=nurses.find(x=>x.id===viewAs);
     const mine=occupied().filter(r=>r.nurse===viewAs).sort((a,b)=>a.id-b.id);
-    html+=`<div class="hall"><h2>${n?n.name+'\u2019s patients':'Your patients'} · ${mine.length} · ${mine.reduce((s,r)=>s+(r.acuity||0),0).toFixed(1)} hrs</h2><div class="rgrid">`;
+    html+=`<div class="hall"><h2>${n?n.name+'\u2019s patients':'Your patients'} · ${mine.length} · ${acuFmt(mine.reduce((s,r)=>s+(r.acuity||0),0))} hrs</h2><div class="rgrid">`;
     if(!mine.length) html+='<div class="empty2">No patients assigned to you yet.</div>';
     mine.forEach(rn=>{ const r=rn;
       if(!(r.acuity>0)){ html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`; return; }
       const cls=acuClass(r.acuity);
       const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
+      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${acuFmt(r.acuity)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
     });
     html+='</div></div>';
     document.getElementById('halls').innerHTML=html;
@@ -1857,7 +1858,7 @@ function renderAcuity(){
       else{
         const cls=acuClass(r.acuity);
         const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${r.acuity.toFixed(1)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
+        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${acuFmt(r.acuity)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
       }
     });
     html+='</div></div>';
@@ -1935,7 +1936,7 @@ function renderModalBody(){
       body+='</div>'; });
   } else {
     const val=modalExpress!=null?modalExpress:currentHrs();
-    body+=`<div class="exp"><div class="hint">Set nursing hours directly — for when you already know the load.</div><input type="range" min="0" max="8" step="0.25" value="${val}" oninput="setExpress(this.value)" class="slider"><div class="expval"><span id="expNum">${Number(val).toFixed(2)}</span> <small>hrs</small></div></div>`;
+    body+=`<div class="exp"><div class="hint">Set nursing hours directly — for when you already know the load.</div><input type="range" min="0" max="8" step="0.25" value="${val}" oninput="setExpress(this.value)" class="slider"><div class="expval"><span id="expNum">${acuFmt(val)}</span> <small>hrs</small></div></div>`;
   }
   body+=flagsNoteHTML();
   body+=nextShiftHTML();
@@ -1951,9 +1952,9 @@ function swingInfo(){
   const dNext=Math.abs(now-next);
   const big = dPrev>=ACUITY_SWING || dNext>=ACUITY_SWING;
   let what='';
-  if(dPrev>=ACUITY_SWING && dNext>=ACUITY_SWING) what=`${_prevNow.toFixed(1)} → now ${now.toFixed(1)} → next ${next.toFixed(1)}`;
-  else if(dPrev>=ACUITY_SWING) what=`was ${_prevNow.toFixed(1)}, now ${now.toFixed(1)}`;
-  else if(dNext>=ACUITY_SWING) what=`now ${now.toFixed(1)} → next ${next.toFixed(1)}`;
+  if(dPrev>=ACUITY_SWING && dNext>=ACUITY_SWING) what=`${acuFmt(_prevNow)} → now ${acuFmt(now)} → next ${acuFmt(next)}`;
+  else if(dPrev>=ACUITY_SWING) what=`was ${acuFmt(_prevNow)}, now ${acuFmt(now)}`;
+  else if(dNext>=ACUITY_SWING) what=`now ${acuFmt(now)} → next ${acuFmt(next)}`;
   return {big,what};
 }
 function swingReasonHTML(){
@@ -1971,19 +1972,19 @@ function nextShiftHTML(){
   const nv = (modalNext!=null) ? modalNext : now;
   return `<div class="grp"><h4>Next shift <span style="font-weight:400;color:var(--ink-soft)">· predicted</span><button class="qhelp" onclick="showHelp('nextshift')" title="What\u2019s this?">?</button></h4>`
     +`<div class="hint" style="margin:0 0 7px;">How heavy will this patient be for the <b>oncoming</b> shift? Leave it if nothing changes; bump it if a procedure clears, an admit is coming, etc. The next assignment is built from this number.</div>`
-    +`<div class="exp"><input type="range" min="0" max="8" step="0.25" value="${nv}" oninput="setNext(this.value)" class="slider"><div class="expval">now ${now.toFixed(1)} → next <span id="nextNum">${Number(nv).toFixed(2)}</span> <small>hrs</small></div></div></div>`;
+    +`<div class="exp"><input type="range" min="0" max="8" step="0.25" value="${nv}" oninput="setNext(this.value)" class="slider"><div class="expval">now ${acuFmt(now)} → next <span id="nextNum">${acuFmt(nv)}</span> <small>hrs</small></div></div></div>`;
 }
 function _refreshSwing(){ const w=document.getElementById('swingReasonWrap'); if(w) w.innerHTML=swingReasonHTML(); }
-function setNext(v){ modalNext=parseFloat(v); const el=document.getElementById('nextNum'); if(el) el.textContent=modalNext.toFixed(2); _refreshSwing(); }
+function setNext(v){ modalNext=parseFloat(v); const el=document.getElementById('nextNum'); if(el) el.textContent=acuFmt(modalNext); _refreshSwing(); }
 function toggleQuick(key){ if((modalTally[key]||0)>0) delete modalTally[key]; else modalTally[key]=1; renderModalBody(); }
-function setExpress(v){ modalExpress=parseFloat(v); document.getElementById('expNum').textContent=modalExpress.toFixed(2); recalc(); _refreshSwing(); }
+function setExpress(v){ modalExpress=parseFloat(v); document.getElementById('expNum').textContent=acuFmt(modalExpress); recalc(); _refreshSwing(); }
 function cssid(k){return k.replace(/[^a-zA-Z0-9]/g,'_');}
 function bump(key,d){ modalTally[key]=Math.max(0,(modalTally[key]||0)+d); if(modalTally[key]===0) delete modalTally[key]; const sp=document.getElementById('c-'+cssid(key)); if(sp){sp.textContent=modalTally[key]||0; sp.parentElement.classList.toggle('active',(modalTally[key]||0)>0);} recalc(); _refreshSwing(); }
 function togFlag(f){ if(!chargeMode && !canScoreRoom(modalRoom))return; const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1); document.getElementById('ft-'+f).classList.toggle('on'); }
 function recalc(){
-  if(modalMode==='express'){ document.getElementById('mPts').textContent='—'; document.getElementById('mHrs').textContent=Number(modalExpress!=null?modalExpress:0).toFixed(2); return; }
+  if(modalMode==='express'){ document.getElementById('mPts').textContent='—'; document.getElementById('mHrs').textContent=acuFmt(modalExpress!=null?modalExpress:0); return; }
   let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0);
-  document.getElementById('mPts').textContent=(Math.round(pts*100)/100); document.getElementById('mHrs').textContent=(pts/DIVISOR).toFixed(2);
+  document.getElementById('mPts').textContent=(Math.round(pts*100)/100); document.getElementById('mHrs').textContent=acuFmt(pts/DIVISOR);
 }
 function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoom]; let hrs;
   if(modalMode==='express'){ hrs=modalExpress!=null?modalExpress:0; r.tally={}; }
@@ -2052,7 +2053,7 @@ function rnChip(r){
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
   const scored=r.acuity>0;
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
-  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?r.acuity.toFixed(1):'tap'}</span></span>`;
+  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?acuFmt(r.acuity):'tap'}</span></span>`;
 }
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(miniFlag).join(' ');
@@ -2062,7 +2063,7 @@ function roomChip(r){
     : (r.lock?'<span title="continuity / requested nurse">🔒</span>':'');
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
   const editTag = (chargeMode && r.editedBy && r.editedBy!=='Charge') ? `<span class="editby" title="Last edited by ${esc(r.editedBy)}${r.editedAt?' · '+_qhTime(r.editedAt):''}">✎ ${esc((r.editedBy||'').split(' ')[0])}</span>` : '';
-  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${r.prevAcuity.toFixed(1)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${r.nextAcuity.toFixed(1)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${editTag}${lockBtn}</span>`;
+  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${acuFmt(r.prevAcuity)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${acuFmt(r.acuity)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${acuFmt(r.nextAcuity)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${editTag}${lockBtn}</span>`;
 }
 function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r||!r.occupied) return;
   if(r.lock){ r.lock=null; }
@@ -2147,7 +2148,7 @@ function renderAssign(){
       `<div class="emptysub">${noStaff?'First tap <b>👥 Who\u2019s Working</b> and pick today\u2019s team.':scoredAll?'You\u2019re ready! Tap <b>✨ Make Assignment</b> on the Build tab.':'Score your patients on the <b>Score</b> tab first, then tap <b>✨ Make Assignment</b>.'}</div>`+
       `</div>`;
     const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
-    const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
+    const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=acuFmt(occupied().reduce((s,r)=>s+r.acuity,0));
   } else {
   const soloStaff = (selfRN && shown.length===1);
   const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
@@ -2174,7 +2175,7 @@ function renderAssign(){
       ${selfRN?breakPickerHTML(n.id,false):(myBreak?`<div class="buddyline">🍽 Your break ~${myBreak.window}${myBreak.cover.length?` · ${myBreak.cover.map(esc).join(', ')} covers`:''}</div>`:'')}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
-      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${L.next.toFixed(1)}</b> hrs · ${L.count} pt</span></div>
+      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
@@ -2183,7 +2184,7 @@ function renderAssign(){
   }).join('')+pulse;
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
   const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
-  const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=occupied().reduce((s,r)=>s+r.acuity,0).toFixed(1);
+  const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=acuFmt(occupied().reduce((s,r)=>s+r.acuity,0));
   const ucEl=document.getElementById('unCount'); if(ucEl) ucEl.textContent=pool.length;
   }
   const eh=document.getElementById('editHint');
@@ -2204,7 +2205,7 @@ function renderAssign(){
   }
   const roseRooms=occupied().filter(r=>r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25);
   const reviewBanner=document.getElementById('acuReview');
-  if(reviewBanner){ if(chargeMode&&roseRooms.length){ const list=roseRooms.sort((a,b)=>b.acuity-a.acuity).map(r=>`<b>${r.id}</b> <span style="color:var(--ink-soft)">${r.prevAcuity.toFixed(1)}\u2192${r.acuity.toFixed(1)}</span>`).join(' · '); reviewBanner.innerHTML=`<span class="rose-icon">\u2191</span> <b>${roseRooms.length} room${roseRooms.length>1?'s':''} with acuity up since last shift — review:</b> ${list}`; reviewBanner.style.display=''; } else reviewBanner.style.display='none'; }
+  if(reviewBanner){ if(chargeMode&&roseRooms.length){ const list=roseRooms.sort((a,b)=>b.acuity-a.acuity).map(r=>`<b>${r.id}</b> <span style="color:var(--ink-soft)">${acuFmt(r.prevAcuity)}\u2192${acuFmt(r.acuity)}</span>`).join(' · '); reviewBanner.innerHTML=`<span class="rose-icon">\u2191</span> <b>${roseRooms.length} room${roseRooms.length>1?'s':''} with acuity up since last shift — review:</b> ${list}`; reviewBanner.style.display=''; } else reviewBanner.style.display='none'; }
   // Ratio-cap still-active reminder: rooms that carried a ratio-tightening flag from last shift
   const capBanner=document.getElementById('capReview');
   if(capBanner){
@@ -2229,9 +2230,9 @@ function updateBalance(){
   const v=document.getElementById('verdict'); let col,txt;
   if(!any){col='#9aa6b5';txt='Not generated yet';}
   else if(spread<=0.5){col='var(--good)';txt='✓ Even within 0.5 hrs';}
-  else if(spread<=1.5){col='var(--good)';txt=`✓ Rooms together · hours within ${spread.toFixed(1)} hrs`;}
-  else if(spread<=3.0){col='var(--warn)';txt=`Rooms kept together · hours ±${spread.toFixed(1)} hrs`;}
-  else{col='var(--bad)';txt=`Hours ±${spread.toFixed(1)} hrs — add staff or split a cluster`;}
+  else if(spread<=1.5){col='var(--good)';txt=`✓ Rooms together · hours within ${acuFmt(spread)} hrs`;}
+  else if(spread<=3.0){col='var(--warn)';txt=`Rooms kept together · hours ±${acuFmt(spread)} hrs`;}
+  else{col='var(--bad)';txt=`Hours ±${acuFmt(spread)} hrs — add staff or split a cluster`;}
   if(v){v.textContent=txt; v.style.color=col;}
   updateStepGuide();
 }
@@ -2419,7 +2420,7 @@ function renderReturning(){
       if(on){
         h+=`<div class="retmini" style="margin-top:7px;">Tap the room numbers to choose exactly which patients they keep — <b>blue = kept</b>:</div>`
           +`<div class="retchips">`+rms.map(rn=>{ const k=kept.includes(rn); const r=rooms[rn]; const dc=(r.flags||[]).includes('dc');
-          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${rec.id}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></button>`; }).join('')
+          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${rec.id}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(r.acuity)}">${acuFmt(r.acuity)}</span></button>`; }).join('')
           +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${rec.id}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${rec.id}')">Keep none</button> · <button class="linkx" onclick="keepDefaultRooms('${rec.id}')">Back to suggested ${RET_KEEP_MAX}</button></div>`;
       }
       h+=`</div>`;
@@ -3252,16 +3253,16 @@ function balanceReport(){
   const hiKeptHrs=hiKept.reduce((s,r)=>s+r.acuity,0);
   let msg='';
   if(hiKept.length && hiKeptHrs >= load(hi)*0.6){
-    msg=`<b>${esc(hi.n.name)}</b> is the heaviest (${load(hi).toFixed(1)} hrs vs ${load(lo).toFixed(1)} for ${esc(lo.n.name)}) mostly because you kept rooms <b>${hiKept.map(r=>r.id).join(', ')}</b> for them. That\u2019s protected — left as you set it. Release one of those rooms if you\u2019d rather even it out.`;
+    msg=`<b>${esc(hi.n.name)}</b> is the heaviest (${acuFmt(load(hi))} hrs vs ${acuFmt(load(lo))} for ${esc(lo.n.name)}) mostly because you kept rooms <b>${hiKept.map(r=>r.id).join(', ')}</b> for them. That\u2019s protected — left as you set it. Release one of those rooms if you\u2019d rather even it out.`;
   } else {
     const movable=hi.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(lo.n.id));
     if(movable.length){
       const target=gap/2;
       movable.sort((a,b)=>Math.abs(a.acuity-target)-Math.abs(b.acuity-target));
       const room=movable[0];
-      msg=`Board is uneven by <b>${gap.toFixed(1)} hrs</b> (${esc(hi.n.name)} ${load(hi).toFixed(1)} vs ${esc(lo.n.name)} ${load(lo).toFixed(1)}). To even it: move <b>Rm ${room.id}</b> (${room.acuity.toFixed(1)} hrs) from ${esc(hi.n.name)} \u2192 ${esc(lo.n.name)}, or pull it. <button class="balfix" onclick="balanceMove(${room.id},'${lo.n.id}')">Move it for me</button>`;
+      msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} ${acuFmt(load(hi))} vs ${esc(lo.n.name)} ${acuFmt(load(lo))}). To even it: move <b>Rm ${room.id}</b> (${acuFmt(room.acuity)} hrs) from ${esc(hi.n.name)} \u2192 ${esc(lo.n.name)}, or pull it. <button class="balfix" onclick="balanceMove(${room.id},'${lo.n.id}')">Move it for me</button>`;
     } else {
-      msg=`Board is uneven by <b>${gap.toFixed(1)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
+      msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
     }
   }
   banner.innerHTML = sitWarn + `<span class="rose-icon">⚖️</span> ${msg}`;
@@ -4107,7 +4108,7 @@ function openPctScore(rn){ if(!canPctScore(rn)) return; const r=rooms[rn]; if(!r
   const sa=document.getElementById('pctSaveAttrib'); if(sa){ sa.style.display='';
     sa.textContent = r.flagsEditedAt ? ('Care flags updated by '+((r.flagsEditedBy||'').split(' ')[0]||'?')+' · '+_qhTime(r.flagsEditedAt))
       : (r.pctEditedAt ? ('Updated by '+((r.pctEditedBy||'').split(' ')[0])+' · '+_qhTime(r.pctEditedAt)) : 'No care-flag updates recorded yet.'); }
-  const sb=document.getElementById('pctScoredBy'); if(sb){ sb.style.display=''; const who=(r.editedBy||'').split(' ')[0]; sb.textContent = r.acuity>0 ? ('Acuity '+r.acuity.toFixed(1)+' hrs'+(who?(' · scored by '+who):'')+(r.editedAt?(' · '+_qhTime(r.editedAt)):'')) : 'No acuity score for this room yet.'; }
+  const sb=document.getElementById('pctScoredBy'); if(sb){ sb.style.display=''; const who=(r.editedBy||'').split(' ')[0]; sb.textContent = r.acuity>0 ? ('Acuity '+acuFmt(r.acuity)+' hrs'+(who?(' · scored by '+who):'')+(r.editedAt?(' · '+_qhTime(r.editedAt)):'')) : 'No acuity score for this room yet.'; }
 }
 function closePctScore(){ const s=document.getElementById('pctScoreScrim'); if(s) s.classList.remove('on'); _pctScoreRoom=null; }
 function renderPctScore(){ const el=document.getElementById('pctFlagRow'); if(!el) return;
@@ -6125,8 +6126,8 @@ function buildPrint(){
   const spread=(anyA&&lds.length)?(Math.max(...lds)-Math.min(...lds)):0;
   let stamp='';
   if(anyA) stamp = spread<=0.5 ? '<span class="pr-stamp ok">\u2713 Loads balanced \u2014 within 0.5 hr</span>'
-          : spread<=1.5 ? `<span class="pr-stamp ok">\u2713 Balanced \u2014 within ${spread.toFixed(1)} hr</span>`
-          : `<span class="pr-stamp warn">Hours \u00b1${spread.toFixed(1)} hr \u2014 add staff or split</span>`;
+          : spread<=1.5 ? `<span class="pr-stamp ok">\u2713 Balanced \u2014 within ${acuFmt(spread)} hr</span>`
+          : `<span class="pr-stamp warn">Hours \u00b1${acuFmt(spread)} hr \u2014 add staff or split</span>`;
   const LOGO='<svg width="30" height="30" viewBox="0 0 40 40" fill="none"><rect x="2.5" y="2.5" width="35" height="35" rx="11" fill="#1A2433"/><rect x="8" y="17" width="24" height="9" rx="4.5" fill="none" stroke="#5B8DEF" stroke-width="1.7"/><line x1="17.5" y1="17.5" x2="17.5" y2="25.5" stroke="#5B8DEF" stroke-width="1.3"/><line x1="22.5" y1="17.5" x2="22.5" y2="25.5" stroke="#5B8DEF" stroke-width="1.3"/><circle cx="20" cy="21.5" r="3" fill="#5B8DEF"/><line x1="11" y1="13" x2="29" y2="13" stroke="#5B8DEF" stroke-width="1.7" stroke-linecap="round" opacity=".5"/></svg>';
   let h=`<div class="pr-top">`+
     `<div class="pr-brand">${LOGO}<div><div class="pr-wordmark">EvenShift</div><div class="pr-sub">Balanced assignment</div></div></div>`+
