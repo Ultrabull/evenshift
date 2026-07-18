@@ -2136,7 +2136,6 @@ function renderAssign(){
   const top=maxAdj();
   refreshBuddies();
   const selfRN = !chargeMode && lockedRole()==='rn';
-  const breaks = selfRN ? nurseBreaks() : {};
   const shown = viewAs==='charge' ? nurses : nurses.filter(n=>n.id===viewAs);
   const anyAssignedNow=occupied().some(r=>r.nurse);
   if(chargeMode && viewAs==='charge' && !anyAssignedNow){
@@ -2163,7 +2162,6 @@ function renderAssign(){
     const bud=buddyNames(n.id);
     const myPct = selfRN ? pctForRooms(rs.map(r=>r.id)) : [];
     const mySit = selfRN ? rs.filter(r=>r.flags.includes('sit')).map(r=>r.id) : [];
-    const myBreak = selfRN ? breaks[n.id] : null;
     const b=nurseBurdens(n.id); const bparts=BURDEN_ORDER.filter(k=>b[k]&&k!=='hi').map(k=>`<span class="bchip">${BURDEN_LAB[k]}${b[k]>1?' ×'+b[k]:''}</span>`);
     const kept = rs.length>0 && rs.every(r=>r.lock===n.id);
     return `<div class="nurse" id="nz-${n.id}" ondragover="allowDrop(event,'${n.id}')" ondragleave="leaveDrop(event)" ondrop="dropTo(event,'${n.id}')" onclick="placeHere('${n.id}')">
@@ -2172,7 +2170,6 @@ function renderAssign(){
       ${bud.length?`<div class="buddyline">🤝 Buddy: ${bud.map(esc).join(', ')}</div>`:''}
       ${(chargeMode&&viewAs==='charge')?(()=>{ const k=reportSources(n.id).length; return k?`<div class="buddyline">🗣 Takes report from ${k} nurse${k>1?'s':''}</div>`:''; })():''}
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
-      ${selfRN?breakPickerHTML(n.id,false):(myBreak?`<div class="buddyline">🍽 Your break ~${myBreak.window}${myBreak.cover.length?` · ${myBreak.cover.map(esc).join(', ')} covers`:''}</div>`:'')}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
       <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt</span></div>
@@ -4243,9 +4240,8 @@ function personById(id){ return nurses.find(n=>n.id===id)||pcts.find(p=>'p:'+p.i
 function breakRec(id){ // unify rosterN/P/S lookups by plain id
   return rosterN.find(x=>x.id===id)||rosterP.find(x=>x.id===id)||rosterS.find(x=>x.id===id);
 }
-function whoOnSlot(slotKey){ // everyone currently requesting this slot (working crew only)
+function whoOnSlot(slotKey){ // everyone currently requesting this slot (working crew only) — RNs don't request breaks in-app
   const out=[];
-  nurses.forEach(n=>{ const r=breakRec(n.id); if(r&&r.breakSlot===slotKey) out.push({id:n.id,name:n.name,type:'rn',approved:!!r.breakApproved}); });
   pcts.forEach(p=>{ const r=breakRec(p.id); if(r&&r.breakSlot===slotKey) out.push({id:p.id,name:p.name,type:'pct',approved:!!r.breakApproved}); });
   sitters.forEach(s=>{ const r=breakRec(s.id); if(r&&r.breakSlot===slotKey) out.push({id:s.id,name:s.name,type:'sit',approved:!!r.breakApproved,cover:r.breakCover||''}); });
   return out;
@@ -4287,7 +4283,7 @@ function approveBreak(id){ if(!chargeMode) return; const rec=breakRec(id); if(!r
   const c=breakConflict(id, rec.breakSlot); if(!c.ok){ alert('Can\u2019t approve — '+c.reason+'.\n\nPick a different slot or fix coverage first.'); return; }
   rec.breakApproved=true; scheduleSave(); renderBreaksTimeline(); renderAssign(); }
 function unapproveBreak(id){ if(!chargeMode) return; const rec=breakRec(id); if(rec){ rec.breakApproved=false; scheduleSave(); renderBreaksTimeline(); } }
-function pendingBreakCount(){ let c=0; [...nurses,...pcts,...sitters].forEach(p=>{ const r=breakRec(p.id); if(r&&r.breakSlot&&!r.breakApproved) c++; }); return c; }
+function pendingBreakCount(){ let c=0; [...pcts,...sitters].forEach(p=>{ const r=breakRec(p.id); if(r&&r.breakSlot&&!r.breakApproved) c++; }); return c; }   // RNs don't request breaks in-app
 /* The tappable slot picker a staff member sees on their own card (after the board is posted). */
 function breakPickerHTML(id, isSitter){
   if(!boardPosted) return `<div class="brkbox"><div class="brklab">🍽 Your break</div><div class="covsub">You can request a break time once the charge posts the assignment.</div></div>`;
@@ -4310,7 +4306,7 @@ function slotLab(key){ const s=[...breakSlots('Day'),...breakSlots('Night')].fin
 /* Charge view: a request list with Approve buttons + a per-slot coverage timeline. */
 function breaksTimelineHTML(){
   if(!boardPosted) return '';
-  const all=[...nurses.map(n=>({id:n.id,name:n.name,type:'rn'})),...pcts.map(p=>({id:p.id,name:p.name,type:'pct'})),...sitters.map(s=>({id:s.id,name:s.name,type:'sit'}))];
+  const all=[...pcts.map(p=>({id:p.id,name:p.name,type:'pct'})),...sitters.map(s=>({id:s.id,name:s.name,type:'sit'}))];   // RNs don't request breaks in-app — PCTs (and 1:1 sitters) only
   const reqs=all.map(p=>({...p, rec:breakRec(p.id)})).filter(x=>x.rec&&x.rec.breakSlot);
   let h='';
   // pending approvals first
