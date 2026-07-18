@@ -1372,7 +1372,7 @@
   <div class="modal" style="max-width:440px;">
     <div class="mhead"><span class="rt" id="pctScoreRoom">Room</span><button class="btn" onclick="closePctScore()">Close</button></div>
     <div class="mbody">
-      <p class="covnote">Tap the care flags that apply to this room — they update the board for the whole unit. Nurse-owned flags (drips, wound care, restraints…) aren\u2019t changed from here.</p>
+      <p class="covnote">Tap the care flags that apply to this room — they update the board for the whole unit. 🔒 Behavioral and DNAR are view-only — those and other nurse-owned flags (drips, wound care…) are changed by the nurse.</p>
       <div class="saveattrib" id="pctScoredBy" style="display:none;margin:0 0 8px;"></div>
       <div class="flagrow" id="pctFlagRow"></div>
       <div class="saveattrib" id="pctSaveAttrib" style="display:none;"></div>
@@ -2065,7 +2065,8 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
   scheduleSave(); renderAssign();
 }
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
-const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','telebat','sleep','interp','dnar','extcath'];
+const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','telebat','sleep','interp','dnar','extcath','dwt'];
+const PCT_READONLY=['beh','dnar'];   // shown to PCTs for awareness, but only a nurse/charge can change them
 function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
 function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
 /* A warm one-liner when a staff member opens their own assignment. Rotates by day so it
@@ -4099,18 +4100,18 @@ function renderPctScore(){ const el=document.getElementById('pctFlagRow'); if(!e
   const view=getPCTView();
   const clin=getActiveFlags().filter(([c])=>view.includes(c));
   let h='<div class="nlab" style="margin:2px 0 5px;">Care flags — tap what applies</div><div class="flagrow">'
-    +clin.map(([c,l,full])=>`<button class="ftog ${_pctClinFlags.includes(c)?'on':''}" id="pcf-${c}" title="${full}" onclick="togPctClinFlag('${c}')">${l}</button>`).join('')+'</div>';
+    +clin.map(([c,l,full])=>{ const ro=!chargeMode&&PCT_READONLY.includes(c); return `<button class="ftog ${_pctClinFlags.includes(c)?'on':''}" id="pcf-${c}" title="${full}${ro?' — nurse-only':''}"${ro?' disabled style="opacity:.55;"':''} onclick="togPctClinFlag('${c}')">${ro?'🔒 ':''}${l}</button>`; }).join('')+'</div>';
   if(PCT_MODE){ h+='<div class="nlab" style="margin:12px 0 5px;">Workload score</div><div class="flagrow">'
     +PCT_RUBRIC.map(([c,lab])=>`<button class="ftog ${_pctScoreFlags.includes(c)?'on':''}" id="pf-${c}" onclick="togPctFlag('${c}')">${lab}</button>`).join('')+'</div>'; }
   el.innerHTML=h;
 }
-function togPctClinFlag(c){ const i=_pctClinFlags.indexOf(c); if(i<0)_pctClinFlags.push(c); else _pctClinFlags.splice(i,1); const b=document.getElementById('pcf-'+c); if(b)b.classList.toggle('on'); }
+function togPctClinFlag(c){ if(!chargeMode&&PCT_READONLY.includes(c)) return; const i=_pctClinFlags.indexOf(c); if(i<0)_pctClinFlags.push(c); else _pctClinFlags.splice(i,1); const b=document.getElementById('pcf-'+c); if(b)b.classList.toggle('on'); }
 function togPctFlag(c){ const i=_pctScoreFlags.indexOf(c); if(i<0)_pctScoreFlags.push(c); else _pctScoreFlags.splice(i,1); document.getElementById('pf-'+c).classList.toggle('on'); }
 function savePctScore(){ if(_pctScoreRoom==null) return; const r=rooms[_pctScoreRoom]; if(!r) return;
   // clinical flags: PCT changes only the PCT-view subset; RN-owned flags (behavioral, DNAR, drips…) are preserved
-  const view=getPCTView();
-  const keep=(r.flags||[]).filter(c=>!view.includes(c));
-  r.flags=[...new Set([...keep, ..._pctClinFlags.filter(c=>view.includes(c))])];
+  const editable=getPCTView().filter(c=>chargeMode||!PCT_READONLY.includes(c));
+  const keep=(r.flags||[]).filter(c=>!editable.includes(c));
+  r.flags=[...new Set([...keep, ..._pctClinFlags.filter(c=>editable.includes(c))])];
   if(PCT_MODE){ r.pctFlags=_pctScoreFlags.slice(); r.pctBurden=pctRoomBurden(r); }
   // PCT attribution only — does NOT count as an acuity re-score (freshness tracking stays honest)
   r.pctEditedBy = chargeMode ? 'Charge' : (_quickViewerName()||'PCT'); r.pctEditedAt=Date.now();
