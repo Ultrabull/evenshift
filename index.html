@@ -3659,18 +3659,21 @@ function sitterDemandBlock(fS,team){
   let h=`<div class="sitneed"><div class="sitneedh">👤 1:1 sitters needed <span class="sitneedsub">flagged in scoring — assign a sitter to each room</span></div>`;
   need.forEach(rid=>{
     const cur=sitterForRoom(rid);
-    if(cur && !(cur.name||'').trim()){
-      // a fresh slot waiting for a name
+    if(cur){
+      // A sitter is on this room — always let the charge type/fix the name right here and save it.
+      const named=(cur.name||'').trim();
       h+=`<div class="sitneedrow filled"><span class="sitroom">Rm ${rid}</span>`
-        +`<input class="sitnewname" placeholder="sitter name" value="${esc(cur.name||'')}" oninput="nameSitter('${cur.id}',this.value)">`
-        +`<button class="sitadd" onclick="assignSitter(${rid},'')" title="remove">✕</button></div>`;
+        +`<input class="sitnewname" placeholder="type sitter name" value="${esc(cur.name||'')}" oninput="nameSitter('${cur.id}',this.value)">`
+        +`<button class="sitadd" onclick="assignSitter(${rid},'')" title="remove this sitter">✕</button>`
+        +(named?'<span class="sitok">✓</span>':'<span class="sitwarn">type a name</span>')+`</div>`;
       return;
     }
-    const opts=fS.map(s=>`<option value="${s.id}" ${cur&&cur.id===s.id?'selected':''}>${esc(s.name||'(unnamed)')}</option>`).join('');
-    h+=`<div class="sitneedrow ${cur?'filled':'unfilled'}"><span class="sitroom">Rm ${rid}</span>`
+    // No sitter yet — pick an existing one or add a new one to name.
+    const opts=fS.filter(s=>(s.name||'').trim()).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    h+=`<div class="sitneedrow unfilled"><span class="sitroom">Rm ${rid}</span>`
       +`<select class="sitpick" onchange="assignSitter(${rid},this.value)"><option value="">— pick sitter —</option>${opts}</select>`
       +`<button class="sitadd" onclick="addSitterFor(${rid},'${team}')">+ new</button>`
-      +(cur?'<span class="sitok">✓</span>':'<span class="sitwarn">needs cover</span>')+`</div>`;
+      +`<span class="sitwarn">needs cover</span></div>`;
   });
   h+=`</div>`;
   return h;
@@ -3682,6 +3685,7 @@ function assignSitter(rid,sid){
   scheduleSave(); renderStaffModal();
 }
 function addSitterFor(rid,team){
+  _ws.forEach(s=>{ if(String(s.room)===String(rid)) s.room=''; });   // clear any sitter already on this room so we don't stack duplicates
   const s={id:newId('s'),name:'',room:String(rid),on:true,shift:team};
   _ws.push(s); _rosterSearch=''; renderStaffModal();
   setTimeout(()=>{ const inp=document.querySelector('.sitnewname'); if(inp) inp.focus(); },30);
