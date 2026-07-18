@@ -2170,7 +2170,7 @@ function renderAssign(){
       <div class="nhead"><span class="name">${n.name}</span><span class="badge ${bcls}">${n.level}</span><button class="keepbtn ${kept?'on':''}" onclick="event.stopPropagation(); keepGroup('${n.id}')" title="${kept?'Releasing — let re-generate reshuffle':'Keep this nurse\u2019s patients across re-generate (returning nurse)'}">${kept?'🔒 kept':'keep'}</button>${chargeMode?`<button class="qhelp" onclick="event.stopPropagation(); showHelp('keep')" title="What's this?">?</button>`:''}</div>
       <div class="hcov ${wings.length>1?'warn':''}">${hcov}</div>
       ${bud.length?`<div class="buddyline">🤝 Buddy: ${bud.map(esc).join(', ')}</div>`:''}
-      ${(chargeMode&&viewAs==='charge')?(()=>{ const src=reportSources(n.id); return src.length?`<div class="buddyline">🗣 Report from: ${src.map(s=>esc(s.name)+' ('+s.n+')').join(' · ')}</div>`:''; })():''}
+      ${(chargeMode&&viewAs==='charge')?(()=>{ const k=reportSources(n.id).length; return k?`<div class="buddyline">🗣 Takes report from ${k} nurse${k>1?'s':''}</div>`:''; })():''}
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${selfRN?breakPickerHTML(n.id,false):(myBreak?`<div class="buddyline">🍽 Your break ~${myBreak.window}${myBreak.cover.length?` · ${myBreak.cover.map(esc).join(', ')} covers`:''}</div>`:'')}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
@@ -4033,10 +4033,14 @@ function handoffMap(){
     return {id:rec.id,name:rec.name,to};
   }).filter(x=>x.to.length);
 }
-/* inverse read: which outgoing nurses this oncoming nurse takes report FROM (not herself) */
+/* inverse read: which outgoing nurses this oncoming nurse takes report FROM (not herself).
+   An "outgoing" nurse who is still on the working crew now (holdover, or a stale/same-shift
+   PREV_SHIFT snapshot) isn't handing off — skip them, so the board never shows a shift
+   taking report from itself. */
 function reportSources(nid){
+  const here=new Set(nurses.map(x=>x.id));
   const out=[];
-  handoffMap().forEach(h=>{ if(h.id===nid) return; const t=h.to.find(x=>x.id===nid); if(t) out.push({name:h.name,n:t.n}); });
+  handoffMap().forEach(h=>{ if(h.id===nid || here.has(h.id)) return; const t=h.to.find(x=>x.id===nid); if(t) out.push({name:h.name,n:t.n}); });
   return out.sort((a,b)=>b.n-a.n);
 }
 
