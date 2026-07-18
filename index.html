@@ -4037,13 +4037,18 @@ function handoffReportHTML(){
   }).join('');
   // best case: an outgoing nurse not working on gives exactly 1 report; one still working could give 0
   const ideal=hm.filter(h=>!nurses.some(n=>n.id===h.id)).length;
+  // same people on both shifts + rooms moved anyway → the charge probably skipped Returning Staff
+  const backAgain=hm.filter(h=>nurses.some(n=>n.id===h.id)).length;
+  const retHint=(backAgain>0 && total>ideal)
+    ? `<div class="horow">💡 ${backAgain} of last shift’s nurses are on this shift too. If they’re staying with their patients, mark them in 🔁 Returning Staff (Build tab) and re-generate — kept patients need no report.</div>`
+    : '';
   let swapLine='';
   if(LAST_GEN_SWAP){
     swapLine = LAST_GEN_SWAP.ok
       ? `<div class="horow ok">✓ Total swap — each oncoming nurse took one outgoing nurse's whole group (hours within ±${(LAST_GEN_SWAP.spread||0).toFixed(1)})</div>`
       : `<div class="horow">Total swap checked first — not possible (${LAST_GEN_SWAP.reason==='hours'?('hours would be ±'+(LAST_GEN_SWAP.spread||0).toFixed(1)):'staffing / locks changed'}); built a fresh balanced board instead.</div>`;
   }
-  return `<div class="hobox"><div class="hohead">🗣 Shift-change reports: <b>${total}</b> total · best possible ${ideal}</div>${swapLine}${rows}</div>`;
+  return `<div class="hobox"><div class="hohead">🗣 Shift-change reports <span style="font-weight:400;color:var(--ink-soft)">· who had each room last shift vs. who has it now</span>: <b>${total}</b> total · best possible ${ideal}</div>${swapLine}${retHint}${rows}</div>`;
 }
 
 /* a 1:1-sitter room needs far less PCT attention (the sitter does the watching/ADLs),
