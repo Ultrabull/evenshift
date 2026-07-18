@@ -2397,45 +2397,64 @@ function retDefaultKeep(nid){
   const sc=rn=>{ const r=rooms[rn]; return ((r.flags||[]).includes('dc')?-100:0)+(r.acuity||0); };
   return retNurseRooms(nid).slice().sort((a,b)=>sc(b)-sc(a)).slice(0,RET_KEEP_MAX);
 }
+function retRoomOptions(nid){ return (RET.manualN&&RET.manualN[nid]) ? occupied().map(r=>r.id).sort((a,b)=>a-b) : retNurseRooms(nid); }
 function renderReturning(){
   const body=document.getElementById('retBody'); if(!body) return;
   const P=retSnap();
-  if(!P || !(P.nurses||[]).length){
-    body.innerHTML=`<div class="hint" style="margin:0;">No previous <b>${esc(shiftType.toLowerCase())}</b> shift to pull from yet. Returning staff here are the crew from the last <b>${esc(shiftType.toLowerCase())}</b> shift — after a ${esc(shiftType.toLowerCase())} shift runs and you tap <b>End shift &amp; hand off</b>, its staff and patients show here so you can keep them.</div>`;
-    return;
-  }
-  let h=`<div class="staffhelp">Mark who\u2019s staying from last shift. Each returning nurse keeps <b>up to 3</b> of their heaviest staying patients by default — enough continuity to matter while the hours still balance evenly (patients marked for discharge are skipped). Tap rooms to keep more or fewer. Kept rooms are locked — <b>Make Assignment</b> fills everyone else around them.</div>`;
-  // NURSES
-  const retN=(P.nurses||[]).filter(rec=>rosterN.find(n=>n.id===rec.id) && retNurseRooms(rec.id).length);
-  if(retN.length){
+  const hasSnap=!!(P && (P.nurses||[]).length);
+  let h=`<div class="staffhelp">Mark who’s staying from last shift. Each returning nurse keeps some of their heaviest staying patients — continuity where it matters while hours still balance. Tap rooms to keep more or fewer; kept rooms are locked and <b>Make Assignment</b> fills everyone else around them.</div>`;
+  if(!hasSnap) h+=`<div class="hint" style="margin:0 0 10px;">No saved <b>${esc(shiftType.toLowerCase())}</b> shift yet — <b>add returning staff by hand below</b>. (Once a ${esc(shiftType.toLowerCase())} shift runs through <b>End shift &amp; hand off</b>, its crew shows here automatically.)</div>`;
+  // ---- NURSES (from the last same-shift snapshot + any added by hand) ----
+  const snapNids = hasSnap ? (P.nurses||[]).filter(rec=>rosterN.find(n=>n.id===rec.id) && retNurseRooms(rec.id).length).map(r=>r.id) : [];
+  const manualNids = Object.keys(RET.manualN||{}).filter(id=>rosterN.find(n=>n.id===id));
+  const allNids=[...new Set([...snapNids,...manualNids])];
+  if(allNids.length){
     h+=`<div class="grp"><h4>Nurses</h4>`;
-    retN.forEach(rec=>{
-      const on=!!RET.nurses[rec.id];
-      const rms=retNurseRooms(rec.id);
-      const kept = RET.nurses[rec.id]||[];
-      const onCrew=!!nurses.find(n=>n.id===rec.id);
-      h+=`<div class="retrow"><div class="retname"><label class="retchk"><input type="checkbox" ${on?'checked':''} onchange="togReturnNurse('${rec.id}')"> <b>${esc(rec.name)}</b></label>${!onCrew&&!on?`<span class="rethint">not on this crew yet — checking adds them</span>`:''}${on?`<span class="rethint">${kept.length} of ${rms.length} kept${(RET.added&&RET.added[rec.id])?' · added to crew':''}</span>`:''}</div>`;
+    allNids.forEach(nid=>{
+      const nn=rosterN.find(n=>n.id===nid); if(!nn) return;
+      const manual=!!(RET.manualN&&RET.manualN[nid]);
+      const on=!!RET.nurses[nid];
+      const rms=retRoomOptions(nid);
+      const kept=RET.nurses[nid]||[];
+      const onCrew=!!nurses.find(n=>n.id===nid);
+      h+=`<div class="retrow"><div class="retname"><label class="retchk"><input type="checkbox" ${on?'checked':''} onchange="togReturnNurse('${nid}')"> <b>${esc(nn.name)}</b></label>${manual?'<span class="rethint">added by hand</span>':''}${!onCrew&&!on?`<span class="rethint">not on this crew yet — checking adds them</span>`:''}${on?`<span class="rethint">${kept.length} of ${rms.length} kept${(RET.added&&RET.added[nid])?' · added to crew':''}</span>`:''}</div>`;
       if(on){
-        h+=`<div class="retmini" style="margin-top:7px;">Tap the room numbers to choose exactly which patients they keep — <b>blue = kept</b>:</div>`
-          +`<div class="retchips">`+rms.map(rn=>{ const k=kept.includes(rn); const r=rooms[rn]; const dc=(r.flags||[]).includes('dc');
-          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${rec.id}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(r.acuity)}">${acuFmt(r.acuity)}</span></button>`; }).join('')
-          +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${rec.id}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${rec.id}')">Keep none</button> · <button class="linkx" onclick="keepDefaultRooms('${rec.id}')">Back to suggested ${RET_KEEP_MAX}</button></div>`;
+        h+=`<div class="retmini" style="margin-top:7px;">Tap the room numbers to choose which patients they keep — <b>blue = kept</b>:</div>`
+          +`<div class="retchips">`+rms.map(rn=>{ const r=rooms[rn]; if(!r||!r.occupied) return ''; const k=kept.includes(rn); const dc=(r.flags||[]).includes('dc');
+          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${nid}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(r.acuity)}">${acuFmt(r.acuity)}</span></button>`; }).join('')
+          +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${nid}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${nid}')">Keep none</button>${manual?'':` · <button class="linkx" onclick="keepDefaultRooms('${nid}')">Back to suggested ${RET_KEEP_MAX}</button>`}</div>`;
       }
       h+=`</div>`;
     });
     h+=`</div>`;
   }
-  // PCTs
-  const retP=(P.pcts||[]).filter(rec=>rosterP.find(p=>p.id===rec.id) && rec.rooms.some(rn=>rooms[rn]&&rooms[rn].occupied));
-  if(retP.length){
+  // ---- PCTs (snapshot zone, or a hallway chosen by hand) ----
+  const snapPids = hasSnap ? (P.pcts||[]).filter(rec=>rosterP.find(p=>p.id===rec.id) && rec.rooms.some(rn=>rooms[rn]&&rooms[rn].occupied)).map(r=>r.id) : [];
+  const manualPids = Object.keys(RET.pctHall||{}).filter(id=>rosterP.find(p=>p.id===id));
+  const allPids=[...new Set([...snapPids,...manualPids])];
+  if(allPids.length){
     h+=`<div class="grp"><h4>PCTs · keep zone</h4>`;
-    retP.forEach(rec=>{ const on=!!RET.pcts[rec.id]; const live=rec.rooms.filter(rn=>rooms[rn]&&rooms[rn].occupied);
-      const onCrew=!!pcts.find(p=>p.id===rec.id);
-      h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnPct('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">${live.join(', ')}${!onCrew&&!on?' · not on this crew yet — checking adds them':(on&&RET.added&&RET.added[rec.id]?' · added to crew':'')}</span></label>`; });
+    allPids.forEach(pid=>{
+      const pp=rosterP.find(p=>p.id===pid); if(!pp) return;
+      const manual=!!(RET.pctHall && (pid in RET.pctHall));
+      const on=!!RET.pcts[pid];
+      const onCrew=!!pcts.find(p=>p.id===pid);
+      if(manual){
+        const hall=RET.pctHall[pid]||0;
+        const hallRooms=occupied().filter(r=>RHALL[r.id]===hall).map(r=>r.id).sort((a,b)=>a-b);
+        h+=`<div class="retrow"><div class="retname"><label class="retchk"><input type="checkbox" ${on?'checked':''} onchange="togReturnPct('${pid}')"> <b>${esc(pp.name)}</b></label><span class="rethint">added by hand${(on&&RET.added&&RET.added[pid])?' · added to crew':''}</span></div>`
+          +`<div class="retmini" style="margin-top:6px;">Which hallway is their zone?</div><div class="retchips">`
+          +[1,2,3,4].map(hn=>`<button class="chip retchip ${hall===hn?'on':''}" onclick="setRetPctHall('${pid}',${hn})">${HALL_LABEL[hn]}</button>`).join('')
+          +`</div><div class="retmini">${hall?`Zone: rooms ${hallRooms.join(', ')||'(none occupied)'}`:'Pick a hallway.'}</div></div>`;
+      } else {
+        const rec=((P&&P.pcts)||[]).find(x=>x.id===pid); const live=rec?rec.rooms.filter(rn=>rooms[rn]&&rooms[rn].occupied):[];
+        h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnPct('${pid}')"> <b>${esc(pp.name)}</b> <span class="rethint">${live.join(', ')}${!onCrew&&!on?' · not on this crew yet — checking adds them':(on&&RET.added&&RET.added[pid]?' · added to crew':'')}</span></label>`;
+      }
+    });
     h+=`</div>`;
   }
-  // Sitters
-  const retS=(P.sitters||[]).filter(rec=>rosterS.find(s=>s.id===rec.id) && rooms[rec.room] && rooms[rec.room].occupied);
+  // ---- Sitters (from the last same-shift snapshot) ----
+  const retS = hasSnap ? (P.sitters||[]).filter(rec=>rosterS.find(s=>s.id===rec.id) && rooms[rec.room] && rooms[rec.room].occupied) : [];
   if(retS.length){
     h+=`<div class="grp"><h4>Sitters · keep 1:1 room</h4>`;
     retS.forEach(rec=>{ const on=!!RET.sitters[rec.id];
@@ -2443,7 +2462,19 @@ function renderReturning(){
       h+=`<label class="retchk block"><input type="checkbox" ${on?'checked':''} onchange="togReturnSitter('${rec.id}')"> <b>${esc(rec.name)}</b> <span class="rethint">Rm ${rec.room}${!onCrew&&!on?' · not on this crew yet — checking adds them':(on&&RET.added&&RET.added[rec.id]?' · added to crew':'')}</span></label>`; });
     h+=`</div>`;
   }
-  if(!retN.length&&!retP.length&&!retS.length) h+=`<div class="hint">Last shift\u2019s staff are no longer on the roster, or their patients have left the floor \u2014 no one to keep.</div>`;
+  // ---- Add returning staff by hand (nurse picks rooms, PCT picks a hallway) ----
+  const takenN=new Set(Object.keys(RET.nurses));
+  const addNList=rosterN.filter(n=>!takenN.has(n.id) && (nurses.find(x=>x.id===n.id)||(n.shift||'Day')===shiftType));
+  const addNopts=addNList.map(n=>`<option value="${n.id}">${esc(n.name)}${nurses.find(x=>x.id===n.id)?'':' (add to crew)'}</option>`).join('');
+  const takenP=new Set(Object.keys(RET.pcts));
+  const addPList=rosterP.filter(p=>!takenP.has(p.id) && (pcts.find(x=>x.id===p.id)||(p.shift||'Day')===shiftType));
+  const addPopts=addPList.map(p=>`<option value="${p.id}">${esc(p.name)}${pcts.find(x=>x.id===p.id)?'':' (add to crew)'}</option>`).join('');
+  h+=`<div class="grp"><h4>Add returning staff by hand</h4>`
+    +`<div class="retmini" style="margin-bottom:6px;">Pick a nurse to choose the rooms they keep, or a PCT to pick their hallway. Use this before the app has a saved ${esc(shiftType.toLowerCase())} shift, or to add anyone the list missed.</div>`
+    +`<div style="display:flex;gap:8px;flex-wrap:wrap;">`
+    +`<select class="sitpick" onchange="addManualRetNurse(this.value); this.value='';"><option value="">＋ returning nurse…</option>${addNopts}</select>`
+    +`<select class="sitpick" onchange="addManualRetPct(this.value); this.value='';"><option value="">＋ returning PCT…</option>${addPopts}</select>`
+    +`</div></div>`;
   const retCount=Object.keys(RET.nurses).length+Object.keys(RET.pcts).length+Object.keys(RET.sitters).length;
   h+=`<div class="retfoot">`
     +(retCount?`<button class="btn primary wide" onclick="closeReturning()">Done · ${retCount} returning</button>`
@@ -2451,27 +2482,33 @@ function renderReturning(){
     +`</div>`;
   body.innerHTML=h;
 }
-function noneReturning(){ RET.nurses={}; RET.pcts={}; RET.sitters={}; RET.done=true; closeReturning(); }
+function noneReturning(){ RET.nurses={}; RET.pcts={}; RET.sitters={}; RET.manualN={}; RET.pctHall={}; RET.done=true; closeReturning(); }
 function _retCrewAdd(arr,id){ const x=arr.find(o=>o.id===id); if(!x) return false;
   const already = x.on!==false && ((x.shift||'Day')===shiftType || x.holdover===true);
   if(!already){ x.on=true; x.holdover=true; (RET.added=RET.added||{})[id]=true; syncWorking(); refreshViewOptions(); return true; }
   return false; }
 function _retCrewUndo(arr,id){ if(!(RET.added&&RET.added[id])) return; const x=arr.find(o=>o.id===id); if(x){ x.holdover=false; if((x.shift||'Day')!==shiftType) x.on=false; } delete RET.added[id]; syncWorking(); refreshViewOptions(); }
-function togReturnNurse(id){ if(RET.nurses[id]){ delete RET.nurses[id]; _retCrewUndo(rosterN,id); } else { RET.nurses[id]=retDefaultKeep(id); _retCrewAdd(rosterN,id); } renderReturning(); scheduleSave(); }
+function togReturnNurse(id){ if(RET.nurses[id]){ delete RET.nurses[id]; if(RET.manualN) delete RET.manualN[id]; _retCrewUndo(rosterN,id); } else { RET.nurses[id]=retDefaultKeep(id); _retCrewAdd(rosterN,id); } renderReturning(); scheduleSave(); }
 function togKeepRoom(id,rn){ const a=RET.nurses[id]||(RET.nurses[id]=[]); const i=a.indexOf(rn); if(i<0)a.push(rn); else a.splice(i,1); renderReturning(); }
-function keepAllRooms(id){ RET.nurses[id]=retNurseRooms(id).slice(); renderReturning(); }
+function keepAllRooms(id){ RET.nurses[id]=retRoomOptions(id).slice(); renderReturning(); }
 function keepDefaultRooms(id){ RET.nurses[id]=retDefaultKeep(id); renderReturning(); }
 function keepNoRooms(id){ RET.nurses[id]=[]; renderReturning(); }
-function togReturnPct(id){ if(RET.pcts[id]){ delete RET.pcts[id]; _retCrewUndo(rosterP,id); } else { RET.pcts[id]=true; _retCrewAdd(rosterP,id); } renderReturning(); scheduleSave(); }
+function togReturnPct(id){ if(RET.pcts[id]){ delete RET.pcts[id]; if(RET.pctHall) delete RET.pctHall[id]; _retCrewUndo(rosterP,id); } else { RET.pcts[id]=true; _retCrewAdd(rosterP,id); } renderReturning(); scheduleSave(); }
+// ── add a returning nurse / PCT by hand (before the app has a saved same-shift crew) ──
+function addManualRetNurse(nid){ if(!nid||RET.nurses[nid])return; (RET.manualN=RET.manualN||{})[nid]=true; RET.nurses[nid]=[]; _retCrewAdd(rosterN,nid); renderReturning(); scheduleSave(); }
+function addManualRetPct(pid){ if(!pid||RET.pcts[pid])return; (RET.pctHall=RET.pctHall||{})[pid]=0; RET.pcts[pid]=true; _retCrewAdd(rosterP,pid); renderReturning(); scheduleSave(); }
+function setRetPctHall(pid,hall){ (RET.pctHall=RET.pctHall||{})[pid]=hall; renderReturning(); scheduleSave(); }
 function togReturnSitter(id){ if(RET.sitters[id]){ delete RET.sitters[id]; _retCrewUndo(rosterS,id); } else { RET.sitters[id]=true; _retCrewAdd(rosterS,id); } renderReturning(); scheduleSave(); }
 function applyReturning(){
   // Nurses: lock kept rooms to them; clear any stale locks for returning nurses' unkept rooms
   Object.entries(RET.nurses).forEach(([nid,kept])=>{
     (kept||[]).forEach(rn=>{ if(rooms[rn]&&rooms[rn].occupied){ rooms[rn].nurse=nid; rooms[rn].lock=nid; } });
   });
-  // PCTs: pin their zone rooms via PCT_OVERRIDE
+  // PCTs: pin their zone rooms via PCT_OVERRIDE — a hand-picked hallway, else the snapshot zone
   const P=retSnap()||{};
-  Object.keys(RET.pcts).forEach(pid=>{ const rec=(P.pcts||[]).find(x=>x.id===pid); if(rec) rec.rooms.forEach(rn=>{ if(rooms[rn]&&rooms[rn].occupied) PCT_OVERRIDE[rn]=pid; }); });
+  Object.keys(RET.pcts).forEach(pid=>{ const hall=RET.pctHall&&RET.pctHall[pid];
+    if(hall){ occupied().forEach(r=>{ if(RHALL[r.id]===hall) PCT_OVERRIDE[r.id]=pid; }); }
+    else { const rec=(P.pcts||[]).find(x=>x.id===pid); if(rec) rec.rooms.forEach(rn=>{ if(rooms[rn]&&rooms[rn].occupied) PCT_OVERRIDE[rn]=pid; }); } });
   // Sitters: ensure their room is set
   Object.keys(RET.sitters).forEach(sid=>{ const rec=(P.sitters||[]).find(x=>x.id===sid); const s=sitters.find(x=>x.id===sid); if(rec&&s) s.room=rec.room; });
   scheduleSave(); if(assignVisible()) renderAssign();
@@ -4407,7 +4444,7 @@ let boardCard='staff';        // which support card is expanded under the tiles
 let PREV_SHIFT=null;        // snapshot of the IMMEDIATELY-preceding crew — powers report / total-swap for the oncoming shift
 let PREV_BY_SHIFT={Day:null,Night:null};   // last snapshot of EACH shift type, keyed by shift — powers same-shift "returning staff"
 function retSnap(){ return PREV_BY_SHIFT[shiftType]||null; }   // returning staff = the crew from the last time THIS shift (Day/Night) ran
-let RET={ done:false, nurses:{}, pcts:{}, sitters:{} };  // returning-staff picks: {nurseId:[roomsKept], pctId:true, sitterId:true}
+let RET={ done:false, nurses:{}, pcts:{}, sitters:{}, manualN:{}, pctHall:{} };  // returning picks: nurses:{id:[rooms]}, pcts:{id:true}, sitters:{id:true}, manualN:{id:true}=hand-added, pctHall:{id:hallNo}=hand-picked zone
 function selectPctRoom(rm){ if(!chargeMode)return; selectedPctRoom=(selectedPctRoom===rm)?null:rm; renderAssign(); }
 function movePctRoom(pid){ if(!chargeMode||selectedPctRoom==null)return; setPctRoom(selectedPctRoom,pid); selectedPctRoom=null; }
 function showBoardCard(k){ boardCard=(boardCard===k)?'':k; const sp=document.getElementById('cardStack'); if(sp) sp.dataset.userPicked='1'; renderAssign(); }
@@ -6022,7 +6059,7 @@ function nextShift(){ if(!chargeMode)return;
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
   ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
-  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{}};
+  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{}};
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
   syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
