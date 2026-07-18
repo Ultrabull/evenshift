@@ -1782,7 +1782,7 @@ const HELP={
   status:['The status line','This little line tells you how even the assignment is. Green means everyone has about the same workload. It also shows how many patients and how many nurses you have.'],
   step:['The colored step box','This box always tells you the ONE thing to do next — Step 1, 2, or 3. Just follow it in order and you\u2019ll have a finished board.'],
   vocera:['📟 Vocera devices','Type each Vocera phone number into its slot (RN 1, RN 2, and so on). After you make the assignment, the first nurse on the board becomes RN 1, the next is RN 2, and each nurse\u2019s number shows up on their card. You don\u2019t have to match them by hand.'],
-  returning:['🔁 Returning staff','If a nurse, PCT, or sitter is staying on from the last shift, mark them here and pick which patients they keep. Those rooms get locked to them, and Make Assignment fills everyone else in around them. Because returning staff hold their patients, the board may not come out perfectly even — that\u2019s expected.'],
+  returning:['🔁 Returning staff','If a nurse, PCT, or sitter is staying on from the last shift, mark them here. Each returning nurse keeps up to 3 of their heaviest staying patients by default — continuity where it matters, while the workload still balances evenly. Tap rooms to keep more or fewer; kept rooms are locked to them and Make Assignment fills everyone else in around them.'],
   nextshift:['🔮 Next-shift prediction','This is how heavy you expect the patient to be for the ONCOMING shift, not right now. Example: a patient who\u2019s a 5 today but has a procedure clearing might be a 3 for nights. The charge builds the next assignment from these predicted numbers. If nothing will change, just leave it where it is.'],
   vocreturn:['Vocera return tracking','At the end of the shift, tap each device as it comes back so you know nothing is missing. If one is lost or broken, mark it Lost or Repair — that warning stays on for the next charge until someone fixes it.'],
   unassigned:['Unassigned patients','These are patients no nurse has yet. Tap one, then tap a nurse to give it to them. “Place new admits” drops them in automatically.'],
@@ -2329,13 +2329,22 @@ function retNurseRooms(nid){ // last shift's rooms for this nurse that still exi
   const rec=(PREV_SHIFT.nurses||[]).find(x=>x.id===nid); if(!rec) return [];
   return rec.rooms.filter(rn=>rooms[rn]&&rooms[rn].occupied);
 }
+/* Default keep for a returning nurse: up to 3 rooms, heaviest first, discharge-pending last.
+   Continuity goes where it matters (sick patients who are STAYING) while the engine keeps
+   enough free rooms to balance everyone's hours to the 0.5 target. Charge can tap rooms
+   or "Keep all" to override. */
+const RET_KEEP_MAX=3;
+function retDefaultKeep(nid){
+  const sc=rn=>{ const r=rooms[rn]; return ((r.flags||[]).includes('dc')?-100:0)+(r.acuity||0); };
+  return retNurseRooms(nid).slice().sort((a,b)=>sc(b)-sc(a)).slice(0,RET_KEEP_MAX);
+}
 function renderReturning(){
   const body=document.getElementById('retBody'); if(!body) return;
   if(!PREV_SHIFT || !(PREV_SHIFT.nurses||[]).length){
     body.innerHTML=`<div class="hint" style="margin:0;">No previous shift to pull from yet. After you run a shift and tap <b>End shift &amp; hand off</b>, returning staff and their patients will show here so you can keep them.</div>`;
     return;
   }
-  let h=`<div class="staffhelp">Mark who\u2019s staying from last shift and which patients they keep. Kept rooms are locked — <b>Make Assignment</b> fills everyone else around them. Returning staff keep their patients, so the board may not be perfectly even — that\u2019s expected.</div>`;
+  let h=`<div class="staffhelp">Mark who\u2019s staying from last shift. Each returning nurse keeps <b>up to 3</b> of their heaviest staying patients by default — enough continuity to matter while the hours still balance evenly (patients marked for discharge are skipped). Tap rooms to keep more or fewer. Kept rooms are locked — <b>Make Assignment</b> fills everyone else around them.</div>`;
   // NURSES
   const retN=(PREV_SHIFT.nurses||[]).filter(rec=>rosterN.find(n=>n.id===rec.id) && retNurseRooms(rec.id).length);
   if(retN.length){
@@ -2387,7 +2396,7 @@ function _retCrewAdd(arr,id){ const x=arr.find(o=>o.id===id); if(!x) return fals
   if(!already){ x.on=true; x.holdover=true; (RET.added=RET.added||{})[id]=true; syncWorking(); refreshViewOptions(); return true; }
   return false; }
 function _retCrewUndo(arr,id){ if(!(RET.added&&RET.added[id])) return; const x=arr.find(o=>o.id===id); if(x){ x.holdover=false; if((x.shift||'Day')!==shiftType) x.on=false; } delete RET.added[id]; syncWorking(); refreshViewOptions(); }
-function togReturnNurse(id){ if(RET.nurses[id]){ delete RET.nurses[id]; _retCrewUndo(rosterN,id); } else { RET.nurses[id]=retNurseRooms(id).slice(); _retCrewAdd(rosterN,id); } renderReturning(); scheduleSave(); }
+function togReturnNurse(id){ if(RET.nurses[id]){ delete RET.nurses[id]; _retCrewUndo(rosterN,id); } else { RET.nurses[id]=retDefaultKeep(id); _retCrewAdd(rosterN,id); } renderReturning(); scheduleSave(); }
 function togKeepRoom(id,rn){ const a=RET.nurses[id]||(RET.nurses[id]=[]); const i=a.indexOf(rn); if(i<0)a.push(rn); else a.splice(i,1); renderReturning(); }
 function keepAllRooms(id){ RET.nurses[id]=retNurseRooms(id).slice(); renderReturning(); }
 function keepNoRooms(id){ RET.nurses[id]=[]; renderReturning(); }
@@ -3098,6 +3107,9 @@ function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false; LAST_
   occupied().forEach(r=>{ if(keptIds.has(r.lock)) r.nurse=r.lock; });
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   if(!swapIds) geoPolish();   // equal-acuity swaps to tidy geography (skipped on a total swap — groups stay verbatim)
+  // Hours are boss: if kept/locked rooms left the spread above target, chase 0.5 with swaps AND moves
+  // (tightenHours respects locks, won't-take, orientee/float rules; relaxes geography only if it must).
+  if(!swapIds && maxSpread()>TARGET_SPREAD+1e-9) tightenHours();
   selectedRoom=null;
   balanceReport();   // runs while acuity = predicted, so the banner reflects the next-shift load
   _restoreAcu();     // put the live "now" scores back; assignment (r.nurse) stays
