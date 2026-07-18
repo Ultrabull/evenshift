@@ -4217,10 +4217,11 @@ function setBreakTimeS(sid,val){ const s=rosterS.find(x=>x.id===sid); if(s)s.bre
 
 /* ===== Break requests: tappable 30-min slots, charge approval, coverage auto-checks ===== */
 let BREAK_CAP = 2;   // max staff on break per 30-min slot (per-unit, changeable in More Tools)
-function breakSlots(){   // 30-min slots across the shift's break window
-  const win = shiftType==='Night' ? {sh:22,sm:30,eh:5,em:0} : {sh:10,sm:30,eh:17,em:0};
+function breakSlots(forShift){   // 30-min slots across the break window of the given shift (default: board shift)
+  const sh=forShift||shiftType;
+  const win = sh==='Night' ? {sh:22,sm:30,eh:5,em:0} : {sh:10,sm:30,eh:17,em:0};
   const out=[]; let t=new Date(2000,0,1,win.sh,win.sm);
-  const end=new Date(2000,0,1+(shiftType==='Night'?1:0),win.eh,win.em);
+  const end=new Date(2000,0,1+(sh==='Night'?1:0),win.eh,win.em);
   while(t<end){ const h=t.getHours(), m=t.getMinutes(); const lab=((h%12)||12)+':'+String(m).padStart(2,'0')+(h<12||h>=24?'a':'p'); out.push({key:String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'), lab}); t=new Date(t.getTime()+30*60000); }
   return out;
 }
@@ -4277,7 +4278,7 @@ function pendingBreakCount(){ let c=0; [...nurses,...pcts,...sitters].forEach(p=
 function breakPickerHTML(id, isSitter){
   if(!boardPosted) return `<div class="brkbox"><div class="brklab">🍽 Your break</div><div class="covsub">You can request a break time once the charge posts the assignment.</div></div>`;
   const rec=breakRec(id)||{}; const mine=rec.breakSlot||'';
-  const slots=breakSlots();
+  const slots=breakSlots(rec.holdover?shiftType:(rec.shift||shiftType));   // a Day RN sees day slots even if the board sits on Night
   let chips=slots.map(s=>{ const sel=mine===s.key; const conf=sel?{ok:true}:breakConflict(id,s.key);
     const cls=sel?(rec.breakApproved?'brkchip appr':'brkchip sel'):(conf.ok?'brkchip':'brkchip bad');
     return `<button class="${cls}" onclick="requestBreak('${id}','${s.key}')" ${(!sel&&!conf.ok)?`title="${conf.reason}"`:''}>${s.lab}</button>`; }).join('');
@@ -4291,7 +4292,7 @@ function breakPickerHTML(id, isSitter){
   if(isSitter){ coverField=`<div class="brkcover">1:1 cover during break: <input class="subin" value="${esc(rec.breakCover||'')}" placeholder="who covers your 1:1" onchange="setBreakCover('${id}',this.value)"></div>`; }
   return `<div class="brkbox"><div class="brklab">🍽 Request your break <span class="covsub">(tap a 30-min slot)</span></div>${coverField}<div class="brkchips">${chips}</div>${status}</div>`;
 }
-function slotLab(key){ const s=breakSlots().find(x=>x.key===key); return s?s.lab:key; }
+function slotLab(key){ const s=[...breakSlots('Day'),...breakSlots('Night')].find(x=>x.key===key); return s?s.lab:key; }
 /* Charge view: a request list with Approve buttons + a per-slot coverage timeline. */
 function breaksTimelineHTML(){
   if(!boardPosted) return '';
@@ -4317,6 +4318,8 @@ function breaksTimelineHTML(){
   }
   // coverage timeline (per slot counts)
   const slots=breakSlots();
+  [...new Set(reqs.map(x=>x.rec.breakSlot))].filter(k=>!slots.some(s=>s.key===k)).sort()
+    .forEach(k=>slots.push({key:k,lab:slotLab(k)}));
   const tl=slots.map(s=>{ const here=whoOnSlot(s.key); const over=here.length>BREAK_CAP;
     return `<div class="tlcol ${over?'over':''}"><span class="tltime">${s.lab}</span><span class="tlcount ${here.length?'':'zero'}">${here.length?here.length:''}</span>${here.map(p=>`<span class="tlname ${p.approved?'a':'p'}">${esc(p.name.split(' ')[0])}</span>`).join('')}</div>`; }).join('');
   h+=`<div class="brsub">Coverage by time <span class="covsub">(max ${BREAK_CAP}/slot)</span></div><div class="brktimeline">${tl}</div>`;
