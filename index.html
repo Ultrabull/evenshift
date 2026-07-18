@@ -1837,7 +1837,8 @@ function renderAcuity(){
     const occ=occupied(); const total=occ.length;
     const fresh=occ.filter(roomUpdatedThisShift).length, stale=total-fresh;
     const unscored=occ.filter(r=>!(r.acuity>0)).length;
-    if(total>0){
+    const listActive=nurses.some(n=>occ.some(r=>r.nurse===n.id));   // per-nurse fold covers it then
+    if(total>0 && !listActive){
       html+= stale>0
         ? `<div class="scoreprog" style="display:block;margin-bottom:10px;">🩺 Updated for next shift: <b>${fresh} of ${total}</b> — ⚠ <b>${stale}</b> room${stale>1?'s':''} still showing last shift’s numbers${unscored?` (${unscored} unscored)`:''}</div>`
         : `<div class="scoreprog ok" style="display:block;margin-bottom:10px;">✓ All ${total} rooms updated this shift</div>`;
@@ -2020,7 +2021,10 @@ function closeModal(){ document.getElementById('scrim').classList.remove('on'); 
 
 function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
 /* has this room's score been touched SINCE the last shift handoff? (carried-over numbers don't count) */
-function roomUpdatedThisShift(r){ return r.acuity>0 && (!SHIFT_START || (r.editedAt||0)>=SHIFT_START); }
+function roomUpdatedThisShift(r){ if(!(r.acuity>0)) return false;
+  if(SHIFT_START) return (r.editedAt||0)>=SHIFT_START;
+  return !!r.editedAt;   // board has never handed off since this feature: only rooms with a recorded edit count
+}
 function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw=rs.reduce((s,r)=>s+r.acuity,0); const nx=rs.reduce((s,r)=>s+((r.nextAcuity!=null)?r.nextAcuity:r.acuity),0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,next:nx,adj:raw/cap}; }
 function maxAdj(){return Math.max(10,...nurses.map(n=>{const L=nurseLoad(n.id);return L.next||L.hrs;}));}
 function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===nid).map(r=>hallOf(r.id)))]; return hs; }
@@ -6274,7 +6278,7 @@ buildLegend();
     logo.addEventListener('touchstart',start,{passive:true}); logo.addEventListener('touchend',cancel); logo.addEventListener('touchmove',cancel);
     logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
   }
-  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); setTimeout(maybeShowIntro,400); })();
+  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); setTimeout(maybeShowIntro,400); })();
 // Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
 document.addEventListener('click',function(e){
   document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
