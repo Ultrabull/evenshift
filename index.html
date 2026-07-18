@@ -4027,13 +4027,13 @@ function handoffReportHTML(){
   const hm=handoffMap(); if(!hm.length) return '';
   let total=0;
   const rows=hm.map(h=>{
-    const self=h.to.find(t=>t.id===h.id), others=h.to.filter(t=>t.id!==h.id);
+    const others=h.to.filter(t=>t.id!==h.id);
     total+=others.length;
     const many=others.length>=3;
-    const parts=[];
-    if(self) parts.push(`keeps ${self.n}`);
-    if(others.length) parts.push(`${others.length} report${others.length>1?'s':''}: ${others.map(t=>esc(t.name)+' ('+t.n+')').join(' + ')}`);
-    return `<div class="horow${many?' warn':''}">${many?'⚠ ':''}${esc(h.name)} — ${parts.join(' · ')||'—'}</div>`;
+    const line = others.length
+      ? `${esc(h.name)} — gives report to <b>${others.length}</b> RN${others.length>1?'s':''}`
+      : `${esc(h.name)} — keeps their patients · no report needed`;
+    return `<div class="horow${many?' warn':''}">${many?'⚠ ':''}${line}</div>`;
   }).join('');
   // best case: an outgoing nurse not working on gives exactly 1 report; one still working could give 0
   const ideal=hm.filter(h=>!nurses.some(n=>n.id===h.id)).length;
@@ -4048,7 +4048,7 @@ function handoffReportHTML(){
       ? `<div class="horow ok">✓ Total swap — each oncoming nurse took one outgoing nurse's whole group (hours within ±${(LAST_GEN_SWAP.spread||0).toFixed(1)})</div>`
       : `<div class="horow">Total swap checked first — not possible (${LAST_GEN_SWAP.reason==='hours'?('hours would be ±'+(LAST_GEN_SWAP.spread||0).toFixed(1)):'staffing / locks changed'}); built a fresh balanced board instead.</div>`;
   }
-  return `<div class="hobox"><div class="hohead">🗣 Shift-change reports <span style="font-weight:400;color:var(--ink-soft)">· who had each room last shift vs. who has it now</span>: <b>${total}</b> total · best possible ${ideal}</div>${swapLine}${retHint}${rows}</div>`;
+  return `<div class="hobox"><div class="hohead">🗣 Handoff — how many RNs each outgoing nurse gives report to <span style="font-weight:400;color:var(--ink-soft)">(${total} report${total!==1?'s':''} total)</span></div>${swapLine}${retHint}${rows}<div class="horow" style="color:var(--ink-soft);font-size:11px;">Each oncoming nurse's card shows who they take report from.</div></div>`;
 }
 
 /* a 1:1-sitter room needs far less PCT attention (the sitter does the watching/ADLs),
