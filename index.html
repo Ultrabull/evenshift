@@ -1186,6 +1186,8 @@
     </div>
   </div>
 
+  <div id="genBusy" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(250,250,250,.72);align-items:center;justify-content:center;"><div style="padding:14px 24px;border-radius:14px;background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.18);font-weight:700;font-size:16px;">✨ Balancing the board…</div></div>
+
   <div class="scrim" id="retScrim" onclick="if(event.target===this)closeReturning()">
     <div class="modal">
       <div class="mhead"><span class="rt">🔁 Returning staff</span><button class="btn" onclick="closeReturning()">Done</button></div>
@@ -2369,7 +2371,7 @@ function renderBuildTiles(){
   h+=tile(s1,'👥','1',"Who's Working",staffStatus,'openStaff()','staff');
   h+=tile(sRet,'🔁','2','Returning Staff',retStatus,'openReturning()','returning');
   h+=tile(sVoc,'📟','3','Vocera Phones',vocStatus,'openVocera()','vocera');
-  const makeAction = (haveStaff && total>0 && scored===total && !retAck) ? 'openReturning()' : (s2==='wait'?'showHelp(\'make\')':'generate()');
+  const makeAction = (haveStaff && total>0 && scored===total && !retAck) ? 'openReturning(true)' : (s2==='wait'?'showHelp(\'make\')':'generate()');
   h+=tile(s2,'✨','4','Make Assignment',makeStatus, makeAction,'make');
   h+=tile(s4,'🔎','5','Check & Post',checkStatus, s4==='wait'?'showHelp(\'make\')':'show(\'assign\')','post');
   h+=tile('util','⚙️','','More Tools','settings','openTools()','');
@@ -2379,8 +2381,10 @@ function openVocera(){ const b=document.getElementById('vocCardBody'); if(b) b.i
 function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); vocConfirmed=true; renderBuildTiles(); renderNextStep(); scheduleSave(); }
 
 /* ===== Returning staff — keep last shift's patients/zones/rooms for staff who are back ===== */
-function openReturning(){ if(!chargeMode)return; renderReturning(); document.getElementById('retScrim').classList.add('on'); }
-function closeReturning(){ applyReturning(); document.getElementById('retScrim').classList.remove('on'); RET.done=true; renderBuildTiles(); renderNextStep(); const ss=document.getElementById('staffScrim'); if(ss&&ss.classList.contains('on')) renderStaffModal(); }
+let _retThenMake=false;
+function openReturning(thenMake){ if(!chargeMode)return; _retThenMake=!!thenMake; renderReturning(); document.getElementById('retScrim').classList.add('on'); }
+function closeReturning(){ applyReturning(); document.getElementById('retScrim').classList.remove('on'); RET.done=true; renderBuildTiles(); renderNextStep(); const ss=document.getElementById('staffScrim'); if(ss&&ss.classList.contains('on')) renderStaffModal();
+  if(_retThenMake){ _retThenMake=false; generate(); show('assign'); } }
 function retNurseRooms(nid){ // last shift's rooms for this nurse that still exist & are occupied
   if(!PREV_SHIFT) return [];
   const rec=(PREV_SHIFT.nurses||[]).find(x=>x.id===nid); if(!rec) return [];
@@ -2987,7 +2991,12 @@ function markScoredDone(nid){
   renderAssign(); scheduleSave();
 }
 
-function generate(){ if(!chargeMode)return; pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
+function generate(){ if(!chargeMode)return;
+  const b=document.getElementById('genBusy');
+  if(b && typeof requestAnimationFrame==='function'){ b.style.display='flex'; setTimeout(()=>{ try{ _generateNow(); } finally{ b.style.display='none'; } },50); }
+  else _generateNow();
+}
+function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
   // Build the NEXT shift off each patient's predicted acuity. Swap it in for the run, restore the live "now" after.
   const _savedAcu={}; occupied().forEach(r=>{ _savedAcu[r.id]=r.acuity; if(r.nextAcuity!=null) r.acuity=r.nextAcuity; });
   const _restoreAcu=()=>{ Object.keys(_savedAcu).forEach(id=>{ if(rooms[id]) rooms[id].acuity=_savedAcu[id]; }); };
