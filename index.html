@@ -215,7 +215,7 @@
   .scrim{position:fixed;inset:0;background:rgba(21,35,59,.42);display:none;align-items:center;justify-content:center;padding:24px 14px 96px;z-index:60;overflow:auto;}
   .scrim.gate{background:var(--bg);z-index:300;align-items:center;}
   .scrim.on{display:flex;}
-  .modal{background:var(--surface);border-radius:16px;max-width:560px;width:100%;box-shadow:0 24px 60px rgba(21,35,59,.3);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 110px);}
+  .modal{background:var(--surface);border-radius:16px;max-width:560px;width:100%;box-shadow:0 24px 60px rgba(21,35,59,.3);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);}
   .mhead{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;}
   .mhead .rt{font-family:var(--display);font-weight:700;font-size:18px;}
   .mtot{display:flex;gap:18px;align-items:baseline;}
@@ -251,8 +251,9 @@
   .mfoot{padding:13px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;flex:none;padding-bottom:calc(13px + env(safe-area-inset-bottom,0px));}
   .savebig{font-weight:800;}
   @media(max-width:560px){
-    .scrim{padding:10px 8px 88px;align-items:flex-end;}
-    .modal{max-height:calc(100vh - 20px);border-radius:18px 18px 14px 14px;}
+    /* top-pinned + dynamic viewport so the sheet header is always reachable (100vh hides under Safari's toolbar) */
+    .scrim{padding:10px 8px 88px;align-items:flex-start;}
+    .modal{max-height:calc(100vh - 104px);max-height:calc(100dvh - 104px);border-radius:18px 18px 14px 14px;}
     .mfoot{flex-wrap:wrap;gap:8px;}
     .mfoot .btn{min-height:46px;}
     .mfoot > div{flex:1;display:flex;gap:8px;}
@@ -2006,7 +2007,10 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   if(_acuChanged && SCORES_OK){
     if(chargeMode && occupied().some(x=>x.nurse)){
       const fresh=confirm('You changed a score after the board was built.\n\nOK \u2014 building the NEXT assignment: the checklist restarts at Step 1 so all scores get re-verified.\nCancel \u2014 just a mid-shift update: the current board stays as it is.\n\n(For a full shift change, use \u22ef \u2192 End Shift & Hand Off instead.)');
-      if(fresh){ SCORES_OK=false; boardPosted=false; }
+      if(fresh){
+        SHIFT_START=r.editedAt||Date.now();   // new scoring cycle starts NOW — other rooms show as not-updated until re-scored or accepted
+        SCORES_OK=false; CREW_OK=false; vocConfirmed=false; boardPosted=false; RET.done=false;
+      }
     } else SCORES_OK=false;
   }
   closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
@@ -2271,7 +2275,9 @@ function chargeNextStep(){
   const retAck=!hasPrev||RET.done;
   // 1 · are the scores in? (staff score their own patients; charge chases the stragglers)
   if(total===0)      return {label:'Step 1 · Enter your patients’ scores', hint:'tap a room and mark what the patient needs', act:"show('acuity')", view:'acuity'};
-  if(scored<total)   return {label:'Step 1 · Waiting on scores — '+(total-scored)+' room'+((total-scored)>1?'s':'')+' to go', hint:'staff score their own patients · tap Go to see what’s missing', act:"show('acuity')", view:'acuity'};
+  if(scored<total)   return {label:'Step 1 · Waiting on scores — '+(total-scored)+' room'+((total-scored)>1?'s':'')+' unscored', hint:'staff score their own patients · tap Go to see what’s missing', act:"show('acuity')", view:'acuity'};
+  const freshN=occ.filter(roomUpdatedThisShift).length;
+  if(freshN<total)   return {label:'Step 1 · Waiting on scores — '+(total-freshN)+' room'+((total-freshN)>1?'s':'')+' not updated this shift', hint:'staff re-score for the oncoming shift — or accept the current numbers', act:"show('acuity')", actLabel:'View', act2:"acceptScoresCurrent()", act2Label:'✓ Numbers are current', view:'acuity'};
   // 2 · charge verifies & adjusts, then confirms — stale (carried-over) numbers are called out
   if(!SCORES_OK){
     const stale=occ.filter(r=>!roomUpdatedThisShift(r)).length;
@@ -2292,6 +2298,12 @@ function chargeNextStep(){
   return null;   // everything done
 }
 function markScoresOK(){ if(!chargeMode) return; SCORES_OK=true; renderNextStep(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); }
+/* Charge accepts the carried-over numbers as still correct — stamps them current so Step 1 clears. */
+function acceptScoresCurrent(){ if(!chargeMode) return;
+  const now=Date.now();
+  occupied().forEach(r=>{ if(r.acuity>0 && !roomUpdatedThisShift(r)) r.editedAt=now; });
+  renderNextStep(); renderAcuity(); scheduleSave(); if(cloudOn()) pushAcuity();
+}
 function renderNextStep(){
   const el=document.getElementById('nextStepBar'); if(!el) return;
   if(!chargeMode){ el.style.display='none'; return; }
