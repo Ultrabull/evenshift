@@ -1876,8 +1876,9 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   if(!chargeMode){ modalMode='full'; modalExpress=null; if(!hasTally) modalTally['Assessment & Meds|0']=1; }   // staff always tally the full list; Quick/Express are charge shortcuts
   document.getElementById('mRoom').textContent='Room '+rn+(r.occupied?'':' · admit');
   if(chargeMode && r.editedBy && r.editedBy!=='Charge'){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · last edit by '+r.editedBy+(r.editedAt?' ('+_qhTime(r.editedAt)+')':''); }
+  if(chargeMode && r.flagsEditedAt){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · flags by '+((r.flagsEditedBy||'?').split(' ')[0])+' ('+_qhTime(r.flagsEditedAt)+')'; }
   renderModalBody(); document.getElementById('scrim').classList.add('on');
-  const sa=document.getElementById('saveAttrib'); if(sa){ if(!chargeMode && _quickViewerName()){ sa.style.display=''; const who=(r.editedBy||_quickViewerName()||'').split(' ')[0]; sa.textContent = r.editedAt ? ('Updated by '+who+' · '+_qhTime(r.editedAt)) : ''; } else sa.style.display='none'; }
+  const sa=document.getElementById('saveAttrib'); if(sa){ if(!chargeMode && _quickViewerName()){ sa.style.display=''; const who=(r.editedBy||_quickViewerName()||'').split(' ')[0]; sa.textContent = (r.editedAt ? ('Updated by '+who+' · '+_qhTime(r.editedAt)) : '') + (r.flagsEditedAt ? ((r.editedAt?' · ':'')+'Flags: '+((r.flagsEditedBy||'?').split(' ')[0])+' '+_qhTime(r.flagsEditedAt)) : ''); } else sa.style.display='none'; }
 }
 function currentHrs(){ let p=0; for(const k in modalTally) p+=(modalTally[k]||0)*(POINTS[k]||0); return Math.round(p/DIVISOR*4)/4; }
 function setMode(m){
@@ -1990,6 +1991,7 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
     const w=document.getElementById('swingReasonWrap'); if(w){ w.innerHTML=swingReasonHTML(); w.scrollIntoView({behavior:'smooth',block:'center'}); }
     alert('That\u2019s a big acuity change — tap a reason first (pick “Other” if none fit).'); return;
   }
+  const _flagsChanged=JSON.stringify((r.flags||[]).slice().sort())!==JSON.stringify((modalFlags||[]).slice().sort());
   r.flags=modalFlags; r.note='';
   const iv=document.getElementById('isoType_val'); r.isoType=iv?iv.value:'';
   if(!r.flags.includes('iso')) r.isoType='';
@@ -2002,6 +2004,7 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   // Record who last touched this room and when — so the charge can spot a wrong/impersonated edit.
   r.editedBy = chargeMode ? 'Charge' : (_quickViewerName() || 'Staff');
   r.editedAt = Date.now();
+  if(_flagsChanged){ r.flagsEditedBy=r.editedBy; r.flagsEditedAt=r.editedAt; }
   if(hrs>0){ r.occupied=true; r.acuity=Math.round(hrs*100)/100; r.scoredBy=chargeMode?'charge':(viewAs||'rn');
     r.nextAcuity = (modalNext!=null) ? Math.round(modalNext*100)/100 : r.acuity; }
   if(swingInfo().big){ r.acuityReason=modalReason; r.acuityReasonOther=(modalReason==='Other')?modalReasonOther.trim():''; }
@@ -2024,7 +2027,7 @@ function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom
   r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;
   // wipe the rest of the outgoing patient's data so the next admit starts clean
   r.tags=[];r.avoid=[];r.nextAcuity=null;r.prevAcuity=null;r.isoType='';r.dcTime='';r.admTime='';
-  r.acuityReason='';r.acuityReasonOther='';r.capCarried=false;r.pctFlags=[];r.editedBy=null;r.editedAt=null;
+  r.acuityReason='';r.acuityReasonOther='';r.capCarried=false;r.pctFlags=[];r.editedBy=null;r.editedAt=null;r.pctEditedBy=null;r.pctEditedAt=null;r.flagsEditedBy=null;r.flagsEditedAt=null;
   closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
@@ -4092,7 +4095,9 @@ let _pctScoreRoom=null, _pctScoreFlags=[], _pctClinFlags=[];
 function canPctScore(rn){ if(chargeMode) return true; const vn=_quickViewerName(); if(!vn) return false; const z=pctZones().find(z=>z.pct.name===vn); return !!(z && z.rooms.includes(+rn)); }   // any PCT may update care flags on their zone rooms
 function openPctScore(rn){ if(!canPctScore(rn)) return; const r=rooms[rn]; if(!r) return; _pctScoreRoom=rn; _pctScoreFlags=[...(r.pctFlags||[])]; _pctClinFlags=[...(r.flags||[])]; renderPctScore(); document.getElementById('pctScoreScrim').classList.add('on');
   const el=document.getElementById('pctScoreRoom'); if(el) el.textContent='Room '+rn+(r.pctEditedBy?' · by '+(r.pctEditedBy.split(' ')[0])+(r.pctEditedAt?' '+_qhTime(r.pctEditedAt):''):'');
-  const sa=document.getElementById('pctSaveAttrib'); if(sa){ if(!chargeMode){ sa.style.display=''; sa.textContent=r.pctEditedAt?('Updated by '+((r.pctEditedBy||_quickViewerName()||'').split(' ')[0])+' · '+_qhTime(r.pctEditedAt)):''; } else sa.style.display='none'; }
+  const sa=document.getElementById('pctSaveAttrib'); if(sa){ sa.style.display='';
+    sa.textContent = r.flagsEditedAt ? ('Care flags updated by '+((r.flagsEditedBy||'').split(' ')[0]||'?')+' · '+_qhTime(r.flagsEditedAt))
+      : (r.pctEditedAt ? ('Updated by '+((r.pctEditedBy||'').split(' ')[0])+' · '+_qhTime(r.pctEditedAt)) : 'No care-flag updates recorded yet.'); }
   const sb=document.getElementById('pctScoredBy'); if(sb){ sb.style.display=''; const who=(r.editedBy||'').split(' ')[0]; sb.textContent = r.acuity>0 ? ('Acuity '+r.acuity.toFixed(1)+' hrs'+(who?(' · scored by '+who):'')+(r.editedAt?(' · '+_qhTime(r.editedAt)):'')) : 'No acuity score for this room yet.'; }
 }
 function closePctScore(){ const s=document.getElementById('pctScoreScrim'); if(s) s.classList.remove('on'); _pctScoreRoom=null; }
@@ -4110,8 +4115,10 @@ function togPctFlag(c){ const i=_pctScoreFlags.indexOf(c); if(i<0)_pctScoreFlags
 function savePctScore(){ if(_pctScoreRoom==null) return; const r=rooms[_pctScoreRoom]; if(!r) return;
   // clinical flags: PCT changes only the PCT-view subset; RN-owned flags (behavioral, DNAR, drips…) are preserved
   const editable=getPCTView().filter(c=>chargeMode||!PCT_READONLY.includes(c));
+  const _oldFlags=JSON.stringify((r.flags||[]).slice().sort());
   const keep=(r.flags||[]).filter(c=>!editable.includes(c));
   r.flags=[...new Set([...keep, ..._pctClinFlags.filter(c=>editable.includes(c))])];
+  if(JSON.stringify(r.flags.slice().sort())!==_oldFlags){ r.flagsEditedBy=chargeMode?'Charge':(_quickViewerName()||'PCT'); r.flagsEditedAt=Date.now(); }
   if(PCT_MODE){ r.pctFlags=_pctScoreFlags.slice(); r.pctBurden=pctRoomBurden(r); }
   // PCT attribution only — does NOT count as an acuity re-score (freshness tracking stays honest)
   r.pctEditedBy = chargeMode ? 'Charge' : (_quickViewerName()||'PCT'); r.pctEditedAt=Date.now();
@@ -4623,13 +4630,13 @@ async function cloudInit(){
 }
 function acuityObj(){
   const a={};
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
   if(!row) return;
   if(row.meta) applyState(row.meta);                                   // charge-owned: roster, rubric, floor, assignments, shift, pin
-  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; } }   // acuity always wins; note field removed (HIPAA)
+  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
 function cloudRerender(){ applyShiftUI(); refreshViewOptions(); updateUnitTag(); updateRubricTag(); updateScoreTab(); renderAcuity(); renderAssign(); applyGate(); }
@@ -4646,7 +4653,7 @@ async function pushAcuity(){ if(!cloudOn())return; try{ const {error}=await sb.f
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
