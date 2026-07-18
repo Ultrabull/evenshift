@@ -1372,7 +1372,7 @@
   <div class="modal" style="max-width:440px;">
     <div class="mhead"><span class="rt" id="pctScoreRoom">Room</span><button class="btn" onclick="closePctScore()">Close</button></div>
     <div class="mbody">
-      <p class="covnote">Tap the care this patient needs. This balances PCT zones by workload — not just room count.</p>
+      <p class="covnote">Tap the care flags that apply to this room — they update the board for the whole unit. Nurse-owned flags (drips, behavioral, DNAR…) aren\u2019t changed from here.</p>
       <div class="flagrow" id="pctFlagRow"></div>
       <div class="saveattrib" id="pctSaveAttrib" style="display:none;"></div>
     </div>
@@ -1586,7 +1586,7 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley","Foley catheter"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","BS checks","Blood sugar checks"],["sleep","Sleep promo","Sleep promotion 11PM\u20136AM"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley care","Foley catheter care"],["extcath","Ext cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","BS checks","Blood sugar checks"],["sleep","Sleep promo","Sleep promotion 11PM\u20136AM"],["chg","CHG bath","CHG bath (chlorhexidine)"],["sio","Strict I/O","Strict intake & output"],["dwt","Daily weights","Daily weights"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -2064,7 +2064,7 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
   scheduleSave(); renderAssign();
 }
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
-const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos','npo','q2t','bs','hfr','sleep'];
+const PCT_VIEW_BASE=['sit','tot','feed','foley','hd','pd','iso','tele','restr','draw','interp','wound','trach','oos','npo','q2t','bs','hfr','sleep','chg','sio','dwt'];
 function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
 function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
 /* A warm one-liner when a staff member opens their own assignment. Rotates by day so it
@@ -2096,8 +2096,8 @@ function renderMyPCT(){
   let buddy=[]; buddyPairsPCT().forEach(g=>{ if(g.some(x=>x.id===id)) buddy=g.filter(x=>x.id!==id).map(x=>x.name); });
   const c=document.getElementById('nurses');
   if(c) c.innerHTML=staffWelcome(p?p.name:'')+staffPulseCard(p?p.name:'')+`<div class="mycard"><h3>${esc(p?p.name:'PCT')} \u00b7 your zone \u00b7 ${rms.length} room${rms.length===1?'':'s'}${PCT_MODE?` \u00b7 load ${pctZoneBurden(rms).toFixed(0)}`:''}</h3>`+
-    (PCT_MODE?`<div class="covsub" style="margin:-2px 0 8px;">Tap a room to score the care it needs.</div>`:'')+
-    `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); const b=PCT_MODE?pctRoomBurden(rooms[r]):0; return `<div class="zroom${PCT_MODE?' tappable':''}"${PCT_MODE?` onclick="openPctScore(${r})"`:''}><span class="rmnum">${r}</span>${PCT_MODE&&b>0?`<span class="zbsc">${b.toFixed(0)}</span>`:''}${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
+    `<div class="covsub" style="margin:-2px 0 8px;">Tap a room to update its care flags${PCT_MODE?' and score its workload':''} — changes show for the whole unit.</div>`+
+    `<div class="zrooms">${rms.length?rms.map(r=>{ const fl=roomCareFlags(r); const b=PCT_MODE?pctRoomBurden(rooms[r]):0; return `<div class="zroom tappable" onclick="openPctScore(${r})"><span class="rmnum">${r}</span>${PCT_MODE&&b>0?`<span class="zbsc">${b.toFixed(0)}</span>`:''}${fl.length?`<span class="zfl">${fl.map(esc).join(' · ')}</span>`:''}</div>`; }).join(''):'<span class="covsub">No rooms assigned yet.</span>'}</div>`+
     (nnames.length?`<div class="sitline">Nurses in your zone: <b>${nnames.map(esc).join(', ')}</b></div>`:'')+
     (buddy.length?`<div class="sitline">\ud83e\udd1d Break buddy: <b>${buddy.map(esc).join(', ')}</b></div>`:'')+
     ((()=>{ const v=vocForPct(id); const slot=pcts.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · PCT ${slot}</div>`:''; })())+
@@ -4085,22 +4085,34 @@ const PCT_RUBRIC=[
 ];
 function pctRoomBurden(r){ if(!r||!r.pctFlags) return 0; let s=0; PCT_RUBRIC.forEach(([c,,w])=>{ if(r.pctFlags.includes(c)) s+=w; }); return s; }
 function pctZoneBurden(rms){ return rms.reduce((s,rn)=>s+pctRoomBurden(rooms[rn]),0); }
-let _pctScoreRoom=null, _pctScoreFlags=[];
+let _pctScoreRoom=null, _pctScoreFlags=[], _pctClinFlags=[];
 // who can score a room's PCT burden: a PCT whose zone includes it, or the charge
-function canPctScore(rn){ if(chargeMode) return true; if(!PCT_MODE) return false; const vn=_quickViewerName(); if(!vn) return false; const z=pctZones().find(z=>z.pct.name===vn); return !!(z && z.rooms.includes(+rn)); }
-function openPctScore(rn){ if(!canPctScore(rn)) return; const r=rooms[rn]; if(!r) return; _pctScoreRoom=rn; _pctScoreFlags=[...(r.pctFlags||[])]; renderPctScore(); document.getElementById('pctScoreScrim').classList.add('on');
+function canPctScore(rn){ if(chargeMode) return true; const vn=_quickViewerName(); if(!vn) return false; const z=pctZones().find(z=>z.pct.name===vn); return !!(z && z.rooms.includes(+rn)); }   // any PCT may update care flags on their zone rooms
+function openPctScore(rn){ if(!canPctScore(rn)) return; const r=rooms[rn]; if(!r) return; _pctScoreRoom=rn; _pctScoreFlags=[...(r.pctFlags||[])]; _pctClinFlags=[...(r.flags||[])]; renderPctScore(); document.getElementById('pctScoreScrim').classList.add('on');
   const el=document.getElementById('pctScoreRoom'); if(el) el.textContent='Room '+rn+(r.pctEditedBy?' · by '+(r.pctEditedBy.split(' ')[0])+(r.pctEditedAt?' '+_qhTime(r.pctEditedAt):''):'');
   const sa=document.getElementById('pctSaveAttrib'); if(sa){ if(!chargeMode){ sa.style.display=''; sa.textContent=r.pctEditedAt?('Updated by '+((r.pctEditedBy||_quickViewerName()||'').split(' ')[0])+' · '+_qhTime(r.pctEditedAt)):''; } else sa.style.display='none'; }
 }
 function closePctScore(){ const s=document.getElementById('pctScoreScrim'); if(s) s.classList.remove('on'); _pctScoreRoom=null; }
 function renderPctScore(){ const el=document.getElementById('pctFlagRow'); if(!el) return;
-  el.innerHTML=PCT_RUBRIC.map(([c,lab])=>`<button class="ftog ${_pctScoreFlags.includes(c)?'on':''}" id="pf-${c}" onclick="togPctFlag('${c}')">${lab}</button>`).join('');
+  const view=getPCTView();
+  const clin=getActiveFlags().filter(([c])=>view.includes(c));
+  let h='<div class="nlab" style="margin:2px 0 5px;">Care flags — tap what applies</div><div class="flagrow">'
+    +clin.map(([c,l,full])=>`<button class="ftog ${_pctClinFlags.includes(c)?'on':''}" id="pcf-${c}" title="${full}" onclick="togPctClinFlag('${c}')">${l}</button>`).join('')+'</div>';
+  if(PCT_MODE){ h+='<div class="nlab" style="margin:12px 0 5px;">Workload score</div><div class="flagrow">'
+    +PCT_RUBRIC.map(([c,lab])=>`<button class="ftog ${_pctScoreFlags.includes(c)?'on':''}" id="pf-${c}" onclick="togPctFlag('${c}')">${lab}</button>`).join('')+'</div>'; }
+  el.innerHTML=h;
 }
+function togPctClinFlag(c){ const i=_pctClinFlags.indexOf(c); if(i<0)_pctClinFlags.push(c); else _pctClinFlags.splice(i,1); const b=document.getElementById('pcf-'+c); if(b)b.classList.toggle('on'); }
 function togPctFlag(c){ const i=_pctScoreFlags.indexOf(c); if(i<0)_pctScoreFlags.push(c); else _pctScoreFlags.splice(i,1); document.getElementById('pf-'+c).classList.toggle('on'); }
 function savePctScore(){ if(_pctScoreRoom==null) return; const r=rooms[_pctScoreRoom]; if(!r) return;
-  r.pctFlags=_pctScoreFlags.slice(); r.pctBurden=pctRoomBurden(r);
+  // clinical flags: PCT changes only the PCT-view subset; RN-owned flags (behavioral, DNAR, drips…) are preserved
+  const view=getPCTView();
+  const keep=(r.flags||[]).filter(c=>!view.includes(c));
+  r.flags=[...new Set([...keep, ..._pctClinFlags.filter(c=>view.includes(c))])];
+  if(PCT_MODE){ r.pctFlags=_pctScoreFlags.slice(); r.pctBurden=pctRoomBurden(r); }
+  // PCT attribution only — does NOT count as an acuity re-score (freshness tracking stays honest)
   r.pctEditedBy = chargeMode ? 'Charge' : (_quickViewerName()||'PCT'); r.pctEditedAt=Date.now();
-  closePctScore(); renderAssign(); if(cloudOn()){ pushAcuity(); } else scheduleSave();
+  closePctScore(); renderAssign(); renderAcuity(); if(cloudOn()){ pushAcuity(); } else scheduleSave();
 }
 let CODE_OVERRIDE={};   // role -> staff name chosen by charge (overrides auto-fill; e.g. swap out someone who can't do CPR)
 function setCodeRole(role,name){ if(name) CODE_OVERRIDE[role]=name; else delete CODE_OVERRIDE[role]; scheduleSave(); renderAssign(); }
