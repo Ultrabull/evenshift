@@ -2356,9 +2356,10 @@ function renderReturning(){
       const onCrew=!!nurses.find(n=>n.id===rec.id);
       h+=`<div class="retrow"><div class="retname"><label class="retchk"><input type="checkbox" ${on?'checked':''} onchange="togReturnNurse('${rec.id}')"> <b>${esc(rec.name)}</b></label>${!onCrew&&!on?`<span class="rethint">not on this crew yet — checking adds them</span>`:''}${on?`<span class="rethint">${kept.length} of ${rms.length} kept${(RET.added&&RET.added[rec.id])?' · added to crew':''}</span>`:''}</div>`;
       if(on){
-        h+=`<div class="retchips">`+rms.map(rn=>{ const k=kept.includes(rn); const r=rooms[rn];
-          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${rec.id}',${rn})">${rn}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></button>`; }).join('')
-          +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${rec.id}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${rec.id}')">Keep none</button></div>`;
+        h+=`<div class="retmini" style="margin-top:7px;">Tap the room numbers to choose exactly which patients they keep — <b>blue = kept</b>:</div>`
+          +`<div class="retchips">`+rms.map(rn=>{ const k=kept.includes(rn); const r=rooms[rn]; const dc=(r.flags||[]).includes('dc');
+          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${rec.id}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(r.acuity)}">${r.acuity.toFixed(1)}</span></button>`; }).join('')
+          +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${rec.id}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${rec.id}')">Keep none</button> · <button class="linkx" onclick="keepDefaultRooms('${rec.id}')">Back to suggested ${RET_KEEP_MAX}</button></div>`;
       }
       h+=`</div>`;
     });
@@ -2399,6 +2400,7 @@ function _retCrewUndo(arr,id){ if(!(RET.added&&RET.added[id])) return; const x=a
 function togReturnNurse(id){ if(RET.nurses[id]){ delete RET.nurses[id]; _retCrewUndo(rosterN,id); } else { RET.nurses[id]=retDefaultKeep(id); _retCrewAdd(rosterN,id); } renderReturning(); scheduleSave(); }
 function togKeepRoom(id,rn){ const a=RET.nurses[id]||(RET.nurses[id]=[]); const i=a.indexOf(rn); if(i<0)a.push(rn); else a.splice(i,1); renderReturning(); }
 function keepAllRooms(id){ RET.nurses[id]=retNurseRooms(id).slice(); renderReturning(); }
+function keepDefaultRooms(id){ RET.nurses[id]=retDefaultKeep(id); renderReturning(); }
 function keepNoRooms(id){ RET.nurses[id]=[]; renderReturning(); }
 function togReturnPct(id){ if(RET.pcts[id]){ delete RET.pcts[id]; _retCrewUndo(rosterP,id); } else { RET.pcts[id]=true; _retCrewAdd(rosterP,id); } renderReturning(); scheduleSave(); }
 function togReturnSitter(id){ if(RET.sitters[id]){ delete RET.sitters[id]; _retCrewUndo(rosterS,id); } else { RET.sitters[id]=true; _retCrewAdd(rosterS,id); } renderReturning(); scheduleSave(); }
