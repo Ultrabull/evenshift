@@ -2065,7 +2065,7 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
   scheduleSave(); renderAssign();
 }
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
-const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','telebat','sleep','interp','dnar','extcath'];
+const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','telebat','sleep','interp','dnar','extcath','dwt'];
 function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
 function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
 /* A warm one-liner when a staff member opens their own assignment. Rotates by day so it
