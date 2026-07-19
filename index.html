@@ -180,6 +180,8 @@
   .nurse.drop{outline:2px dashed var(--teal);outline-offset:2px;background:var(--teal-wash);}
   .nurse .nhead{display:flex;justify-content:space-between;align-items:center;gap:8px;}
   .nurse .name{font-weight:700;font-size:14.5px;font-family:var(--display);}
+  .nameedit{font-weight:700;font-size:14.5px;font-family:var(--display);color:var(--ink);background:transparent;border:none;border-bottom:1px dashed var(--line-strong);border-radius:4px;padding:1px 3px;max-width:56%;min-width:70px;}
+  .nameedit:focus{outline:none;border-bottom-color:var(--ink-soft);background:var(--bg);}
   .badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-soft);background:#F7F9FC;white-space:nowrap;}
   .badge.senior{background:#EEF3FF;border-color:#D4E0FB;color:#3A5BB5;}
   .badge.orient{background:#FFF4E6;border-color:#F6DEB6;color:#A9741B;}
@@ -2123,6 +2125,20 @@ function renderMySitter(){
   } else body='<div class="sitline">No room set yet — ask charge to assign your 1:1.</div>';
   c.innerHTML=staffWelcome(s.name)+staffPulseCard(s.name)+`<div class="mycard"><h3>${esc(s.name)} · your 1:1</h3>${body}${(()=>{ const v=vocForSitter(id); const slot=sitters.findIndex(x=>x.id===id)+1; return v?`<div class="sitline">📟 Vocera: <b>${esc(v)}</b> · Sitter ${slot}</div>`:''; })()}${breakPickerHTML(id,true)}</div>`;
 }
+function editableName(id,type,name){
+  // Before the board is posted, the charge can rename staff right on their card.
+  if(chargeMode && viewAs==='charge' && !boardPosted)
+    return `<input class="name nameedit" value="${esc(name)}" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" ondragstart="event.preventDefault()" onkeydown="if(event.key==='Enter')this.blur();" onchange="renameStaff('${id}','${type}',this.value)" title="Tap to rename (you can edit until you post)" aria-label="Staff name">`;
+  return `<span class="name">${esc(name)}</span>`;
+}
+function renameStaff(id,type,val){
+  val=(val||'').trim();
+  const arr = type==='n'?rosterN : type==='p'?rosterP : rosterS;
+  const x=arr.find(o=>o.id===id);
+  if(x && val) x.name=val;   // working arrays hold the same object refs, so the board updates too
+  scheduleSave(); if(cloudOn()&&chargeMode) pushMeta();
+  renderAssign();
+}
 function renderAssign(){
   renderQuickHits();
   if(!chargeMode){
@@ -2169,7 +2185,7 @@ function renderAssign(){
     const b=nurseBurdens(n.id); const bparts=BURDEN_ORDER.filter(k=>b[k]&&k!=='hi').map(k=>`<span class="bchip">${BURDEN_LAB[k]}${b[k]>1?' ×'+b[k]:''}</span>`);
     const kept = rs.length>0 && rs.every(r=>r.lock===n.id);
     return `<div class="nurse" id="nz-${n.id}" ondragover="allowDrop(event,'${n.id}')" ondragleave="leaveDrop(event)" ondrop="dropTo(event,'${n.id}')" onclick="placeHere('${n.id}')">
-      <div class="nhead"><span class="name">${n.name}</span><span class="badge ${bcls}">${n.level}</span><button class="keepbtn ${kept?'on':''}" onclick="event.stopPropagation(); keepGroup('${n.id}')" title="${kept?'Releasing — let re-generate reshuffle':'Keep this nurse\u2019s patients across re-generate (returning nurse)'}">${kept?'🔒 kept':'keep'}</button>${chargeMode?`<button class="qhelp" onclick="event.stopPropagation(); showHelp('keep')" title="What's this?">?</button>`:''}</div>
+      <div class="nhead">${editableName(n.id,'n',n.name)}<span class="badge ${bcls}">${n.level}</span><button class="keepbtn ${kept?'on':''}" onclick="event.stopPropagation(); keepGroup('${n.id}')" title="${kept?'Releasing — let re-generate reshuffle':'Keep this nurse\u2019s patients across re-generate (returning nurse)'}">${kept?'🔒 kept':'keep'}</button>${chargeMode?`<button class="qhelp" onclick="event.stopPropagation(); showHelp('keep')" title="What's this?">?</button>`:''}</div>
       <div class="hcov ${wings.length>1?'warn':''}">${hcov}</div>
       ${bud.length?`<div class="buddyline">🤝 Buddy: ${bud.map(esc).join(', ')}</div>`:''}
       ${(chargeMode&&viewAs==='charge')?(()=>{ const k=reportSources(n.id).length; return k?`<div class="buddyline">🗣 Takes report from ${k} nurse${k>1?'s':''}</div>`:''; })():''}
@@ -4481,7 +4497,7 @@ function renderSupport(){
       const rms=z.rooms.slice().sort((a,b)=>WALKPOS[a]-WALKPOS[b]); const voc=vocForPct(z.pct.id);
       const tapNurse = chargeMode ? ` onclick="movePctRoom('${z.pct.id}')"` : '';
       return `<div class="nurse pctcard${chargeMode&&selectedPctRoom!=null?' targetable':''}"${tapNurse}>`+
-        `<div class="nhead"><span class="name">${esc(z.pct.name)}</span><span class="badge pctbadge">PCT</span>${voc?`<span class="vocpill">📟 ${esc(voc)}</span>`:''}</div>`+
+        `<div class="nhead">${editableName(z.pct.id,'p',z.pct.name)}<span class="badge pctbadge">PCT</span>${voc?`<span class="vocpill">📟 ${esc(voc)}</span>`:''}</div>`+
         `<div class="chips">${rms.length? rms.map(r=>{ const moved=PCT_OVERRIDE[r]?' moved':''; const sel=(selectedPctRoom===r)?' selreq':'';
           return chargeMode
             ? `<button class="chip pctchip${moved}${sel}" onclick="event.stopPropagation(); selectPctRoom(${r})">${r}</button>`
