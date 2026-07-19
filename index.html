@@ -1824,6 +1824,7 @@ function show(v){
 function renderAcuity(){
   updateRubricTag();
   renderNextStep();
+  updateScoreProgress();   // top tile: next-shift scoring status (self-hides for staff / per-nurse views)
   let html='';
   if(viewAs!=='charge'){
     const n=nurses.find(x=>x.id===viewAs);
@@ -1839,17 +1840,6 @@ function renderAcuity(){
     html+='</div></div>';
     document.getElementById('halls').innerHTML=html;
     return;
-  }
-  if(chargeMode){
-    const occ=occupied(); const total=occ.length;
-    const fresh=occ.filter(roomUpdatedThisShift).length, stale=total-fresh;
-    const unscored=occ.filter(r=>!(r.acuity>0)).length;
-    const listActive=nurses.some(n=>occ.some(r=>r.nurse===n.id));   // per-nurse fold covers it then
-    if(total>0 && !listActive){
-      html+= stale>0
-        ? `<div class="scoreprog" style="display:block;margin-bottom:10px;">🩺 Updated for next shift: <b>${fresh} of ${total}</b> — ⚠ <b>${stale}</b> room${stale>1?'s':''} still showing last shift’s numbers${unscored?` (${unscored} unscored)`:''}</div>`
-        : `<div class="scoreprog ok" style="display:block;margin-bottom:10px;">✓ All ${total} rooms updated this shift</div>`;
-    }
   }
   for(const[k,h]of Object.entries(HALLS)){
     html+=`<div class="hall"><h2><span class="dot" style="background:${h.color}"></span>${h.label}</h2><div class="rgrid">`;
@@ -2256,32 +2246,42 @@ function updateBalance(){
 /* Charge-facing: which nurses still need to score their patients */
 function updateScoreProgress(){
   const el=document.getElementById('scoreProg'); if(!el) return;
-  if(!chargeMode){ el.style.display='none'; return; }
-  const assignedNurses=nurses.filter(n=>occupied().some(r=>r.nurse===n.id));
-  if(!assignedNurses.length){ el.style.display='none'; return; }
-  const rows=assignedNurses.map(n=>{
-    const rs=occupied().filter(r=>r.nurse===n.id);
-    const scored=rs.filter(roomUpdatedThisShift).length;
-    const allScored=scored===rs.length;
-    const done=n.scoredDone && allScored;
-    const status=done?'done':(allScored?'allscored':(scored>0?'partial':'none'));
-    return {name:n.name,scored,total:rs.length,status};
-  });
-  const waiting=rows.filter(r=>r.status!=='done');
-  if(!waiting.length){
-    el.innerHTML=`<span class="sp-ok">✓ Every patient updated this shift.</span>`;
-    el.className='scoreprog chargeOnly ok'; el.style.display=''; return;
+  if(!chargeMode || viewAs!=='charge'){ el.style.display='none'; return; }
+  const occ=occupied(); const total=occ.length;
+  if(!total){ el.style.display='none'; return; }
+  const fresh=occ.filter(roomUpdatedThisShift).length;
+  const stale=total-fresh;
+  const unscored=occ.filter(r=>!(r.acuity>0)).length;
+  // Headline: did THIS shift's staff update the acuity for the oncoming shift?
+  const head = stale>0
+    ? `\uD83E\uDE7A Scored for next shift: <b>${fresh} of ${total}</b> updated \u00b7 \u26a0 <b>${stale}</b> still on last shift\u2019s numbers${unscored?` (${unscored} unscored)`:''}`
+    : `\u2713 All ${total} rooms updated this shift \u2014 scored for the next shift`;
+  // When an assignment exists, add a per-nurse breakdown in a fold.
+  const assignedNurses=nurses.filter(n=>occ.some(r=>r.nurse===n.id));
+  if(assignedNurses.length){
+    const rows=assignedNurses.map(n=>{
+      const rs=occ.filter(r=>r.nurse===n.id);
+      const scored=rs.filter(roomUpdatedThisShift).length;
+      const allScored=scored===rs.length;
+      const done=n.scoredDone && allScored;
+      const status=done?'done':(allScored?'allscored':(scored>0?'partial':'none'));
+      return {name:n.name,scored,total:rs.length,status};
+    });
+    const chips=rows.map(r=>{
+      const cls=r.status==='done'?'spc-done':r.status==='allscored'?'spc-all':r.status==='partial'?'spc-part':'spc-none';
+      const tag=r.status==='done'?'\u2713 done':r.status==='allscored'?`${r.scored}/${r.total} \u2713`:`${r.scored}/${r.total}`;
+      return `<span class="spchip ${cls}">${esc(r.name)} <b>${tag}</b></span>`;
+    }).join('');
+    el.innerHTML=`<details class="sp-fold"><summary>${head}</summary><div class="sp-chips">${chips}</div></details>`;
+  } else if(stale>0){
+    // No assignment yet: list the rooms still on last shift's numbers so the charge can chase them.
+    const nums=occ.filter(r=>!roomUpdatedThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
+    const chips=nums.map(rn=>`<span class="spchip spc-part">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
+    el.innerHTML=`<details class="sp-fold"><summary>${head}</summary><div class="sp-chips">${chips}</div></details>`;
+  } else {
+    el.innerHTML=head;
   }
-  const chips=rows.map(r=>{
-    const cls=r.status==='done'?'spc-done':r.status==='allscored'?'spc-all':r.status==='partial'?'spc-part':'spc-none';
-    const tag=r.status==='done'?'✓ done':r.status==='allscored'?`${r.scored}/${r.total} ✓`:`${r.scored}/${r.total}`;
-    return `<span class="spchip ${cls}">${esc(r.name)} <b>${tag}</b></span>`;
-  }).join('');
-  const need=rows.filter(r=>r.status==='none'||r.status==='partial').map(r=>r.name);
-  const doneCount=rows.filter(r=>r.status==='done').length;
-  const summary=need.length?`🩺 Next-shift scoring — waiting on <b>${need.map(esc).join(', ')}</b>`:`✓ All rooms updated this shift`;
-  el.innerHTML=`<details class="sp-fold"><summary>${summary}</summary><div class="sp-chips">${chips}</div></details>`;
-  el.className='scoreprog chargeOnly'; el.style.display='';
+  el.className='scoreprog chargeOnly'+(stale>0?'':' ok'); el.style.display='';
 }
 
 /* Big plain-language "what to do next" banner — guides any new user step by step */
