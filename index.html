@@ -2136,6 +2136,10 @@ function renderAssign(){
   const top=maxAdj();
   refreshBuddies();
   const selfRN = !chargeMode && lockedRole()==='rn';
+  // Board order: nurses appear by the LOWEST room number they hold (RN with 33 first, then 34, 36…); unassigned nurses last.
+  // Sorting the working array keeps the card order, the RN slot number, and the Vocera device numbering all in step.
+  const _minRoom=nid=>{ let m=Infinity; occupied().forEach(r=>{ if(r.nurse===nid && r.id<m) m=r.id; }); return m; };
+  nurses.sort((a,b)=> (_minRoom(a.id)-_minRoom(b.id)) || String(a.name||'').localeCompare(String(b.name||'')));
   const shown = viewAs==='charge' ? nurses : nurses.filter(n=>n.id===viewAs);
   const anyAssignedNow=occupied().some(r=>r.nurse);
   if(chargeMode && viewAs==='charge' && !anyAssignedNow){
