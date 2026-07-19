@@ -182,6 +182,14 @@
   .nurse .name{font-weight:700;font-size:14.5px;font-family:var(--display);}
   .nameedit{font-weight:700;font-size:14.5px;font-family:var(--display);color:var(--ink);background:transparent;border:none;border-bottom:1px dashed var(--line-strong);border-radius:4px;padding:1px 3px;max-width:56%;min-width:70px;}
   .nameedit:focus{outline:none;border-bottom-color:var(--ink-soft);background:var(--bg);}
+  .lscard{border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin:0 0 8px;background:var(--surface);}
+  .lsname{font-weight:700;font-family:var(--display);font-size:14px;margin-bottom:6px;}
+  .lscount{font-weight:600;font-size:11px;color:var(--ink-soft);}
+  .lschips{display:flex;flex-wrap:wrap;gap:6px;}
+  .lschip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-strong);border-radius:8px;padding:3px 8px;font-size:12px;background:var(--bg);}
+  .lschip b{font-size:13px;}
+  .lsac{font-weight:700;color:var(--ink-soft);}
+  .lsfl{color:var(--ink-soft);font-size:10.5px;}
   .badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-soft);background:#F7F9FC;white-space:nowrap;}
   .badge.senior{background:#EEF3FF;border-color:#D4E0FB;color:#3A5BB5;}
   .badge.orient{background:#FFF4E6;border-color:#F6DEB6;color:#A9741B;}
@@ -1130,6 +1138,7 @@
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager analysis</button>
+          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openLastShift()">📋 Last shift’s board</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openHouseView()">🏥 House View</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openReportsView()">🐞 Bug reports</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');reportProblem()">🐞 Report a problem</button>
@@ -1242,6 +1251,13 @@
         <button class="btile" onclick="closeTools(); printBlankSheet();"><span class="btemoji">🖨️</span><span class="btlabel">Blank sheet</span><span class="btsub">paper backup</span></button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="scrim" id="lastShiftScrim" onclick="if(event.target===this)closeLastShift()">
+  <div class="modal">
+    <div class="mhead"><span class="rt">📋 Last shift’s board</span><button class="btn" onclick="closeLastShift()">Close</button></div>
+    <div class="mbody"><div id="lastShiftBody"></div></div>
   </div>
 </div>
 
@@ -1801,6 +1817,40 @@ const HELP={
 };
 function showHelp(key){ const h=HELP[key]; if(!h)return; document.getElementById('helpTitle').textContent=h[0]; document.getElementById('helpBody').textContent=h[1]; document.getElementById('helpScrim').classList.add('on'); }
 function closeHelp(){ document.getElementById('helpScrim').classList.remove('on'); }
+function openLastShift(){ renderLastShift(); document.getElementById('lastShiftScrim').classList.add('on'); }
+function closeLastShift(){ document.getElementById('lastShiftScrim').classList.remove('on'); }
+function renderLastShift(){
+  const body=document.getElementById('lastShiftBody'); if(!body) return;
+  const P=PREV_SHIFT;
+  const any = P && ((P.nurses||[]).length||(P.pcts||[]).length||(P.sitters||[]).length);
+  if(!any){
+    body.innerHTML=`<div class="hint" style="margin:0;">No previous shift saved yet. After a shift runs and the charge taps <b>End shift &amp; hand off</b>, that shift’s board shows here — read-only — so you can look up the rooms you had while giving report.</div>`;
+    return;
+  }
+  const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'just handed off';
+  let h=`<div class="staffhelp">Read-only — the assignment from the shift that just ended (<b>${lbl}</b>). Find your name to see the rooms you had. Scores and flags shown are the patients’ current values.</div>`;
+  if((P.nurses||[]).length){
+    h+=`<div class="grp"><h4>Nurses</h4>`;
+    P.nurses.slice().sort((a,b)=>{ const ma=(a.rooms&&a.rooms.length)?Math.min.apply(null,a.rooms):9999; const mb=(b.rooms&&b.rooms.length)?Math.min.apply(null,b.rooms):9999; return ma-mb; }).forEach(rec=>{
+      const rms=(rec.rooms||[]).slice().sort((x,y)=>x-y);
+      h+=`<div class="lscard"><div class="lsname">${esc(rec.name)} <span class="lscount">${rms.length} room${rms.length===1?'':'s'}</span></div><div class="lschips">`
+        +rms.map(rn=>{ const r=rooms[rn]; const fl=r?(r.flags||[]).map(getFlagLabel).slice(0,4).join(' · '):''; const ac=(r&&r.acuity>0)?acuFmt(r.acuity)+'h':''; return `<span class="lschip"><b>${rn}</b>${ac?`<span class="lsac">${ac}</span>`:''}${fl?`<span class="lsfl">${esc(fl)}</span>`:''}</span>`; }).join('')
+        +`</div></div>`;
+    });
+    h+=`</div>`;
+  }
+  if((P.pcts||[]).length){
+    h+=`<div class="grp"><h4>PCTs · zones</h4>`;
+    P.pcts.forEach(rec=>{ const rms=(rec.rooms||[]).slice().sort((x,y)=>x-y); h+=`<div class="lscard"><div class="lsname">${esc(rec.name)} <span class="lscount">${rms.length} room${rms.length===1?'':'s'}</span></div><div class="lschips">${rms.map(rn=>`<span class="lschip"><b>${rn}</b></span>`).join('')||'<span class="covsub">No rooms</span>'}</div></div>`; });
+    h+=`</div>`;
+  }
+  if((P.sitters||[]).length){
+    h+=`<div class="grp"><h4>Sitters · 1:1</h4>`;
+    P.sitters.forEach(rec=>{ h+=`<div class="lscard"><div class="lsname">${esc(rec.name)} <span class="lscount">Rm ${esc(String(rec.room))}</span></div></div>`; });
+    h+=`</div>`;
+  }
+  body.innerHTML=h;
+}
 function qbtn(key){ return `<button class="qhelp" onclick="event.stopPropagation(); showHelp('${key}')" title="What\u2019s this?">?</button>`; }
 function closeOverlays(){
   // close the ⋯ dropdown
@@ -6059,6 +6109,7 @@ function nextShift(){ if(!chargeMode)return;
   pushHistory();  // saves this shift to the cloud (or a local file if offline)
   // Snapshot who had what THIS shift, so the next charge can keep returning staff's patients (no PHI — ids/rooms only)
   const _snap={
+    shift: shiftType, date: shiftDate,
     nurses: nurses.map(n=>({id:n.id,name:n.name,rooms:occupied().filter(r=>r.nurse===n.id).map(r=>r.id)})).filter(x=>x.rooms.length),
     pcts: pcts.map(p=>({id:p.id,name:p.name,rooms:(pctZones().find(z=>z.pct.id===p.id)||{rooms:[]}).rooms.slice()})).filter(x=>x.rooms.length),
     sitters: sitters.map(s=>({id:s.id,name:s.name,room:s.room})).filter(x=>x.room)
