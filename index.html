@@ -1970,7 +1970,7 @@ function swingReasonHTML(){
 }
 function setSwingReason(r){ modalReason=(modalReason===r)?'':r; const w=document.getElementById('swingReasonWrap'); if(w) w.innerHTML=swingReasonHTML(); }
 function nextShiftHTML(){
-  const now = currentHrs();
+  const now = (modalMode==='express') ? (modalExpress!=null?modalExpress:0) : currentHrs();   // express/direct scores aren't in the tally — use the shown score, not 0
   const nv = (modalNext!=null) ? modalNext : now;
   return `<div class="grp"><h4>Next shift <span style="font-weight:400;color:var(--ink-soft)">· predicted</span><button class="qhelp" onclick="showHelp('nextshift')" title="What\u2019s this?">?</button></h4>`
     +`<div class="hint" style="margin:0 0 7px;">How heavy will this patient be for the <b>oncoming</b> shift? Leave it if nothing changes; bump it if a procedure clears, an admit is coming, etc. The next assignment is built from this number.</div>`
