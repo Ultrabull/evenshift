@@ -2302,34 +2302,40 @@ function updateScoreProgress(){
   const fresh=occ.filter(roomUpdatedThisShift).length;
   const stale=total-fresh;
   const unscored=occ.filter(r=>!(r.acuity>0)).length;
-  // Headline: did THIS shift's staff update the acuity for the oncoming shift?
-  const head = stale>0
-    ? `\uD83E\uDE7A Scored for next shift: <b>${fresh} of ${total}</b> updated \u00b7 \u26a0 <b>${stale}</b> still on last shift\u2019s numbers${unscored?` (${unscored} unscored)`:''}`
-    : `\u2713 All ${total} rooms updated this shift \u2014 scored for the next shift`;
-  // When an assignment exists, add a per-nurse breakdown in a fold.
   const assignedNurses=nurses.filter(n=>occ.some(r=>r.nurse===n.id));
   if(assignedNurses.length){
+    // Who has updated their patients this shift, and who still hasn't — shown by name, always visible.
     const rows=assignedNurses.map(n=>{
       const rs=occ.filter(r=>r.nurse===n.id);
       const scored=rs.filter(roomUpdatedThisShift).length;
-      const allScored=scored===rs.length;
-      const done=n.scoredDone && allScored;
-      const status=done?'done':(allScored?'allscored':(scored>0?'partial':'none'));
-      return {name:n.name,scored,total:rs.length,status};
-    });
-    const chips=rows.map(r=>{
-      const cls=r.status==='done'?'spc-done':r.status==='allscored'?'spc-all':r.status==='partial'?'spc-part':'spc-none';
-      const tag=r.status==='done'?'\u2713 done':r.status==='allscored'?`${r.scored}/${r.total} \u2713`:`${r.scored}/${r.total}`;
-      return `<span class="spchip ${cls}">${esc(r.name)} <b>${tag}</b></span>`;
-    }).join('');
-    el.innerHTML=`<details class="sp-fold"><summary>${head}</summary><div class="sp-chips">${chips}</div></details>`;
-  } else if(stale>0){
-    // No assignment yet: list the rooms still on last shift's numbers so the charge can chase them.
+      const all=scored===rs.length;
+      return {name:(n.name||'').split(' ')[0], scored, total:rs.length, all};
+    }).sort((a,b)=> (a.all?1:0)-(b.all?1:0) || a.name.localeCompare(b.name));   // pending first
+    const pending=rows.filter(r=>!r.all);
+    const chips=rows.map(r=> r.all
+      ? `<span class="spchip spc-done">\u2713 ${esc(r.name)}</span>`
+      : `<span class="spchip spc-none">${esc(r.name)} <b>${r.scored}/${r.total}</b></span>`).join('');
+    let head;
+    if(pending.length){
+      const names=pending.slice(0,3).map(r=>esc(r.name)).join(', ')+(pending.length>3?` +${pending.length-3} more`:'');
+      head=`\uD83E\uDE7A Next-shift scoring \u2014 waiting on <b>${names}</b>${unscored?` \u00b7 ${unscored} room${unscored>1?'s':''} unscored`:''}`;
+    } else {
+      head=`\u2713 Everyone scored for next shift \u2014 all ${total} rooms updated this shift`;
+    }
+    el.innerHTML=`<div class="sp-head">${head}</div><div class="sp-chips">${chips}</div>`;
+    el.className='scoreprog chargeOnly'+(pending.length?'':' ok'); el.style.display='';
+    return;
+  }
+  // No assignment loaded — can't attribute to a nurse, so show which ROOMS still need scoring.
+  const head = stale>0
+    ? `\uD83E\uDE7A Next-shift scoring: <b>${fresh} of ${total}</b> rooms updated \u00b7 \u26a0 <b>${stale}</b> still pending${unscored?` (${unscored} unscored)`:''}`
+    : `\u2713 All ${total} rooms updated this shift \u2014 scored for the next shift`;
+  if(stale>0){
     const nums=occ.filter(r=>!roomUpdatedThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
-    const chips=nums.map(rn=>`<span class="spchip spc-part">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
-    el.innerHTML=`<details class="sp-fold"><summary>${head}</summary><div class="sp-chips">${chips}</div></details>`;
+    const chips=nums.map(rn=>`<span class="spchip spc-none">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
+    el.innerHTML=`<div class="sp-head">${head}</div><div class="sp-chips">${chips}</div>`;
   } else {
-    el.innerHTML=head;
+    el.innerHTML=`<div class="sp-head">${head}</div>`;
   }
   el.className='scoreprog chargeOnly'+(stale>0?'':' ok'); el.style.display='';
 }
