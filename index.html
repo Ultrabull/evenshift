@@ -5868,6 +5868,14 @@ function houseBeds(){
 
 function setMgrCode(){
   if(!chargeMode){ alert('Unlock as Charge first (tap 🔒 Charge at the top), then open More Tools → Manager code.'); return; }
+  // Changing the manager code requires knowing the CURRENT one — it outranks charge access.
+  // Only the factory placeholder (0000) / first-time setup skips this check.
+  const isDefault = !mgrPin || mgrPin===pinStore('0000');
+  if(!isDefault){
+    const old=(prompt('Enter the CURRENT manager code first:')||'').trim();
+    if(old==='') return;   // cancelled
+    if(pinStore(old)!==mgrPin){ alert('That doesn\u2019t match the current manager code — the code was NOT changed.'); return; }
+  }
   const cur=(prompt('Set a new MANAGER code (for Manager analysis).\nThis is separate from the charge PIN — only leadership should know it.\nUse 4+ digits or letters.')||'').trim();
   if(cur===''){ return; }   // cancelled
   if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters. Try again from More Tools → Manager code.'); return; }
