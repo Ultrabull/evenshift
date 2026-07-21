@@ -5373,6 +5373,11 @@ function staffReqText(){
   L.push(`Staffing Request`);
   L.push(`Unit: ${FLOOR.unit}   For: ${seven}   Date: ${shiftDate}`);
   L.push('');
+  L.push(`— Census —`);
+  L.push(`Expected census @ start: ${srv('census',d.projCensus)}`);
+  L.push(`Anticipated discharges: ${srv('dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''))}`);
+  L.push(`Expected ORs / out-of-OR: ${srv('or','').trim()||'____'}`);
+  L.push('');
   L.push(`— Assigned staff for next shift —`);
   L.push(`RN: ${srv('asgrn',d.rnAvail)}   PCT: ${srv('asgpct',d.pctSched)}   HUC: ${srv('asghuc',d.hucSched)}`);
   L.push('');
@@ -5384,15 +5389,10 @@ function staffReqText(){
   L.push(`— Staffing needs —`);
   L.push(`Sitter (rooms): ${srv('sitter',sitAuto)}`);
   L.push(`Reason for sitter: ${srv('sitreason','').trim()||'____'}`);
+  L.push(`Insulin gtt on floor: ${srv('ins', d.ins.length?'Rm '+d.ins.join(', '):'none')}`);
   L.push(`RNs requested: ${d.rnReq}   PCTs requested: ${d.pctReq}   HUCs requested: ${d.hucReq}`);
   L.push('');
   L.push(`Next to float: ${srv('float','').trim()||'____'}`);
-  L.push('');
-  L.push(`— Census & clinical —`);
-  L.push(`Expected census @ start: ${srv('census',d.projCensus)}`);
-  L.push(`Anticipated discharges: ${srv('dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''))}`);
-  L.push(`Insulin gtt on floor: ${srv('ins', d.ins.length?'Rm '+d.ins.join(', '):'none')}`);
-  L.push(`Expected ORs / out-of-OR: ${srv('or','').trim()||'____'}`);
   if(srv('note','').trim()){ L.push(''); L.push(`Notes: ${srv('note','').trim()}`); }
   L.push('');
   L.push(`Reported by: ${chargeName||'Charge RN'}`);
@@ -5415,6 +5415,11 @@ function staffReqPDF(){
   td.k{width:42%;color:#5A6270;font-weight:600}.note{margin-top:14px;font-size:9.5px;color:#9098A4}</style></head><body>
   <h1>Staffing Request</h1>
   <div class="sub">${esc(FLOOR.unit||'Unit')} &nbsp;·&nbsp; For <b>${esc(seven)}</b> &nbsp;·&nbsp; ${esc(shiftDate)} &nbsp;·&nbsp; Charge: ${esc(chargeName||'____')}</div>
+  <h2>Census</h2><table>
+  ${row('Expected census @ start', srv('census',d.projCensus))}
+  ${row('Anticipated discharges', srv('dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':'')))}
+  ${row('Expected ORs / out-of-OR', srv('or',''))}
+  </table>
   <h2>Assigned staff for next shift</h2><table>
   ${row('RN', srv('asgrn',d.rnAvail))}
   ${row('PCT', srv('asgpct',d.pctSched))}
@@ -5428,17 +5433,12 @@ function staffReqPDF(){
   <h2>Staffing needs</h2><table>
   ${row('Sitter (rooms)', srv('sitter',sitAuto))}
   ${row('Reason for sitter', srv('sitreason',''))}
+  ${row('Insulin gtt on floor', srv('ins', d.ins.length?'Rm '+d.ins.join(', '):'none'))}
   ${row('RNs requested', d.rnReq)}
   ${row('PCTs requested', d.pctReq)}
   ${row('HUCs requested', d.hucReq)}
   </table>
   <h2>Next to float</h2><table>${row('Next to float', srv('float',''))}</table>
-  <h2>Census &amp; clinical</h2><table>
-  ${row('Expected census @ start', srv('census',d.projCensus))}
-  ${row('Anticipated discharges', srv('dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':'')))}
-  ${row('Insulin gtt on floor', srv('ins', d.ins.length?'Rm '+d.ins.join(', '):'none'))}
-  ${row('Expected ORs / out-of-OR', srv('or',''))}
-  </table>
   ${srv('note','').trim()?`<h2>Notes</h2><div style="font-size:13px;padding:6px 0">${esc(srv('note','').trim())}</div>`:''}
   <div class="note">EvenShift · room numbers only, no patient names · reported by ${esc(chargeName||'Charge RN')}</div>
   <script>window.onload=function(){window.print();}<\/script></body></html>`;
@@ -5455,6 +5455,10 @@ function renderStaffReqTab(){
   let h=`<div class="meetSection">`;
   h+=`<div class="meetRow"><b>${esc(FLOOR.unit)}</b> · For <b>${seven}</b> · ${esc(shiftDate)}</div>`;
   h+=`<div class="meetRow" style="font-size:11.5px;color:var(--ink-soft);background:var(--bg)">Everything below starts pre-filled from your board — <b>type over any field</b> and your version goes on the request. Resets each shift.</div>`;
+  h+=secHead('Census — edit anything');
+  h+=fld('Expected census @ start','census',d.projCensus,'');
+  h+=fld('Anticipated discharges','dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''),'');
+  h+=fld('Expected ORs / out-of-OR','or','','times');
   h+=secHead('Assigned staff for next shift');
   h+=fld('RN','asgrn',d.rnAvail,'how many RNs');
   h+=fld('PCT','asgpct',d.pctSched,'how many PCTs');
@@ -5466,16 +5470,12 @@ function renderStaffReqTab(){
   h+=secHead('Staffing needs');
   h+=fld('Sitter (rooms)','sitter',sitAuto,'room numbers');
   h+=fld('Reason for sitter','sitreason','','SI/SH · AMS · safety…');
+  h+=fld('Insulin gtt on floor','ins', d.ins.length?'Rm '+d.ins.join(', '):'none','');
   h+=`<div class="reqrow"><span>RNs requested</span>${stepper('rn',d.rnReq,d.rnReqSuggest)}</div>`;
   h+=`<div class="reqrow"><span>PCTs requested</span>${stepper('pct',d.pctReq,null)}</div>`;
   h+=`<div class="reqrow"><span>HUCs requested</span>${stepper('huc',d.hucReq,null)}</div>`;
   h+=secHead('Next to float');
   h+=fld('Next to float','float','','who floats next · to / from');
-  h+=secHead('Census & clinical — edit anything');
-  h+=fld('Expected census @ start','census',d.projCensus,'');
-  h+=fld('Anticipated discharges','dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''),'');
-  h+=fld('Insulin gtt on floor','ins', d.ins.length?'Rm '+d.ins.join(', '):'none','');
-  h+=fld('Expected ORs / out-of-OR','or','','times');
   h+=`<textarea class="hudnote" placeholder="Notes (optional)" oninput="setSRF('note',this.value)">${esc(srv('note',''))}</textarea>`;
   h+=`<div class="hudactions"><button class="btn primary" onclick="staffReqPDF()">\uD83D\uDCC4 Save / Share PDF</button><button class="btn" onclick="copyMeetingPrep()">Copy</button></div>`;
   h+=`</div>`;
