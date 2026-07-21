@@ -1131,7 +1131,7 @@
       </div>
     </div>
     <div class="ab-right">
-      <button class="lockbtn" id="lockBtn" onclick="toggleLock()">🔒 View only</button>
+      <button class="lockbtn" id="lockBtn" onclick="toggleLock()">🔒 Charge console</button>
       <span class="savestate" id="saveState">—</span>
       <details class="menu">
         <summary class="iconbtn" aria-label="Menu" title="Menu">
@@ -1560,9 +1560,9 @@
 
 <div class="scrim" id="pinScrim" onclick="if(event.target===this)closePin()">
   <div class="modal pinmodal">
-    <div class="mhead"><span class="rt" id="pinTitle">Charge / ANM PIN</span><button class="btn" onclick="closePin()">Cancel</button></div>
+    <div class="mhead"><span class="rt" id="pinTitle">Charge console</span><button class="btn" onclick="closePin()">Cancel</button></div>
     <div class="mbody">
-      <p class="imps" id="pinMsg">Enter the charge / ANM PIN to unlock editing.</p>
+      <p class="imps" id="pinMsg">Enter the charge PIN to open the charge console.</p>
       <input id="pinInput" class="pinin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter')submitPin()">
       <div class="rsharebtns"><button class="btn primary" id="pinBtn" onclick="submitPin()">Unlock</button></div>
       <div id="pinErr" class="rmsg" style="color:var(--bad);"></div>
@@ -2284,7 +2284,7 @@ function renderAssign(){
   if(!chargeMode){
     const role=lockedRole();
     const c=document.getElementById('nurses');
-    if(role===null){ if(c) c.innerHTML='<div class="pickprompt">👆 Tap your name above to see your patients and score them.<br><span>Charge / ANM: tap <b>🔒 View only</b> at the top to unlock.</span></div>'; return; }
+    if(role===null){ if(c) c.innerHTML='<div class="pickprompt">👆 Tap your name above to see your patients and score them.<br><span>Charge / ANM: tap <b>🔒 Charge console</b> at the top to unlock.</span></div>'; return; }
     if(role==='pct'){ renderMyPCT(); return; }
     if(role==='sitter'){ renderMySitter(); return; }
     // role 'rn' → falls through to the nurse-slice render below
@@ -2505,6 +2505,7 @@ function renderNextStep(){
    the guide bar at the top names the next step and its Go button jumps there. */
 function jumpToNextStep(){
   if(!chargeMode) return;
+  viewAs='charge'; refreshViewOptions();   // charge always lands on the full all-rooms page, even if a staff name was tapped earlier
   show('acuity');
 }
 /* Big tappable tiles — the whole Build tab. Names chosen so a brand-new nurse knows each one. */
@@ -3696,7 +3697,7 @@ function pinStore(p){ try{ return btoa(unescape(encodeURIComponent(p+'::es'))); 
 /* Open the Vocera editor for a HUC: charge is always allowed; otherwise ask for the HUC code (or charge PIN). */
 function openVoceraGated(){
   if(chargeMode){ openVocera(); return; }
-  if(!hucPin){ alert('No HUC code is set yet.\n\nAsk the charge nurse to set one: 🔓 Charge → ⚙️ More Tools → HUC code.'); return; }
+  if(!hucPin){ alert('No HUC code is set yet.\n\nAsk the charge nurse to set one: 🔓 Charge console → ⚙️ More Tools → Manager console → HUC code.'); return; }
   const v=(prompt('Enter the HUC code to open the Vocera phones:')||'').trim();
   if(!v) return;
   if(pinStore(v)===hucPin || (chargePin && pinStore(v)===chargePin)){ openVocera(); }
@@ -3734,7 +3735,7 @@ function applyAccessUI(){
   if(!chargeMode && viewAs==='charge') viewAs='';                                                         // hide full board from nurses
   document.body.classList.toggle('locked', !chargeMode);
   document.querySelectorAll('.chargeOnly').forEach(el=>{ el.style.display=''; });   // let CSS (body.locked) govern visibility
-  const lb=document.getElementById('lockBtn'); if(lb){ lb.textContent=chargeMode?'🔓 Charge':'🔒 View only'; lb.classList.toggle('unlocked',chargeMode); }
+  const lb=document.getElementById('lockBtn'); if(lb){ lb.textContent=chargeMode?'🔓 Charge console':'🔒 Charge console'; lb.classList.toggle('unlocked',chargeMode); }
   if(!chargeMode){ fillWho(); show('assign'); }
   updateScoreTab();
   refreshViewOptions();
@@ -3746,9 +3747,9 @@ function setViewAs(v){ viewAs=v; updateScoreTab(); if(!chargeMode && lockedRole(
 function toggleLock(){ if(chargeMode){ chargeMode=false; applyAccessUI(); } else openPin(); }
 function openPin(){ const setup=!chargePin;
   const t=document.getElementById('pinTitle'),m=document.getElementById('pinMsg'),b=document.getElementById('pinBtn');
-  if(t)t.textContent=setup?'Set charge / ANM PIN':'Enter charge PIN';
-  if(m)m.textContent=setup?'Create a PIN (4+ digits) that charge and ANM will use to unlock editing.':'Enter the charge / ANM PIN to unlock editing.';
-  if(b)b.textContent=setup?'Set & unlock':'Unlock';
+  if(t)t.textContent=setup?'Set up the charge console':'Charge console';
+  if(m)m.textContent=setup?'Create a PIN (4+ digits) that charge and ANM will use to open the charge console.':'Enter the charge PIN to open the charge console.';
+  if(b)b.textContent=setup?'Set & open':'Open';
   const i=document.getElementById('pinInput'); if(i)i.value=''; const e=document.getElementById('pinErr'); if(e)e.textContent='';
   document.getElementById('pinScrim').classList.add('on'); setTimeout(()=>{const x=document.getElementById('pinInput'); if(x)x.focus();},60); }
 function closePin(){ document.getElementById('pinScrim').classList.remove('on'); }
