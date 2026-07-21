@@ -1239,6 +1239,7 @@
         <button class="btile" onclick="closeTools(); openFloor();"><span class="btemoji">🏥</span><span class="btlabel">Floor &amp; beds</span><span class="btsub">rooms &amp; halls</span></button>
         <button class="btile" onclick="closeTools(); openRubric();"><span class="btemoji">📏</span><span class="btlabel">Acuity rubric</span><span class="btsub">how scoring works</span></button>
         <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
+        <button class="btile" onclick="closeTools(); openPctFlagCfg();"><span class="btemoji">🧑‍⚕️</span><span class="btlabel">PCT care flags</span><span class="btsub">what PCTs see &amp; edit</span></button>
         <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
         <button class="btile" onclick="closeTools(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
         <button class="btile" onclick="closeTools(); setMgrCode();"><span class="btemoji">📊</span><span class="btlabel">Manager code</span><span class="btsub">analysis access</span></button>
@@ -1366,6 +1367,16 @@
     <div class="mbody">
       <p class="covnote">Customize which flags appear in the scorer and how they're labeled. Engine flags (🔒) are always present — they drive assignment rules and can't be removed.</p>
       <div id="flagEditorBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="pctFlagCfgScrim" onclick="if(event.target===this)closePctFlagCfg()">
+  <div class="modal wide">
+    <div class="mhead"><span class="rt">🧑‍⚕️ PCT care flags</span><button class="btn" onclick="closePctFlagCfg()">Done</button></div>
+    <div class="mbody">
+      <p class="covnote">Choose which care flags PCTs can see and update on their zone rooms. Changes apply to the whole unit right away.</p>
+      <div id="pctFlagCfgBody"></div>
     </div>
   </div>
 </div>
@@ -1616,7 +1627,8 @@ let UNIT_FLAG_CONFIG={
   hidden:[],          // display-flag codes to hide from scorer
   renames:{},         // {code:{label,full}} overrides
   custom:[],          // [{code:'cf1',label:'PICC',full:'PICC line'}]
-  rules:{}            // {code:{mode:'spread'|'cap'|'none', cap:N}} — how the engine balances this flag
+  rules:{},           // {code:{mode:'spread'|'cap'|'none', cap:N}} — how the engine balances this flag
+  pctView:null        // charge-picked list of flag codes PCTs see/edit; null = the built-in default list
 };
 // Default balance rules baked from 10 Green convention (engine already handles beh/conf/heavy internally)
 const DEFAULT_FLAG_RULES={beh:{mode:'cap',cap:1},ins:{mode:'ratiocap',ratio:3},cvl:{mode:'spread'},trach:{mode:'cap',cap:1},tot:{mode:'spread'},sit:{mode:'spread'},conf:{mode:'spread'},dc:{mode:'spread'},adm:{mode:'spread'}};
@@ -2116,7 +2128,10 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
 const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','telebat','sleep','interp','dnar','extcath','dwt','q4v','q8v'];
 const PCT_READONLY=['beh','dnar'];   // shown to PCTs for awareness, but only a nurse/charge can change them
-function getPCTView(){ return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])]; }
+function getPCTView(){
+  if(Array.isArray(UNIT_FLAG_CONFIG.pctView)) return [...new Set(UNIT_FLAG_CONFIG.pctView)];   // charge-customized list wins
+  return [...new Set([...PCT_VIEW_BASE,...(UNIT_FLAG_CONFIG.custom||[]).map(c=>c.code)])];
+}
 function roomCareFlags(rn){ const r=rooms[rn]; if(!r) return []; return getPCTView().filter(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).map(flagLabel); }
 /* A warm one-liner when a staff member opens their own assignment. Rotates by day so it
    feels fresh but stays the same across a shift. First name only. */
@@ -4915,7 +4930,7 @@ function applyState(st){
   boardPosted=!!st.boardPosted; SCORES_OK=!!st.scoresOk; CREW_OK=!!st.crewOk; vocConfirmed=!!st.vocOk; SHIFT_START=st.shiftStart||0; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
-  if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{}};
+  if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{},pctView:Array.isArray(st.unitFlagConfig.pctView)?st.unitFlagConfig.pctView:null};
   PCT_OVERRIDE=(st.pctOverride&&typeof st.pctOverride==='object')?st.pctOverride:{};
   CODE_OVERRIDE=(st.codeOverride&&typeof st.codeOverride==='object')?st.codeOverride:{};
   if(st.vocDevices&&st.vocDevices.Day&&st.vocDevices.Night){ VOC_DEVICES=st.vocDevices;
@@ -5055,6 +5070,38 @@ function addCustomFlag(){
 }
 function removeCustomFlag(i){
   UNIT_FLAG_CONFIG.custom.splice(i,1); scheduleSave(); renderFlagEditor();
+}
+/* ── PCT care-flag picker (More Tools): which flags PCTs see & edit on their zone rooms ── */
+function openPctFlagCfg(){ if(!chargeMode)return; renderPctFlagCfg(); document.getElementById('pctFlagCfgScrim').classList.add('on'); }
+function closePctFlagCfg(){ document.getElementById('pctFlagCfgScrim').classList.remove('on'); renderAssign(); renderAcuity(); }
+function renderPctFlagCfg(){
+  const el=document.getElementById('pctFlagCfgBody'); if(!el) return;
+  const view=getPCTView();
+  let h='<div class="meetSec">Tap to turn flags on or off for PCTs</div>';
+  h+='<div class="custogs">'+getActiveFlags().map(([c,l])=>{
+    const on=view.includes(c); const ro=PCT_READONLY.includes(c);
+    return `<label class="custog"><input type="checkbox" ${on?'checked':''} onchange="togPctViewFlag('${c}',this.checked)"> ${esc(l)}${ro?' \uD83D\uDD12':''}</label>`;
+  }).join('')+'</div>';
+  h+='<p class="covnote" style="margin-top:8px;">\uD83D\uDD12 Behavioral and DNAR show to PCTs for awareness but stay nurse-only to change.</p>';
+  h+='<div class="meetSec" style="margin-top:12px;">Need a flag that doesn\u2019t exist yet?</div>';
+  h+='<button class="btn sm" onclick="addPctCustomFlag()">+ Add a new care flag</button>';
+  h+='<p class="covnote" style="margin-top:8px;">New flags join the unit\u2019s clinical flag list (nurses can use them too) and turn on for PCTs automatically. Rename or set balancing under More Tools \u2192 Clinical flags.</p>';
+  el.innerHTML=h;
+}
+function togPctViewFlag(c,on){
+  if(!Array.isArray(UNIT_FLAG_CONFIG.pctView)) UNIT_FLAG_CONFIG.pctView=getPCTView();   // first edit: freeze the current list, then adjust
+  if(on){ if(!UNIT_FLAG_CONFIG.pctView.includes(c)) UNIT_FLAG_CONFIG.pctView.push(c); }
+  else UNIT_FLAG_CONFIG.pctView=UNIT_FLAG_CONFIG.pctView.filter(x=>x!==c);
+  scheduleSave(); if(cloudOn()&&chargeMode) pushMeta();
+}
+function addPctCustomFlag(){
+  const lab=(prompt('Name the new care flag (e.g. "TED hose"):')||'').trim();
+  if(!lab) return;
+  const code='cf'+(Date.now()%100000);
+  UNIT_FLAG_CONFIG.custom.push({code,label:lab,full:lab});
+  if(!Array.isArray(UNIT_FLAG_CONFIG.pctView)) UNIT_FLAG_CONFIG.pctView=getPCTView();
+  if(!UNIT_FLAG_CONFIG.pctView.includes(code)) UNIT_FLAG_CONFIG.pctView.push(code);
+  scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); renderPctFlagCfg();
 }
 /* ─────────────────── end flag editor ─────────────────── */
 
