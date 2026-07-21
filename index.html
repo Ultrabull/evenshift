@@ -4185,6 +4185,19 @@ function partitionEven(items, k){
   while(rem>0){ sizes[lo]++; rem--; if(rem>0 && hi!==lo){ sizes[hi]++; rem--; } lo++; hi--; if(lo>hi){ lo=0; hi=k-1; } }
   const out=[]; let idx=0; for(let i=0;i<k;i++){ out.push(items.slice(idx,idx+sizes[i])); idx+=sizes[i]; } return out;
 }
+/* Split a walk-ordered list into k CONTIGUOUS chunks whose sizes follow `targets`
+   (e.g. how many more rooms each PCT should get so pinned zones don't double-load them). */
+function partitionByTargets(items, targets){
+  const k=targets.length, n=items.length;
+  const tsum=targets.reduce((a,b)=>a+(b>0?b:0),0);
+  let sizes;
+  if(tsum<=0){ return partitionEven(items, k); }
+  sizes=targets.map(t=>Math.floor((t>0?t:0)/tsum*n));
+  let rema=n-sizes.reduce((a,b)=>a+b,0);
+  const order=targets.map((t,i)=>[t,i]).sort((a,b)=>b[0]-a[0]).map(x=>x[1]);   // extras to the biggest deficits first
+  let oi=0; while(rema>0){ sizes[order[oi%k]]++; rema--; oi++; }
+  const out=[]; let idx=0; for(let i=0;i<k;i++){ out.push(items.slice(idx,idx+sizes[i])); idx+=sizes[i]; } return out;
+}
 /* Split a walk-ordered room list into k CONTIGUOUS groups with the most even total burden.
    Contiguity preserves geography (two-hall). Greedy: walk the rooms, start a new group when the
    running burden passes the per-group target, leaving enough rooms for the groups still to come. */
@@ -4264,7 +4277,15 @@ function pctZones(){
   const valid=new Set(pcts.map(p=>p.id));
   const overridden=occ.filter(rn=>PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn]));
   const autoPool=occ.filter(rn=>!(PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn])));
-  const chunks=PCT_MODE ? partitionByBurden(autoPool, k) : partitionEven(autoPool, k);   // contiguous runs along the floor walk
+  // Balance the TOTAL zone, not just the leftover pool: a PCT already holding pinned rooms
+  // (returning / manually moved) should get fewer of the remaining rooms so no one is double-loaded.
+  const pinnedCount=pcts.map(()=>0);
+  overridden.forEach(rn=>{ const i=pcts.findIndex(p=>p.id===PCT_OVERRIDE[rn]); if(i>=0) pinnedCount[i]++; });
+  const anyPinned=pinnedCount.some(c=>c>0);
+  const fair=occ.length/k;
+  const chunks = anyPinned
+    ? partitionByTargets(autoPool, pcts.map((p,i)=>Math.max(0, fair-pinnedCount[i])))   // fill the PCTs who are under a fair share
+    : (PCT_MODE ? partitionByBurden(autoPool, k) : partitionEven(autoPool, k));          // contiguous runs along the floor walk
   const byPct={}; pcts.forEach((p,i)=>{ byPct[p.id]=(chunks[i]||[]).slice(); });
   overridden.forEach(rn=>{ byPct[PCT_OVERRIDE[rn]].push(rn); });
   return pcts.map(p=>{ const rms=(byPct[p.id]||[]).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);
