@@ -1236,21 +1236,33 @@
       <div class="cardsec">Set up your unit</div>
       <div class="btilegrid">
         <button class="btile" onclick="closeTools(); openUnitQR();"><span class="btemoji">🔗</span><span class="btlabel">Unit link &amp; QR</span><span class="btsub">share access</span></button>
-        <button class="btile" onclick="closeTools(); openFloor();"><span class="btemoji">🏥</span><span class="btlabel">Floor &amp; beds</span><span class="btsub">rooms &amp; halls</span></button>
         <button class="btile" onclick="closeTools(); openRubric();"><span class="btemoji">📏</span><span class="btlabel">Acuity rubric</span><span class="btsub">how scoring works</span></button>
         <button class="btile" onclick="closeTools(); openFlagEditor();"><span class="btemoji">🏷️</span><span class="btlabel">Clinical flags</span><span class="btsub">edit / add flags</span></button>
         <button class="btile" onclick="closeTools(); openPctFlagCfg();"><span class="btemoji">🧑‍⚕️</span><span class="btlabel">PCT care flags</span><span class="btsub">what PCTs see &amp; edit</span></button>
-        <button class="btile" onclick="closeTools(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
-        <button class="btile" onclick="closeTools(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
-        <button class="btile" onclick="closeTools(); setMgrCode();"><span class="btemoji">📊</span><span class="btlabel">Manager code</span><span class="btsub">analysis access</span></button>
         <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload roster + Vocera</span></button>
-        <button class="btile danger" onclick="closeTools(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
+        <button class="btile" onclick="closeTools(); openMgrConsole();"><span class="btemoji">🗂️</span><span class="btlabel">Manager console</span><span class="btsub">floor · codes · erase</span></button>
       </div>
       <div class="cardsec">Board tools</div>
       <div class="btilegrid">
         <button class="btile" onclick="closeTools(); undo();"><span class="btemoji">↶</span><span class="btlabel">Undo</span><span class="btsub">last change</span></button>
         <button class="btile" onclick="closeTools(); resetBoard();"><span class="btemoji">🧹</span><span class="btlabel">Clear board</span><span class="btsub">start over</span></button>
         <button class="btile" onclick="closeTools(); printBlankSheet();"><span class="btemoji">🖨️</span><span class="btlabel">Blank sheet</span><span class="btsub">paper backup</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="mgrConsoleScrim" onclick="if(event.target===this)closeMgrConsole()">
+  <div class="modal">
+    <div class="mhead"><span class="rt">🗂️ Manager console</span><button class="btn" onclick="closeMgrConsole()">Close</button></div>
+    <div class="mbody">
+      <div class="hint" style="margin-top:0;">Unit setup &amp; leadership controls. These change the floor and the access codes for everyone on the unit.</div>
+      <div class="btilegrid">
+        <button class="btile" onclick="closeMgrConsole(); openFloor();"><span class="btemoji">🏥</span><span class="btlabel">Floor &amp; beds</span><span class="btsub">rooms &amp; halls</span></button>
+        <button class="btile" onclick="closeMgrConsole(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
+        <button class="btile" onclick="closeMgrConsole(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
+        <button class="btile" onclick="closeMgrConsole(); setMgrCode();"><span class="btemoji">📊</span><span class="btlabel">Manager code</span><span class="btsub">analysis access</span></button>
+        <button class="btile danger" onclick="closeMgrConsole(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
       </div>
     </div>
   </div>
@@ -1841,13 +1853,13 @@ function renderLastShift(){
     return;
   }
   const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'just handed off';
-  let h=`<div class="staffhelp">Read-only — the assignment from the shift that just ended (<b>${lbl}</b>). Find your name to see the rooms you had. Scores and flags shown are the patients’ current values.</div>`;
+  let h=`<div class="staffhelp">Read-only — the final assignment from the shift that just ended (<b>${lbl}</b>). Find your name to see the rooms you had.</div>`;
   if((P.nurses||[]).length){
     h+=`<div class="grp"><h4>Nurses</h4>`;
     P.nurses.slice().sort((a,b)=>{ const ma=(a.rooms&&a.rooms.length)?Math.min.apply(null,a.rooms):9999; const mb=(b.rooms&&b.rooms.length)?Math.min.apply(null,b.rooms):9999; return ma-mb; }).forEach(rec=>{
       const rms=(rec.rooms||[]).slice().sort((x,y)=>x-y);
       h+=`<div class="lscard"><div class="lsname">${esc(rec.name)} <span class="lscount">${rms.length} room${rms.length===1?'':'s'}</span></div><div class="lschips">`
-        +rms.map(rn=>{ const r=rooms[rn]; const fl=r?(r.flags||[]).map(getFlagLabel).slice(0,4).join(' · '):''; const ac=(r&&r.acuity>0)?acuFmt(r.acuity)+'h':''; return `<span class="lschip"><b>${rn}</b>${ac?`<span class="lsac">${ac}</span>`:''}${fl?`<span class="lsfl">${esc(fl)}</span>`:''}</span>`; }).join('')
+        +rms.map(rn=>{ const r=rooms[rn]; const fl=r?(r.flags||[]).map(getFlagLabel).slice(0,4).join(' · '):''; return `<span class="lschip"><b>${rn}</b>${fl?`<span class="lsfl">${esc(fl)}</span>`:''}</span>`; }).join('')
         +`</div></div>`;
     });
     h+=`</div>`;
@@ -5765,6 +5777,15 @@ function downloadSnapshot(){ pushHistory(); }
 
 let _histSnaps=[], _histRange=7;
 
+function openMgrConsole(){
+  // Groups floor setup + access codes + erase. Manager-code gated (holds destructive controls).
+  if(!chargeMode){ alert('The manager console is available to the charge nurse.'); return; }
+  const v=(prompt('Manager console — floor setup and access codes.\nEnter the manager code:')||'').trim();
+  if(v==='') return;
+  if(pinStore(v)!==mgrPin){ alert('That code didn’t match the manager code.'); return; }
+  document.getElementById('mgrConsoleScrim').classList.add('on');
+}
+function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
 function openHistory(){
   // Manager-only: requires the manager PIN (charge PIN does NOT open this).
   const v=(prompt('Manager analysis is for unit leadership.\nEnter the manager code:')||'').trim();
