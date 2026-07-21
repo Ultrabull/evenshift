@@ -4418,7 +4418,8 @@ function partitionByBurden(items, k){
   return out;
 }
 /* manual mid-shift overrides: room id -> pct id. Auto-zones apply to everything not overridden. */
-let PCT_OVERRIDE={};
+let PCT_OVERRIDE={};   // room -> pctId. Holds BOTH returning-PCT pins (compensated) and manual board moves.
+let PCT_MANUAL={};     // room -> true for rooms the charge HAND-MOVED on the board (a hard transfer, not compensated)
 // ── PCT workload mode (manager-toggled). PCTs score care-burden; zones balance by it within two halls. ──
 let PCT_MODE=false;
 const PCT_RUBRIC=[
@@ -4470,24 +4471,35 @@ function pctZones(){
   const occ=occupied().map(r=>r.id).filter(rn=>!sit.has(rn)).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);  // 1:1 rooms belong to the sitter
   // pull out manually-assigned rooms; auto-split only the rest
   const valid=new Set(pcts.map(p=>p.id));
-  const overridden=occ.filter(rn=>PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn]));
-  const autoPool=occ.filter(rn=>!(PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn])));
-  // Balance the TOTAL zone, not just the leftover pool: a PCT already holding pinned rooms
-  // (returning / manually moved) should get fewer of the remaining rooms so no one is double-loaded.
+  // Returning/holdover pins are COMPENSATED: a returning PCT keeps their rooms without being double-loaded,
+  // so they draw fewer of the remaining rooms. (A room the charge later hand-moves is treated as manual, below.)
+  const retPins=occ.filter(rn=>PCT_OVERRIDE[rn]&&valid.has(PCT_OVERRIDE[rn]) && !PCT_MANUAL[rn]);
   const pinnedCount=pcts.map(()=>0);
-  overridden.forEach(rn=>{ const i=pcts.findIndex(p=>p.id===PCT_OVERRIDE[rn]); if(i>=0) pinnedCount[i]++; });
+  retPins.forEach(rn=>{ const i=pcts.findIndex(p=>p.id===PCT_OVERRIDE[rn]); if(i>=0) pinnedCount[i]++; });
   const anyPinned=pinnedCount.some(c=>c>0);
+  const autoPool=occ.filter(rn=>!retPins.includes(rn));   // manual rooms are split here first, then hard-transferred below
   const fair=occ.length/k;
   const chunks = anyPinned
     ? partitionByTargets(autoPool, pcts.map((p,i)=>Math.max(0, fair-pinnedCount[i])))   // fill the PCTs who are under a fair share
     : (PCT_MODE ? partitionByBurden(autoPool, k) : partitionEven(autoPool, k));          // contiguous runs along the floor walk
   const byPct={}; pcts.forEach((p,i)=>{ byPct[p.id]=(chunks[i]||[]).slice(); });
-  overridden.forEach(rn=>{ byPct[PCT_OVERRIDE[rn]].push(rn); });
+  retPins.forEach(rn=>{ byPct[PCT_OVERRIDE[rn]].push(rn); });
+  // Manual final-step moves: a HARD transfer. The charge tapped this room onto a specific PCT, so pull it off
+  // whichever PCT auto-got it and hand it over — no re-balancing back. This is how the charge deliberately runs
+  // one PCT heavier (e.g. 9 rooms) when the other side's patients are harder.
+  occ.forEach(rn=>{ if(PCT_MANUAL[rn] && valid.has(PCT_OVERRIDE[rn])){
+    const dest=PCT_OVERRIDE[rn];
+    for(const pid in byPct){ const idx=byPct[pid].indexOf(rn); if(idx>=0){ byPct[pid].splice(idx,1); break; } }
+    (byPct[dest]||(byPct[dest]=[])).push(rn);
+  }});
   return pcts.map(p=>{ const rms=(byPct[p.id]||[]).sort((a,b)=>WALKPOS[a]-WALKPOS[b]);
     return { pct:p, rooms:rms, halls:[...new Set(rms.map(rn=>RHALL[rn]))].sort((a,b)=>a-b) }; });
 }
-function setPctRoom(room,pctId){ if(!chargeMode)return; if(pctId) PCT_OVERRIDE[+room]=pctId; else delete PCT_OVERRIDE[+room]; scheduleSave(); renderAssign(); }
-function rebalancePct(){ if(!chargeMode)return; if(!confirm('Re-split all PCT zones evenly across the PCTs on now? This clears any manual room moves.')) return; PCT_OVERRIDE={}; scheduleSave(); renderAssign(); }
+function setPctRoom(room,pctId){ if(!chargeMode)return;
+  if(pctId){ PCT_OVERRIDE[+room]=pctId; PCT_MANUAL[+room]=true; }   // a hand-move — hard-assign it to that PCT
+  else { delete PCT_OVERRIDE[+room]; delete PCT_MANUAL[+room]; }
+  scheduleSave(); renderAssign(); }
+function rebalancePct(){ if(!chargeMode)return; if(!confirm('Re-split all PCT zones evenly across the PCTs on now? This clears any manual room moves.')) return; PCT_OVERRIDE={}; PCT_MANUAL={}; scheduleSave(); renderAssign(); }
 /* tidy label: lead with the main hall, note any stray corner room */
 function zoneLabel(rms){
   if(!rms.length) return '—';
@@ -4760,7 +4772,7 @@ function renderSupport(){
   let pctInner='';
   if(pcts.length){
     const zones=pctZones();
-    const hasOverride=Object.keys(PCT_OVERRIDE).some(rn=>occupied().some(r=>r.id===+rn));
+    const hasOverride=Object.keys(PCT_MANUAL).some(rn=>occupied().some(r=>r.id===+rn));
     if(chargeMode){
       pctInner+=`<div class="pctbar"><button class="btn sm" onclick="rebalancePct()">⚖️ Re-balance</button>${hasOverride?'<span class="pctmoved">manual moves active</span>':''}</div>`;
       if(selectedPctRoom!=null) pctInner+=`<div class="movehint armed">Room <b>${selectedPctRoom}</b> picked — tap a PCT below to move it.</div>`;
@@ -4770,7 +4782,7 @@ function renderSupport(){
       const tapNurse = chargeMode ? ` onclick="movePctRoom('${z.pct.id}')"` : '';
       return `<div class="nurse pctcard${chargeMode&&selectedPctRoom!=null?' targetable':''}"${tapNurse}>`+
         `<div class="nhead">${editableName(z.pct.id,'p',z.pct.name)}<span class="badge pctbadge">PCT</span>${voc?`<span class="vocpill">📟 ${esc(voc)}</span>`:''}</div>`+
-        `<div class="chips">${rms.length? rms.map(r=>{ const moved=PCT_OVERRIDE[r]?' moved':''; const sel=(selectedPctRoom===r)?' selreq':'';
+        `<div class="chips">${rms.length? rms.map(r=>{ const moved=PCT_MANUAL[r]?' moved':''; const sel=(selectedPctRoom===r)?' selreq':'';
           return chargeMode
             ? `<button class="chip pctchip${moved}${sel}" onclick="event.stopPropagation(); selectPctRoom(${r})">${r}</button>`
             : `<span class="chip pctchip${moved}">${r}</span>`; }).join('') : '<span class="empty2">No rooms</span>'}</div>`+
@@ -5018,7 +5030,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -5043,6 +5055,7 @@ function applyState(st){
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
   if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{},pctView:Array.isArray(st.unitFlagConfig.pctView)?st.unitFlagConfig.pctView:null};
   PCT_OVERRIDE=(st.pctOverride&&typeof st.pctOverride==='object')?st.pctOverride:{};
+  PCT_MANUAL=(st.pctManual&&typeof st.pctManual==='object')?st.pctManual:{};
   CODE_OVERRIDE=(st.codeOverride&&typeof st.codeOverride==='object')?st.codeOverride:{};
   if(st.vocDevices&&st.vocDevices.Day&&st.vocDevices.Night){ VOC_DEVICES=st.vocDevices;
     ['Day','Night'].forEach(t=>['rn','pct','sit'].forEach(g=>{ if(!Array.isArray(VOC_DEVICES[t][g])) VOC_DEVICES[t][g]=[]; VOC_DEVICES[t][g]=VOC_DEVICES[t][g].map(d=>({num:d.num||'',status:d.status||'Assigned'})); })); }
@@ -6467,7 +6480,7 @@ function nextShift(){ if(!chargeMode)return;
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
   ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
-  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{}};
+  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{}}; PCT_MANUAL={};
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
   balancePriority='hours';   // new shift starts by evening the hours; charge can switch to "keep rooms close" on the Build tab
