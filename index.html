@@ -474,6 +474,13 @@
   body.locked .boardstack #cardStack{order:2;}
   body.locked .boardstack #postFinalWrap{order:3;}
   .boardtoggle{width:100%;margin:14px 0 4px;padding:11px;border:1px solid var(--line);background:var(--surface);border-radius:11px;font-family:var(--display);font-weight:700;font-size:14px;color:var(--ink-soft);cursor:pointer;text-align:left;}
+  .prevboard{margin:16px 0 4px;border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden;}
+  .prevboard>summary{list-style:none;cursor:pointer;padding:12px 14px;font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);display:flex;align-items:center;gap:7px;}
+  .prevboard>summary::-webkit-details-marker{display:none;}
+  .prevboard>summary::after{content:'▸';margin-left:auto;color:var(--ink-soft);font-weight:700;}
+  .prevboard[open]>summary::after{content:'▾';}
+  .prevboard[open]>summary{border-bottom:1px solid var(--line);}
+  .prevboard #prevBoardInline{padding:10px 14px 14px;}
   .finalsheetbtn{width:100%;margin:14px 0 4px;padding:13px;border:1.5px solid var(--teal);background:var(--teal-wash);color:var(--teal-deep);border-radius:12px;font-family:var(--display);font-weight:800;font-size:15px;cursor:pointer;}
   .finalpre{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55;color:var(--ink);background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);overflow-x:auto;}
   .pctcard .name{font-size:15px;}
@@ -1256,6 +1263,10 @@
       <div id="quickHits"></div>
       <div class="chargeOnly" id="postFinalWrap"></div>
     </div>
+    <details class="prevboard" id="prevBoardWrap" style="display:none;">
+      <summary id="prevBoardSum">📋 Last shift’s board</summary>
+      <div id="prevBoardInline"></div>
+    </details>
     <div class="phibadge">🔒 Room numbers only — no patient names or PHI stored</div>
     <footer class="note">Make assignment evens patient counts first, then nursing hours, keeps each nurse close on the floor, spreads the heavy patients, and protects new grads. PCTs cover zones; sitters cover 1:1.</footer>
   </div>
@@ -1876,12 +1887,13 @@ function closeHelp(){ document.getElementById('helpScrim').classList.remove('on'
 function openLastShift(){ renderLastShift(); document.getElementById('lastShiftScrim').classList.add('on'); }
 function closeLastShift(){ document.getElementById('lastShiftScrim').classList.remove('on'); }
 function renderLastShift(){
-  const body=document.getElementById('lastShiftBody'); if(!body) return;
+  const body=document.getElementById('lastShiftBody'); if(body) body.innerHTML=lastShiftHTML();
+}
+function lastShiftHTML(){
   const P=PREV_SHIFT;
   const any = P && ((P.nurses||[]).length||(P.pcts||[]).length||(P.sitters||[]).length);
   if(!any){
-    body.innerHTML=`<div class="hint" style="margin:0;">No previous shift saved yet. After a shift runs and the charge taps <b>End shift &amp; hand off</b>, that shift’s board shows here — read-only — so you can look up the rooms you had while giving report.</div>`;
-    return;
+    return `<div class="hint" style="margin:0;">No previous shift saved yet. After a shift runs and the charge taps <b>End shift &amp; hand off</b>, that shift’s board shows here — read-only — so you can look up the rooms you had while giving report.</div>`;
   }
   const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'just handed off';
   let h=`<div class="staffhelp">Read-only — the final assignment from the shift that just ended (<b>${lbl}</b>). Find your name to see the rooms you had.</div>`;
@@ -1905,7 +1917,19 @@ function renderLastShift(){
     P.sitters.forEach(rec=>{ h+=`<div class="lscard"><div class="lsname">${esc(rec.name)} <span class="lscount">Rm ${esc(String(rec.room))}</span></div></div>`; });
     h+=`</div>`;
   }
-  body.innerHTML=h;
+  return h;
+}
+// Inline copy on the board — the previous shift's final assignment, shown after this shift's board.
+function renderPrevBoardInline(){
+  const wrap=document.getElementById('prevBoardWrap'), inner=document.getElementById('prevBoardInline');
+  if(!wrap||!inner) return;
+  const P=PREV_SHIFT;
+  const any = P && ((P.nurses||[]).length||(P.pcts||[]).length||(P.sitters||[]).length);
+  if(!any){ wrap.style.display='none'; return; }
+  const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'the shift that just ended';
+  wrap.style.display='';
+  document.getElementById('prevBoardSum').textContent='📋 Last shift’s board · '+lbl;
+  inner.innerHTML=lastShiftHTML();
 }
 function qbtn(key){ return `<button class="qhelp" onclick="event.stopPropagation(); showHelp('${key}')" title="What\u2019s this?">?</button>`; }
 function closeOverlays(){
@@ -2239,6 +2263,7 @@ function renameStaff(id,type,val){
   renderAssign();
 }
 function renderAssign(){
+  renderPrevBoardInline();
   renderQuickHits();
   if(!chargeMode){
     const role=lockedRole();
