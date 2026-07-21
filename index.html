@@ -600,6 +600,9 @@
   .hbody b{color:var(--ink);}
   .hbody p{margin:9px 0;}
   .hbody .lead{color:var(--ink);font-weight:600;}
+  .hbody .hsub{color:var(--ink);font-weight:800;margin:13px 0 5px;font-family:var(--display);}
+  .hbody ul{margin:5px 0 9px;padding-left:19px;}
+  .hbody li{margin:5px 0;}
   .tip{display:inline-block;vertical-align:middle;}
   .tip>summary{list-style:none;cursor:pointer;display:inline-flex;width:17px;height:17px;border-radius:50%;border:1px solid var(--line-strong);color:var(--ink-soft);align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#fff;}
   .tip>summary::-webkit-details-marker{display:none;}
@@ -1151,14 +1154,44 @@
   <details class="help">
     <summary><span class="qmark">?</span> How EvenShift works</summary>
     <div class="hbody">
-      <p class="lead">EvenShift builds a fair patient assignment for the shift. Score each patient once, tap Generate, adjust if you like.</p>
-      <p><b>Score tab.</b> Tap any room and mark what the patient needs. It adds up the points and divides by your unit's number to give the acuity. Use <b>Quick</b> for the usual stuff, <b>Full list</b> for everything, or <b>Express</b> to just set the number. Charge can change the factors and the scale under ⋯ → <b>Edit acuity rubric</b>.</p>
-      <p><b>The acuity number is nursing hours</b> — higher means more work. A 5+ is a heavy patient, a 2 is light.</p>
-      <p><b>Board tab.</b> Tap <b>Generate</b>. It evens out patient counts first, then nursing hours to within half an hour, keeps each nurse in one hall (or two halls on the same wing), spreads feeds, draws, drips and discharges around, and keeps new grads off the heaviest and behavioral patients. Tap a room, then a nurse, to move anyone.</p>
-      <p><b>The floor is four halls</b> off the central station — two on the left wing, two on the right. The board keeps each nurse tight to the station and never splits a nurse across wings unless evening the hours leaves no choice.</p>
-      <p><b>Balance pill.</b> Up top it reads green when every nurse is within about half an hour of the others.</p>
-      <p><b>Next shift →</b> keeps each patient's acuity and notes but clears the assignment, so the next charge starts from where you left off instead of re-scoring everyone.</p>
-      <p><b>Flags &amp; what they mean.</b> ISO = isolation · D/C = discharge · ADM = admission · BEH = behavioral · Conf = confused / fall risk · Trach = tracheostomy · Drip = IV drip · INS = insulin drip · CVL = central line · Wound = wound care · Total = total care · 1:1 = sitter · PD = dialysis. 🔒 keeps a patient with the same nurse across a re-generate. The board also spreads these types out so no nurse gets a pile of one kind.</p>
+      <p class="lead">EvenShift builds a fair patient assignment in about two minutes. The whole unit shares one live board — score each patient once, tap Make assignment, and tweak if you like.</p>
+
+      <p class="hsub">📊 Score — everyone</p>
+      <ul>
+        <li>Tap a room and tally what the patient needs; it totals the <b>acuity number</b>, which is nursing hours — a 5+ is heavy, a 2 is light.</li>
+        <li>Use <b>Quick</b> for the usual items, <b>Full list</b> for everything, or <b>Express</b> to just type the number.</li>
+        <li>Add <b>clinical flags</b> (isolation, drip, discharge, behavioral…); PCTs can update their own <b>care flags</b> too, and every change is stamped with who and when.</li>
+        <li>Score for the <b>next shift</b> so the oncoming charge can see at a glance who's scored and who's still pending, by name.</li>
+        <li>Charge tunes the factors and scale under ⋯ → <b>More tools → Acuity rubric</b>.</li>
+      </ul>
+
+      <p class="hsub">🛠️ Build — charge</p>
+      <ul>
+        <li>Work the tiles top to bottom: check who's scored, pick who's working, mark <b>returning staff</b>, verify Vocera numbers, then <b>Make assignment</b>.</li>
+        <li><b>Returning staff</b> keep their rooms (or their hallway, for PCTs) and the board builds around them.</li>
+        <li>Make assignment evens patient counts first, then nursing hours to within about half an hour, keeps each nurse tight to the station in one hall (or two on the same wing), spreads the heavy patients, drips, feeds and discharges, honors safety caps (like insulin-drip and behavioral limits), and keeps new grads off the heaviest patients.</li>
+        <li>Not happy? Tap <b>Make assignment</b> again for a fresh board, or tap a room then a nurse to move anyone by hand.</li>
+      </ul>
+
+      <p class="hsub">📋 Board — everyone reads their rooms</p>
+      <ul>
+        <li>Tap <b>Who are you?</b> and pick your name to see just your rooms, your break buddy and your flags.</li>
+        <li><b>PCTs</b> get an even zone along the hallway; <b>sitters</b> cover 1:1; nurses are auto-paired with a nearby <b>break buddy</b>.</li>
+        <li>The green <b>balance pill</b> up top means every nurse is within about half an hour of the others.</li>
+        <li><b>Last shift's board</b> — the read-only rooms-and-names sheet from the shift that just ended, handy while giving report. Open it right on the <b>Who are you?</b> page, or from the ⋯ menu.</li>
+      </ul>
+
+      <p class="hsub">🔄 End of shift — charge</p>
+      <ul>
+        <li>After report, tap <b>End shift &amp; hand off</b>: it saves the board to <b>Last shift's board</b>, carries each patient's acuity forward, and clears the assignment so the next charge starts where you left off instead of re-scoring everyone.</li>
+      </ul>
+
+      <p class="hsub">⚙️ Set-up &amp; flags</p>
+      <ul>
+        <li>⋯ → <b>More tools</b> holds unit link &amp; QR, acuity rubric, clinical flags, PCT care flags, reset teams, and the <b>Manager console</b> — floor &amp; beds, charge / HUC / manager codes and erase floor, all behind the manager code.</li>
+        <li><b>Flags:</b> ISO = isolation · D/C = discharge · ADM = admission · BEH = behavioral · Conf = confused / fall risk · Trach = trach · Drip = IV drip · INS = insulin drip · CVL = central line · Wound = wound care · Total = total care · 1:1 = sitter · PD = dialysis. 🔒 keeps a patient with the same nurse across a re-generate.</li>
+        <li>🔒 <b>Room numbers only</b> — no patient names or PHI are ever stored.</li>
+      </ul>
     </div>
   </details>
 
@@ -1211,6 +1244,7 @@
     <div class="nursepick lockedOnly" id="nursePick">
       <span class="npk">Who are you?</span>
       <div class="whobtns" id="whoBtns"></div>
+      <button class="hucvocbtn" onclick="openLastShift()" style="border-color:var(--line-strong);background:var(--surface);color:var(--ink);">📋 Last shift’s board <small>rooms from the shift that just ended</small></button>
       <button class="hucvocbtn" onclick="openVoceraGated()">📟 Vocera phones <small>HUC — needs code</small></button>
     </div>
     <div class="postbanner" id="postBanner2" style="display:none;"></div>
