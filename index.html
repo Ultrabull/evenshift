@@ -1147,6 +1147,7 @@
     </div>
   </header>
   <div class="offlinebar" id="offlineBar" style="display:none;">⚠ <b>Offline</b> — changes are saved on this device only and won\u2019t sync until you reconnect. Tap ⋯ → Unit link &amp; QR to reconnect.</div>
+  <div class="offlinebar" id="flipBar" style="display:none;"></div>
   <div class="nextbar chargeOnly" id="nextStepBar" style="display:none;"></div>
 
   <details class="help">
@@ -4818,6 +4819,7 @@ const CLOUD = { url:'https://radljxjhuykmvvmqswwb.supabase.co', key:'sb_publisha
 try{ if(!CLOUD.url) CLOUD.url=localStorage.getItem('ev_sb_url')||''; if(!CLOUD.key) CLOUD.key=localStorage.getItem('ev_sb_key')||''; }catch(e){}
 let unitId = (()=>{ try{ return (new URLSearchParams(location.search).get('u') || localStorage.getItem('ev_unit') || 'demo').trim().toLowerCase().replace(/\s+/g,'-'); }catch(e){ return 'demo'; } })();
 let sb=null, clientId=Math.random().toString(36).slice(2), cloudReady=false, pushTimer=null;
+let _flipSnap=null, _bootTs=Date.now();   // snapshot to undo a shift flip pushed by another device/tab
 function cloudOn(){ return cloudReady; }
 /* ---------- per-unit access code (front-desk gate over the shared link) ---------- */
 let unitPass='';          // hashed unit access code, synced in meta
@@ -4858,7 +4860,13 @@ function acuityObj(){
 }
 function applyCloudRow(row){
   if(!row) return;
-  if(row.meta) applyState(row.meta);                                   // charge-owned: roster, rubric, floor, assignments, shift, pin
+  if(row.meta){
+    // Another device/tab changing the board's shift under a working charge is always surprising —
+    // apply it (the board is shared), but say so loudly and offer a one-tap switch-back.
+    const inc=row.meta.shiftType;
+    if(chargeMode && inc && inc!==shiftType && (Date.now()-_bootTs)>15000){ _flipSnap=stateObj(); showFlipBar(inc, shiftType); }
+    applyState(row.meta);                                              // charge-owned: roster, rubric, floor, assignments, shift, pin
+  }
   if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
@@ -4873,6 +4881,13 @@ function cloudSubscribe(){
 }
 async function pushMeta(){ if(!cloudOn())return; try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:stateObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error; setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
 async function pushAcuity(){ if(!cloudOn())return; try{ const {error}=await sb.from('boards').upsert({unit:unitId, acuity:acuityObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error; setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
+function showFlipBar(to,from){ const b=document.getElementById('flipBar'); if(!b) return;
+  b.innerHTML=`⚠ <b>Another device or tab switched this board to ${esc(String(to).toUpperCase())}</b> — you were working the ${esc(String(from).toUpperCase())} board. `
+    +`<button class="btn sm" onclick="undoShiftFlip()">Switch back to ${esc(String(from).toUpperCase())}</button> `
+    +`<button class="btn sm" onclick="dismissFlipBar()">Keep ${esc(String(to).toUpperCase())}</button>`;
+  b.style.display=''; }
+function undoShiftFlip(){ if(_flipSnap){ applyState(_flipSnap); cloudRerender(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); } dismissFlipBar(); }
+function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.style.display='none'; _flipSnap=null; }
 
 function stateObj(){
   const rs={};
@@ -4891,10 +4906,10 @@ function applyState(st){
   if(Array.isArray(st.rosterS)) rosterS=st.rosterS.map(s=>({id:s.id,name:s.name,room:s.room||'',on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''}));
   else if(Array.isArray(st.sitters)) rosterS=st.sitters.map(s=>({id:s.id,name:s.name,room:s.room||'',on:true,shift:'Day'}));
   if(Array.isArray(st.rosterH)) rosterH=st.rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
-  syncWorking();
   if(st.priority) balancePriority=st.priority;
   if(st.shiftDate) shiftDate=st.shiftDate;
   if(st.shiftType) shiftType=st.shiftType;
+  syncWorking();   // AFTER shiftType is applied — filtering the crew with the old shift left a stale/empty working set
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.chargeOncoming==='string') chargeOncoming=st.chargeOncoming;
   boardPosted=!!st.boardPosted; SCORES_OK=!!st.scoresOk; CREW_OK=!!st.crewOk; vocConfirmed=!!st.vocOk; SHIFT_START=st.shiftStart||0; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
