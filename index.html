@@ -3346,7 +3346,13 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
       if(cf>capConf)  c+=(cf-capConf)*55;     // #5 spread confused / fall-risk
       if(dc>0&&adm>0) c+=Math.min(dc,adm)*40; // #4 don't pair a discharge with a fresh admit
     } return c; };
-  const cost=()=>Math.max(0,spread()-0.5)*450 + safety() + geo() + 2*burden() + HANDOFF_W*handoff() + flagRuleCost();   // hours first (strong), then safety caps, geography, even burden, then handoff continuity (soft — free grouping only)
+  // "Even the hours" (default): hours dominate (×450), geography is a light tiebreaker (×1).
+  // "Keep rooms close": hours matter far less (×50) and geography matters a lot (×16), so a nurse
+  // stays in one hall / one wing even when that leaves the hours a bit less even. Safety + ratio caps
+  // keep their huge weights in BOTH modes, so insulin/behavioral/new-grad limits always hold.
+  const HOURW = balancePriority==='hours' ? 450 : 50;
+  const GEOW  = balancePriority==='hours' ? 1   : 16;
+  const cost=()=>Math.max(0,spread()-0.5)*HOURW + safety() + GEOW*geo() + 2*burden() + HANDOFF_W*handoff() + flagRuleCost();   // hours ▸ safety caps ▸ geography ▸ burden ▸ handoff (weights shift with the charge's priority toggle)
   // per-unit flag rules: spread (penalize clustering) or cap (penalize exceeding max)
   const ruleCodes=getActiveFlags().map(x=>x[0]).filter(c=>{ const r=flagRule(c); return r.mode==='spread'||r.mode==='cap'; });
   const ruleTotals={}; ruleCodes.forEach(c=>{ ruleTotals[c]=occ.filter(r=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)).length; });
@@ -3365,7 +3371,13 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
     }
     // ratio caps: a flagged patient (e.g. insulin drip) limits that nurse's TOTAL patients.
     // Firm enough to win the patient-count tug-of-war, but not so high it abandons hour-balancing.
-    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*20000; } }   // hard staffing ratio — must beat hour-balancing
+    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*20000;   // hard staffing ratio — must beat hour-balancing
+      // Also cap the COUNT of ratio-flagged patients per nurse: a nurse with more insulin drips than the
+      // ratio allows can't be fixed by shedding non-flagged rooms, so steer the anneal to spread them
+      // (keeps e.g. 6 insulin as 3+3, never 4+2). Without this, geography-first packing can wedge a
+      // 4-flag cluster that enforceRatioCaps then can't resolve.
+      for(const code of ratiocapCodes){ const rcap=Math.max(1,flagRule(code).ratio||cap); let k=0; for(const r of g){ if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)) k++; } if(k>rcap) c+=(k-rcap)*(k-rcap)*30000; }
+    } }
     return c;
   }
   // ── TOTAL SWAP FIRST: if last shift's whole groups still balance on the new acuities,
@@ -3411,7 +3423,9 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
       const c=cost(), d=c-cur;
       if(d<0 || Math.random()<Math.exp(-d/T)){ cur=c; if(c<passBestC-1e-9){ passBestC=c; passBest=G.map(g=>g.slice()); sinceBest=0; } else sinceBest++; }
       else { gi[a]=ra; gj[b]=rb; sinceBest++; }
-      if(spread()<=0.5 && sinceBest>5000) break;
+      // stop once the search has plateaued; in "even the hours" mode also require the spread target
+      // (in "keep rooms close" a low spread isn't the goal, so don't bail before geography settles)
+      if(sinceBest>5000 && (balancePriority!=='hours' || spread()<=0.5)) break;
     }
     if(passBestC<bestC){ bestC=passBestC; best=passBest; }
     G=passBest.map(g=>g.slice());   // carry forward this pass's best as the base for reshuffling
@@ -3604,7 +3618,9 @@ function tightenHours(){
   // Hours within 0.5 is the hard requirement. Keep halls clean first; if staying in-lane
   // can't reach the target, relax and allow corner/cross moves until it does.
   // Counts (spread <=1) and skill rules stay enforced in every phase.
-  const phases = balancePriority==='hours' ? [false] : [true, false];
+  // "even the hours": relax geography to reach the 0.5 target. "keep rooms close": only tidy hours
+  // with in-hall (geo-clean) moves — never break a nurse's hall/wing just to shave the spread.
+  const phases = balancePriority==='hours' ? [false] : [true];
   for(const strict of phases){
     const okGeo=(nid,r)=> strict ? geoClean(nid,r) : true;
     for(let it=0; it<3000; it++){
