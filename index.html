@@ -2832,6 +2832,48 @@ function eligible(n,r){
   if(n.level==='Float'){ if(r.acuity>=5) return false; if(r.flags.includes('beh')||r.flags.includes('sit')) return false; }
   return true;
 }
+/* Total over-cap patients across the live board for ratio-cap flags (e.g. insulin drip 1:3).
+   Used to keep the hour-tidy passes from pushing a nurse past a hard staffing ratio. */
+function ratioCapViol(){
+  const rc=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
+  if(!rc.length) return 0;
+  let v=0;
+  nurses.forEach(n=>{ const rs=occupied().filter(r=>r.nurse===n.id); if(!rs.length) return;
+    let cap=(FLOOR.ratio||99), has=false;
+    rs.forEach(r=>rc.forEach(c=>{ if((r.flags||[]).includes(c)||(r.tags||[]).includes(c)){ has=true; cap=Math.min(cap,Math.max(1,flagRule(c).ratio||cap)); } }));
+    if(has && rs.length>cap) v+=rs.length-cap;
+  });
+  return v;
+}
+/* Hard-enforce ratio caps (e.g. insulin drip 1:3): if a nurse holds more patients than their
+   tightest ratio-cap allows, move a spare room off them — even if hours get less even. A safety
+   ratio wins over hour-balancing. Runs as a final pass after the board is built. */
+function enforceRatioCaps(){
+  const rc=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
+  if(!rc.length) return;
+  const hasRC=r=>rc.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c));
+  const capForRooms=rs=>{ let cap=(FLOOR.ratio||99), has=false;
+    rs.forEach(r=>rc.forEach(c=>{ if((r.flags||[]).includes(c)||(r.tags||[]).includes(c)){ has=true; cap=Math.min(cap,Math.max(1,flagRule(c).ratio||cap)); } }));
+    return has?cap:Infinity; };
+  for(let guard=0; guard<60; guard++){
+    let moved=false;
+    for(const n of nurses){
+      const rs=occupied().filter(r=>r.nurse===n.id);
+      if(rs.length<=capForRooms(rs)) continue;
+      // pick a room to move off: prefer one WITHOUT a ratio-cap flag, lightest, unlocked
+      const free=rs.filter(r=>!r.lock);
+      const cand=(free.filter(r=>!hasRC(r)).sort((a,b)=>a.acuity-b.acuity)[0]) || free.sort((a,b)=>a.acuity-b.acuity)[0];
+      if(!cand) break;   // everything on this nurse is locked — can't fix automatically
+      // receiver: eligible, adding cand keeps THEIR ratio cap, fewest patients first
+      const recv=nurses.filter(m=>m.id!==n.id && eligible(m,cand))
+        .map(m=>{ const mr=occupied().filter(r=>r.nurse===m.id); return {m,cnt:mr.length,ok:(mr.concat([cand]).length<=capForRooms(mr.concat([cand])))}; })
+        .filter(x=>x.ok).sort((a,b)=>a.cnt-b.cnt)[0];
+      if(!recv) break;   // nowhere safe to put it (floor genuinely too tight) — leave for the charge
+      cand.nurse=recv.m.id; moved=true;
+    }
+    if(!moved) break;
+  }
+}
 function nurseBurdens(nid){
   const c={};
   occupied().filter(r=>r.nurse===nid).forEach(r=>patientTags(r).forEach(t=>{ c[t]=(c[t]||0)+1; }));
@@ -3205,7 +3247,7 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
     }
     // ratio caps: a flagged patient (e.g. insulin drip) limits that nurse's TOTAL patients.
     // Firm enough to win the patient-count tug-of-war, but not so high it abandons hour-balancing.
-    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*1200; } }
+    if(ratiocapCodes.length){ for(const g of G){ const cap=groupRatioCap(g); if(g.length>cap) c+=(g.length-cap)*(g.length-cap)*20000; } }   // hard staffing ratio — must beat hour-balancing
     return c;
   }
   // ── TOTAL SWAP FIRST: if last shift's whole groups still balance on the new acuities,
@@ -3290,9 +3332,10 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
   occupied().forEach(r=>{ if(keptIds.has(r.lock)) r.nurse=r.lock; });
   HOME={}; nurses_orig.forEach(n=>HOME[n.id]=homeHall(n.id)||'H1');
   if(!swapIds) geoPolish();   // equal-acuity swaps to tidy geography (skipped on a total swap — groups stay verbatim)
+  enforceRatioCaps();         // hard safety ratios (e.g. insulin 1:3) — move a spare room off any over-capped nurse
   // Hours are boss: if kept/locked rooms left the spread above target, chase 0.5 with swaps AND moves
   // (tightenHours respects locks, won't-take, orientee/float rules; relaxes geography only if it must).
-  if(!swapIds && maxSpread()>TARGET_SPREAD+1e-9) tightenHours();
+  if(maxSpread()>TARGET_SPREAD+1e-9) tightenHours();
   selectedRoom=null;
   balanceReport();   // runs while acuity = predicted, so the banner reflects the next-shift load
   _restoreAcu();     // put the live "now" scores back; assignment (r.nurse) stays
@@ -3332,13 +3375,13 @@ function geoPolish(){
       for(const x of ra) for(const y of rb){
         if(Math.abs(x.acuity-y.acuity)>TOL) continue;          // only near-equal-acuity pairs
         if(!elig(A,y) || !elig(B,x)) continue;                  // respect orientee/float/avoid both ways
-        const g0=geoScore(), b0=burdenScore(), s0=spreadNow();
+        const g0=geoScore(), b0=burdenScore(), s0=spreadNow(), rv0=ratioCapViol();
         x.nurse=B; y.nurse=A;                                   // try the swap
-        const g1=geoScore(), b1=burdenScore(), s1=spreadNow();
-        // accept only if geography improves, flags don't get worse, and hours stay within
-        // the balanced threshold OR no worse than before (never make balance worse)
+        const g1=geoScore(), b1=burdenScore(), s1=spreadNow(), rv1=ratioCapViol();
+        // accept only if geography improves, flags don't get worse, hours stay within
+        // the balanced threshold OR no worse than before, and no ratio cap is breached
         const spreadOK = s1 <= SPREAD_CAP+1e-9 || s1 <= s0+1e-9;
-        if(g1 < g0-1e-9 && b1 <= b0+1e-9 && spreadOK){
+        if(g1 < g0-1e-9 && b1 <= b0+1e-9 && spreadOK && rv1<=rv0){
           improved=true; break outer;                           // accepted — restart with fresh groupings
         } else {
           x.nurse=A; y.nurse=B;                                 // revert
@@ -3443,8 +3486,11 @@ function tightenHours(){
     const okGeo=(nid,r)=> strict ? geoClean(nid,r) : true;
     for(let it=0; it<3000; it++){
       if(maxSpread()<=TARGET_SPREAD) break;
-      const base=snap(); let bestApply=null, bestSpread=maxSpread()-1e-9, bestVar=Infinity;
-      const tryOp=(fn)=>{ fn(); const sp=maxSpread(), v=spreadVar(); restore(base);
+      const base=snap(); const baseViol=ratioCapViol(); let bestApply=null, bestSpread=maxSpread()-1e-9, bestVar=Infinity, bestViol=baseViol;
+      const tryOp=(fn)=>{ fn(); const sp=maxSpread(), v=spreadVar(), rv=ratioCapViol(); restore(base);
+        if(rv>baseViol) return;                                   // never push a nurse past a ratio cap to tidy hours
+        if(rv<bestViol-1e-9){ bestViol=rv; bestSpread=sp; bestVar=v; bestApply=fn; return; }   // reducing a cap breach wins outright
+        if(rv>bestViol+1e-9) return;
         if(sp<bestSpread-1e-9 || (Math.abs(sp-bestSpread)<1e-9 && v<bestVar-1e-9)){ bestSpread=sp; bestVar=v; bestApply=fn; } };
       // swaps (counts unchanged)
       nurses.forEach(A=>nurses.forEach(B=>{ if(A.id===B.id) return;
@@ -4874,9 +4920,11 @@ function closeFlagEditor(){ document.getElementById('flagScrim').classList.remov
 
 function renderFlagEditor(){
   const el=document.getElementById('flagEditorBody'); if(!el) return;
-  const engine=FLAGS.filter(([code])=>ENGINE_FLAG_CODES.has(code));
-  const display=FLAGS.filter(([code])=>!ENGINE_FLAG_CODES.has(code));
-  const custom=UNIT_FLAG_CONFIG.custom||[];
+  const _flabel=(code,label)=>(UNIT_FLAG_CONFIG.renames[code]||{}).label||label;   // sort by what the charge actually sees
+  const byLabel=(a,b)=>String(_flabel(a[0],a[1])).localeCompare(String(_flabel(b[0],b[1])));
+  const engine=FLAGS.filter(([code])=>ENGINE_FLAG_CODES.has(code)).slice().sort(byLabel);
+  const display=FLAGS.filter(([code])=>!ENGINE_FLAG_CODES.has(code)).slice().sort(byLabel);
+  const custom=(UNIT_FLAG_CONFIG.custom||[]).map((c,i)=>[c,i]).sort((a,b)=>String(a[0].label||'').localeCompare(String(b[0].label||'')));   // keep original index for handlers
   let h='';
   // Engine flags (locked)
   h+=`<div class="meetSec">Engine flags 🔒 — always on · set how each balances</div>`;
@@ -4898,7 +4946,7 @@ function renderFlagEditor(){
   });
   // Custom flags
   h+=`<div class="meetSec" style="margin-top:14px;">Custom flags — add anything · set balancing</div>`;
-  custom.forEach((c,i)=>{
+  custom.forEach(([c,i])=>{
     h+=`<div class="flagEdRow">`+
       `<input class="subin felab" value="${esc(c.label||'')}" placeholder="e.g. Chest tube" onchange="UNIT_FLAG_CONFIG.custom[${i}].label=this.value;scheduleSave()">`+
       ruleSelector(c.code)+
