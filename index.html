@@ -6454,6 +6454,7 @@ function nextShift(){ if(!chargeMode)return;
   boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{}};
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
+  balancePriority='hours';   // new shift starts by evening the hours; charge can switch to "keep rooms close" on the Build tab
   syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
 }
