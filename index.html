@@ -2886,8 +2886,14 @@ function rawHrs(nid){ return occupied().filter(r=>r.nurse===nid).reduce((s,r)=>s
 /* A nurse holding a ratio-cap patient (insulin drip 1:3) carries fewer patients by rule, so the
    balancer should aim their hours a touch BELOW the 4-patient nurses — never above. A small load
    credit does that. */
+function ratioCapCodesFast(){   // same result as scanning getActiveFlags, without building/sorting the flag list (hot path)
+  const out=[]; const rules=UNIT_FLAG_CONFIG.rules||{};
+  for(const c in rules){ if(rules[c].mode==='ratiocap') out.push(c); }
+  for(const c in DEFAULT_FLAG_RULES){ if(!(c in rules) && DEFAULT_FLAG_RULES[c].mode==='ratiocap' && !out.includes(c)) out.push(c); }
+  return out;
+}
 function capCredit(nid){
-  const rc=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
+  const rc=ratioCapCodesFast();
   if(!rc.length) return 0;
   const rs=occupied().filter(r=>r.nurse===nid);
   const hasCap=rs.some(r=>rc.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)));
@@ -3346,7 +3352,7 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
   enforceRatioCaps();         // hard safety ratios (e.g. insulin 1:3) — move a spare room off any over-capped nurse
   // Hours are boss: if kept/locked rooms left the spread above target, chase 0.5 with swaps AND moves
   // (tightenHours respects locks, won't-take, orientee/float rules; relaxes geography only if it must).
-  if(maxSpread()>TARGET_SPREAD+1e-9) tightenHours();
+  if(!swapIds && maxSpread()>TARGET_SPREAD+1e-9) tightenHours();   // never reshuffle an accepted total swap — its groups hand over verbatim
   selectedRoom=null;
   balanceReport();   // runs while acuity = predicted, so the banner reflects the next-shift load
   _restoreAcu();     // put the live "now" scores back; assignment (r.nurse) stays
