@@ -1154,7 +1154,6 @@
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');openHistory()">📊 Manager analysis</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openLastShift()">📋 Last shift’s board</button>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openReportsView()">🐞 Bug reports</button>
         </div>
@@ -1202,7 +1201,7 @@
 
       <p class="hsub">⚙️ Set-up &amp; flags</p>
       <ul>
-        <li>⋯ → <b>More tools</b> holds unit link &amp; QR, acuity rubric, clinical flags, PCT care flags, reset teams, and the <b>Manager console</b> — floor &amp; beds, charge / HUC / manager codes and erase floor, all behind the manager code.</li>
+        <li>⋯ → <b>More tools</b> holds unit link &amp; QR, acuity rubric, clinical flags, PCT care flags, reset teams, and the <b>Manager console</b> — manager analysis, floor &amp; beds, charge / HUC / manager codes and erase floor, all behind the manager code.</li>
         <li><b>Flags:</b> ISO = isolation · D/C = discharge · ADM = admission · BEH = behavioral · Conf = confused / fall risk · Trach = trach · Drip = IV drip · INS = insulin drip · CVL = central line · Wound = wound care · Total = total care · 1:1 = sitter · PD = dialysis. 🔒 keeps a patient with the same nurse across a re-generate.</li>
         <li>🔒 <b>Room numbers only</b> — no patient names or PHI are ever stored.</li>
       </ul>
@@ -1316,6 +1315,7 @@
     <div class="mbody">
       <div class="hint" style="margin-top:0;">Unit setup &amp; leadership controls. These change the floor and the access codes for everyone on the unit.</div>
       <div class="btilegrid">
+        <button class="btile" onclick="closeMgrConsole(); showHistory();"><span class="btemoji">📊</span><span class="btlabel">Manager analysis</span><span class="btsub">trends &amp; savings</span></button>
         <button class="btile" onclick="closeMgrConsole(); openFloor();"><span class="btemoji">🏥</span><span class="btlabel">Floor &amp; beds</span><span class="btsub">rooms &amp; halls</span></button>
         <button class="btile" onclick="closeMgrConsole(); changePin();"><span class="btemoji">🔑</span><span class="btlabel">Charge PIN</span><span class="btsub">change the code</span></button>
         <button class="btile" onclick="closeMgrConsole(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
@@ -5898,12 +5898,13 @@ function openMgrConsole(){
   document.getElementById('mgrConsoleScrim').classList.add('on');
 }
 function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
+function showHistory(){ document.getElementById('histScrim').classList.add('on'); loadHistory(); }
 function openHistory(){
   // Manager-only: requires the manager PIN (charge PIN does NOT open this).
   const v=(prompt('Manager analysis is for unit leadership.\nEnter the manager code:')||'').trim();
   if(v===''){ return; }
   if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
-  document.getElementById('histScrim').classList.add('on'); loadHistory();
+  showHistory();
 }
 
 /* ───────── HOUSE VIEW — supervisor suite (reads all units from the cloud) ───────── */
