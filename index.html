@@ -1297,7 +1297,6 @@
         <button class="btile" onclick="closeTools(); openPctFlagCfg();"><span class="btemoji">🧑‍⚕️</span><span class="btlabel">PCT care flags</span><span class="btsub">what PCTs see &amp; edit</span></button>
         <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload roster + Vocera</span></button>
         <button class="btile" onclick="closeTools(); openMgrConsole();"><span class="btemoji">🗂️</span><span class="btlabel">Manager console</span><span class="btsub">floor · codes · erase</span></button>
-        <button class="btile" onclick="closeTools(); openAdminConsole();"><span class="btemoji">🛠️</span><span class="btlabel">Developer console</span><span class="btsub">house view · settings</span></button>
       </div>
       <div class="cardsec">Board tools</div>
       <div class="btilegrid">
@@ -5928,8 +5927,8 @@ function openMgrConsole(){
 }
 function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
 function openAdminConsole(){
-  // Developer / system-owner tier (house view, bug reports, backend settings). Its own code — the manager code does NOT open this.
-  if(!chargeMode){ alert('The developer console is available to the charge nurse.'); return; }
+  // Developer / system-owner tier (house view, bug reports, backend settings). Reached ONLY by the hidden
+  // long-press gesture — no visible button — and gated by its own code (the manager code does NOT open this).
   const v=(prompt('Developer console — house view, bug reports and settings.\nEnter the developer console code:')||'').trim();
   if(v==='') return;
   if(pinStore(v)!==adminPin){ alert('That code didn’t match the developer console code.'); return; }
@@ -5937,7 +5936,6 @@ function openAdminConsole(){
 }
 function closeAdminConsole(){ const s=document.getElementById('adminConsoleScrim'); if(s) s.classList.remove('on'); }
 function setAdminCode(){
-  if(!chargeMode){ alert('Unlock the Charge console first, then open More Tools → Developer console.'); return; }
   const isDefault = !adminPin || adminPin===pinStore('0000');
   if(!isDefault){
     const old=(prompt('Enter the CURRENT developer console code first:')||'').trim();
@@ -6821,10 +6819,11 @@ function renderQR(){
 buildLegend();
 (async function init(){ applyDarkPref();
   try{ const dc=localStorage.getItem('evenshift_devcode'); if(dc) DEV_CODE=dc; }catch(e){}
-  // Hidden developer gesture: long-press (~900ms) the logo in the top-left corner.
+  // Hidden developer gesture: long-press (~900ms) the logo in the top-left corner opens the Developer
+  // console. There is NO visible button — staff and managers can't see it; the console code still gates it.
   const logo=document.getElementById('appLogo');
   if(logo){ let t=null;
-    const start=()=>{ t=setTimeout(openDevGate,900); };
+    const start=()=>{ t=setTimeout(openAdminConsole,900); };
     const cancel=()=>{ if(t){ clearTimeout(t); t=null; } };
     logo.addEventListener('touchstart',start,{passive:true}); logo.addEventListener('touchend',cancel); logo.addEventListener('touchmove',cancel);
     logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
