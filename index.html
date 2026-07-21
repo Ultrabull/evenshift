@@ -3403,7 +3403,7 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
   // One-tap best: run several independent annealing restarts and keep the best of all.
   // Each restart shuffles the seed, so a single tap now does what repeated taps used to.
   if(!swapIds){
-  let bestC=Infinity, best=G.map(g=>g.slice());
+  let bestC=Infinity, best=G.map(g=>g.slice()), _noImp=0;
   const RESTARTS=5;
   for(let pass=0; pass<RESTARTS; pass++){
     if(pass>0){ // reshuffle non-locked patients across groups for a fresh seed
@@ -3425,10 +3425,14 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
       else { gi[a]=ra; gj[b]=rb; sinceBest++; }
       // stop once the search has plateaued; in "even the hours" mode also require the spread target
       // (in "keep rooms close" a low spread isn't the goal, so don't bail before geography settles)
-      if(sinceBest>5000 && (balancePriority!=='hours' || spread()<=0.5)) break;
+      if((sinceBest>5000 && (balancePriority!=='hours' || spread()<=0.5)) || sinceBest>10000) break;
     }
-    if(passBestC<bestC){ bestC=passBestC; best=passBest; }
+    if(passBestC<bestC-1e-9){ bestC=passBestC; best=passBest; _noImp=0; } else { _noImp++; }
     G=passBest.map(g=>g.slice());   // carry forward this pass's best as the base for reshuffling
+    // Early-out so a tap doesn't lag: if this pass already fully solves it (hours within target, no
+    // safety/ratio-cap breach) accept it; or if two straight restarts found nothing better, stop.
+    if(balancePriority==='hours' && spread()<=0.5+1e-9 && safety()===0 && flagRuleCost()===0){ best=passBest; break; }
+    if(_noImp>=2) break;
   }
   G=best;
   }   // end !swapIds — a total swap keeps last shift's groups verbatim
@@ -3623,9 +3627,16 @@ function tightenHours(){
   const phases = balancePriority==='hours' ? [false] : [true];
   for(const strict of phases){
     const okGeo=(nid,r)=> strict ? geoClean(nid,r) : true;
+    let stall=0, lastMax=Infinity;
     for(let it=0; it<3000; it++){
-      if(maxSpread()<=TARGET_SPREAD) break;
-      const base=snap(); const baseViol=ratioCapViol(); let bestApply=null, bestSpread=maxSpread()-1e-9, bestVar=Infinity, bestViol=baseViol;
+      const curMax=maxSpread();
+      if(curMax<=TARGET_SPREAD) break;
+      // Diminishing-returns guard: tightenHours exists to shrink the WORST gap. Once a round can only
+      // trim variance without lowering that gap (common in "keep rooms close", where geo-clean moves
+      // can't reach 0.5), a few more rounds add nothing but cost — so stop instead of grinding all 3000.
+      if(curMax < lastMax-1e-9){ lastMax=curMax; stall=0; } else if(++stall>6) break;
+      const occ=occupied();   // occupancy is fixed within a round; cache it so the swap/move scan isn't re-filtering every time
+      const base=snap(); const baseViol=ratioCapViol(); let bestApply=null, bestSpread=curMax-1e-9, bestVar=Infinity, bestViol=baseViol;
       const tryOp=(fn)=>{ fn(); const sp=maxSpread(), v=spreadVar(), rv=ratioCapViol(); restore(base);
         if(rv>baseViol) return;                                   // never push a nurse past a ratio cap to tidy hours
         if(rv<bestViol-1e-9){ bestViol=rv; bestSpread=sp; bestVar=v; bestApply=fn; return; }   // reducing a cap breach wins outright
@@ -3633,14 +3644,14 @@ function tightenHours(){
         if(sp<bestSpread-1e-9 || (Math.abs(sp-bestSpread)<1e-9 && v<bestVar-1e-9)){ bestSpread=sp; bestVar=v; bestApply=fn; } };
       // swaps (counts unchanged)
       nurses.forEach(A=>nurses.forEach(B=>{ if(A.id===B.id) return;
-        occupied().filter(r=>r.nurse===A.id&&!r.lock).forEach(r1=>occupied().filter(r=>r.nurse===B.id&&!r.lock).forEach(r2=>{
+        occ.filter(r=>r.nurse===A.id&&!r.lock).forEach(r1=>occ.filter(r=>r.nurse===B.id&&!r.lock).forEach(r2=>{
           if(r1.acuity===r2.acuity) return;
           if(!eligible(B,r1)||!eligible(A,r2)||!okGeo(B.id,r1)||!okGeo(A.id,r2)) return;
           tryOp(()=>{ r1.nurse=B.id; r2.nurse=A.id; });
         })); }));
       // moves (keep count spread <=1)
       nurses.forEach(A=>nurses.forEach(B=>{ if(A.id===B.id) return;
-        occupied().filter(r=>r.nurse===A.id&&!r.lock).forEach(r=>{ if(!eligible(B,r)||!okGeo(B.id,r)) return;
+        occ.filter(r=>r.nurse===A.id&&!r.lock).forEach(r=>{ if(!eligible(B,r)||!okGeo(B.id,r)) return;
           const counts=nurses.map(n=> n.id===A.id?cntOf(A.id)-1 : n.id===B.id?cntOf(B.id)+1 : cntOf(n.id));
           if(Math.max(...counts)-Math.min(...counts)>1) return;
           tryOp(()=>{ r.nurse=B.id; });
