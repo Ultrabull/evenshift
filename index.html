@@ -4892,7 +4892,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqOR:STAFFREQ_OR,staffReqNote:STAFFREQ_NOTE,staffReqCallRN:STAFFREQ_CALLRN,staffReqCallPCT:STAFFREQ_CALLPCT,staffReqWTW:STAFFREQ_WTW,staffReqFloat:STAFFREQ_FLOAT,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -4932,7 +4932,8 @@ function applyState(st){
   if(typeof st.surveyOn==='boolean') SURVEY_ON=st.surveyOn;
   if(Array.isArray(st.surveyResponses)) SURVEY_RESPONSES=st.surveyResponses;
   if(typeof st.pctMode==='boolean') PCT_MODE=st.pctMode;
-  STAFFREQ_OR=st.staffReqOR||''; STAFFREQ_NOTE=st.staffReqNote||''; STAFFREQ_CALLRN=st.staffReqCallRN||''; STAFFREQ_CALLPCT=st.staffReqCallPCT||''; STAFFREQ_WTW=st.staffReqWTW||''; STAFFREQ_FLOAT=st.staffReqFloat||'';
+  if(st.staffReqF) STAFFREQ_F={...st.staffReqF};
+  else { STAFFREQ_F={}; if(st.staffReqOR)STAFFREQ_F.or=st.staffReqOR; if(st.staffReqNote)STAFFREQ_F.note=st.staffReqNote; if(st.staffReqCallRN)STAFFREQ_F.callrn=st.staffReqCallRN; if(st.staffReqCallPCT)STAFFREQ_F.callpct=st.staffReqCallPCT; if(st.staffReqWTW)STAFFREQ_F.wtw=st.staffReqWTW; if(st.staffReqFloat)STAFFREQ_F.float=st.staffReqFloat; }   // legacy keys migrate
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
   if(st.pin) chargePin=st.pin;
   if(st.hucPin) hucPin=st.hucPin;
@@ -5325,8 +5326,9 @@ function openBeds(){ return allRooms.filter(rn=>!(rooms[rn]&&rooms[rn].occupied)
 
 /* ───── Staffing Office request (the 3am/3pm fax) ───── */
 let _rnReqAdj=null, _pctReqAdj=null, _hucReqAdj=null;   // null = use suggestion; number = charge override
-let STAFFREQ_OR='', STAFFREQ_NOTE='';                    // OR/out-of-OR times + notes (charge types)
-let STAFFREQ_CALLRN='', STAFFREQ_CALLPCT='', STAFFREQ_WTW='', STAFFREQ_FLOAT='';   // call-ins / willing-to-work / float — all free text
+let STAFFREQ_F={};   // every field on the staffing-office sheet: key -> what the charge typed (missing key = use the board's auto value)
+function setSRF(k,v){ STAFFREQ_F[k]=v; scheduleSave(); }
+function srv(k,auto){ const v=STAFFREQ_F[k]; return (v==null) ? String(auto==null?'':auto) : v; }   // effective value: charge's edit wins, else auto
 function staffReqData(){
   const occ=occupied(); const target=FLOOR.ratio||4;
   const dc=occ.filter(r=>r.flags.includes('dc')).map(r=>r.id).sort((a,b)=>a-b);
@@ -5366,30 +5368,32 @@ function setReq(which,delta){ const d=staffReqData();
 }
 function staffReqText(){
   const d=staffReqData(); const seven=shiftType==='Day'?'7A':'7P';
-  const sitLine=d.ones.length?d.ones.map(o=>'Rm '+o.id+(o.beh?' (SI/SH or AMS)':'')).join(', '):'none';
+  const sitAuto=d.ones.length?d.ones.map(o=>'Rm '+o.id+(o.beh?' (SI/SH or AMS)':'')).join(', '):'none';
   const L=[];
-  L.push(`UT Southwestern — Staffing Request`);
+  L.push(`Staffing Request`);
   L.push(`Unit: ${FLOOR.unit}   For: ${seven}   Date: ${shiftDate}`);
-  L.push(`Expected census @ start of shift: ${d.projCensus}`);
   L.push('');
-  L.push(`Anticipated discharges: ${d.dc.length}${d.dc.length?' (Rm '+d.dc.join(', ')+')':''}`);
-  L.push(`Expected ORs / out-of-OR: ${STAFFREQ_OR.trim()||'____'}`);
-  L.push(`1:1 patients (room #): ${sitLine}`);
-  L.push(`Insulin gtt on floor (room #): ${d.ins.length?'Rm '+d.ins.join(', '):'none'}`);
+  L.push(`— Assigned staff for next shift —`);
+  L.push(`RN: ${srv('asgrn',d.rnAvail)}   PCT: ${srv('asgpct',d.pctSched)}   HUC: ${srv('asghuc',d.hucSched)}`);
   L.push('');
-  L.push(`— RNs —`);
-  L.push(`Call in — RN: ${STAFFREQ_CALLRN.trim()||'____'}`);
-  L.push(`Willing to work (RN/PCT): ${STAFFREQ_WTW.trim()||'____'}`);
-  L.push(`Float: ${STAFFREQ_FLOAT.trim()||'____'}`);
-  L.push(`# RNs requested: ${d.rnReq}`);
+  L.push(`— Call-ins & willing to work —`);
+  L.push(`Call in — RN: ${srv('callrn','').trim()||'____'}`);
+  L.push(`Call in — PCT: ${srv('callpct','').trim()||'____'}`);
+  L.push(`Willing to work (RN/PCT): ${srv('wtw','').trim()||'____'}`);
   L.push('');
-  L.push(`— PCTs —`);
-  L.push(`Call in — PCT: ${STAFFREQ_CALLPCT.trim()||'____'}`);
-  L.push(`# PCTs requested: ${d.pctReq}`);
+  L.push(`— Staffing needs —`);
+  L.push(`Sitter (rooms): ${srv('sitter',sitAuto)}`);
+  L.push(`Reason for sitter: ${srv('sitreason','').trim()||'____'}`);
+  L.push(`RNs requested: ${d.rnReq}   PCTs requested: ${d.pctReq}   HUCs requested: ${d.hucReq}`);
   L.push('');
-  L.push(`— HUCs —`);
-  L.push(`# HUCs requested: ${d.hucReq}`);
-  if(STAFFREQ_NOTE.trim()){ L.push(''); L.push(`Notes: ${STAFFREQ_NOTE.trim()}`); }
+  L.push(`Next to float: ${srv('float','').trim()||'____'}`);
+  L.push('');
+  L.push(`— Census & clinical —`);
+  L.push(`Expected census @ start: ${srv('census',d.projCensus)}`);
+  L.push(`Anticipated discharges: ${srv('dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''))}`);
+  L.push(`Insulin gtt on floor: ${srv('ins', d.ins.length?'Rm '+d.ins.join(', '):'none')}`);
+  L.push(`Expected ORs / out-of-OR: ${srv('or','').trim()||'____'}`);
+  if(srv('note','').trim()){ L.push(''); L.push(`Notes: ${srv('note','').trim()}`); }
   L.push('');
   L.push(`Reported by: ${chargeName||'Charge RN'}`);
   return L.join('\n');
@@ -5401,9 +5405,8 @@ function emailStaffReq(){
 }
 function staffReqPDF(){
   const d=staffReqData(); const seven=shiftType==='Day'?'7A':'7P';
-  const sit=d.ones.length?d.ones.map(o=>'Rm '+o.id+(o.beh?' (SI/SH or AMS)':'')).join(', '):'none';
-  const ins=d.ins.length?'Rm '+d.ins.join(', '):'none';
-  const row=(k,v)=>`<tr><td class="k">${esc(k)}</td><td>${esc((v==null||v==='')?'—':String(v))}</td></tr>`;
+  const sitAuto=d.ones.length?d.ones.map(o=>'Rm '+o.id+(o.beh?' (SI/SH or AMS)':'')).join(', '):'none';
+  const row=(k,v)=>`<tr><td class="k">${esc(k)}</td><td>${esc((v==null||String(v).trim()==='')?'\u2014':String(v))}</td></tr>`;
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Staffing Request — ${esc(FLOOR.unit||'Unit')} ${esc(shiftDate)}</title>
   <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;padding:16px;color:#10151D}@page{margin:12mm}
   h1{font-size:19px}.sub{font-size:12px;color:#5A6270;margin:3px 0 12px}
@@ -5412,63 +5415,72 @@ function staffReqPDF(){
   td.k{width:42%;color:#5A6270;font-weight:600}.note{margin-top:14px;font-size:9.5px;color:#9098A4}</style></head><body>
   <h1>Staffing Request</h1>
   <div class="sub">${esc(FLOOR.unit||'Unit')} &nbsp;·&nbsp; For <b>${esc(seven)}</b> &nbsp;·&nbsp; ${esc(shiftDate)} &nbsp;·&nbsp; Charge: ${esc(chargeName||'____')}</div>
-  <h2>From the board</h2><table>
-  ${row('Expected census @ start', d.projCensus)}
-  ${row('Anticipated discharges', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''))}
-  ${row('1:1 patients', sit)}
-  ${row('Insulin gtt on floor', ins)}
-  ${row('Expected ORs / out-of-OR', STAFFREQ_OR.trim())}
+  <h2>Assigned staff for next shift</h2><table>
+  ${row('RN', srv('asgrn',d.rnAvail))}
+  ${row('PCT', srv('asgpct',d.pctSched))}
+  ${row('HUC', srv('asghuc',d.hucSched))}
   </table>
-  <h2>RNs</h2><table>
-  ${row('Call in — RN', STAFFREQ_CALLRN.trim())}
-  ${row('Willing to work (RN/PCT)', STAFFREQ_WTW.trim())}
-  ${row('Float', STAFFREQ_FLOAT.trim())}
-  ${row('# RNs requested', d.rnReq)}
+  <h2>Call-ins &amp; willing to work</h2><table>
+  ${row('Call in — RN', srv('callrn',''))}
+  ${row('Call in — PCT', srv('callpct',''))}
+  ${row('Willing to work (RN/PCT)', srv('wtw',''))}
   </table>
-  <h2>PCTs</h2><table>
-  ${row('Call in — PCT', STAFFREQ_CALLPCT.trim())}
-  ${row('# PCTs requested', d.pctReq)}
+  <h2>Staffing needs</h2><table>
+  ${row('Sitter (rooms)', srv('sitter',sitAuto))}
+  ${row('Reason for sitter', srv('sitreason',''))}
+  ${row('RNs requested', d.rnReq)}
+  ${row('PCTs requested', d.pctReq)}
+  ${row('HUCs requested', d.hucReq)}
   </table>
-  <h2>HUCs</h2><table>${row('# HUCs requested', d.hucReq)}</table>
-  ${STAFFREQ_NOTE.trim()?`<h2>Notes</h2><div style="font-size:13px;padding:6px 0">${esc(STAFFREQ_NOTE.trim())}</div>`:''}
+  <h2>Next to float</h2><table>${row('Next to float', srv('float',''))}</table>
+  <h2>Census &amp; clinical</h2><table>
+  ${row('Expected census @ start', srv('census',d.projCensus))}
+  ${row('Anticipated discharges', srv('dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':'')))}
+  ${row('Insulin gtt on floor', srv('ins', d.ins.length?'Rm '+d.ins.join(', '):'none'))}
+  ${row('Expected ORs / out-of-OR', srv('or',''))}
+  </table>
+  ${srv('note','').trim()?`<h2>Notes</h2><div style="font-size:13px;padding:6px 0">${esc(srv('note','').trim())}</div>`:''}
   <div class="note">EvenShift · room numbers only, no patient names · reported by ${esc(chargeName||'Charge RN')}</div>
   <script>window.onload=function(){window.print();}<\/script></body></html>`;
   const w=window.open('','_blank');
   if(w){ w.document.write(html); w.document.close(); }
   else { copyMeetingPrep(); alert('Allow pop-ups to save the PDF — the request was copied instead.'); }
 }
-function setStaffReqOR(v){ STAFFREQ_OR=v; scheduleSave(); }
-function setStaffReqField(k,v){ if(k==='callrn')STAFFREQ_CALLRN=v; else if(k==='callpct')STAFFREQ_CALLPCT=v; else if(k==='wtw')STAFFREQ_WTW=v; else if(k==='float')STAFFREQ_FLOAT=v; scheduleSave(); }
-function setStaffReqNote(v){ STAFFREQ_NOTE=v; scheduleSave(); }
 function renderStaffReqTab(){
   const el=document.getElementById('meetBody'); if(!el) return;
   const d=staffReqData(); const seven=shiftType==='Day'?'7A':'7P';
   const stepper=(which,val,sug)=>`<span class="reqstep"><button onclick="setReq('${which}',-1)">–</button><b>${val}</b><button onclick="setReq('${which}',1)">+</button></span>${sug!=null?`<span class="reqsug">suggested ${sug}</span>`:''}`;
+  const fld=(label,key,auto,ph)=>`<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:3px">${label}</div><input class="hudnote" style="min-height:0;height:38px" value="${esc(srv(key,auto))}" oninput="setSRF('${key}',this.value)" placeholder="${ph||''}"></div>`;
+  const sitAuto=d.ones.length?d.ones.map(o=>o.id+(o.beh?'*':'')).join(', '):'none';
   let h=`<div class="meetSection">`;
   h+=`<div class="meetRow"><b>${esc(FLOOR.unit)}</b> · For <b>${seven}</b> · ${esc(shiftDate)}</div>`;
-  h+=secHead('Auto-filled from your board');
-  h+=`<div class="meetRow">Expected census next shift: <b>${d.projCensus}</b> <span style="font-size:11px;color:var(--ink-soft)">(now ${occupied().length} − ${d.dc.length} D/C + ${d.adm.length} admit)</span></div>`;
-  h+=`<div class="meetRow">Anticipated discharges: <b>${d.dc.length}</b>${d.dc.length?` · Rm ${d.dc.join(', ')}`:''}</div>`;
-  h+=`<div class="meetRow">1:1 patients: <b>${d.ones.length?d.ones.map(o=>o.id+(o.beh?'*':'')).join(', '):'none'}</b>${d.ones.some(o=>o.beh)?' <span style="font-size:11px;color:var(--ink-soft)">*behavioral — mark SI/SH or AMS on the form</span>':''}</div>`;
-  h+=`<div class="meetRow">Insulin gtt on floor: <b>${d.ins.length?'Rm '+d.ins.join(', '):'none'}</b></div>`;
-  h+=secHead('Requested (tap to adjust)');
+  h+=`<div class="meetRow" style="font-size:11.5px;color:var(--ink-soft);background:var(--bg)">Everything below starts pre-filled from your board — <b>type over any field</b> and your version goes on the request. Resets each shift.</div>`;
+  h+=secHead('Assigned staff for next shift');
+  h+=fld('RN','asgrn',d.rnAvail,'how many RNs');
+  h+=fld('PCT','asgpct',d.pctSched,'how many PCTs');
+  h+=fld('HUC','asghuc',d.hucSched,'how many HUCs');
+  h+=secHead('Call-ins & willing to work');
+  h+=fld('Call in — RN','callrn','','names or count');
+  h+=fld('Call in — PCT','callpct','','names or count');
+  h+=fld('Willing to work (RN / PCT)','wtw','','who is willing');
+  h+=secHead('Staffing needs');
+  h+=fld('Sitter (rooms)','sitter',sitAuto,'room numbers');
+  h+=fld('Reason for sitter','sitreason','','SI/SH · AMS · safety…');
   h+=`<div class="reqrow"><span>RNs requested</span>${stepper('rn',d.rnReq,d.rnReqSuggest)}</div>`;
   h+=`<div class="reqrow"><span>PCTs requested</span>${stepper('pct',d.pctReq,null)}</div>`;
   h+=`<div class="reqrow"><span>HUCs requested</span>${stepper('huc',d.hucReq,null)}</div>`;
-  const fld=(label,val,key,ph)=>`<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:3px">${label}</div><input class="hudnote" style="min-height:0;height:38px" value="${esc(val)}" oninput="setStaffReqField('${key}',this.value)" placeholder="${ph}"></div>`;
-  h+=secHead('Call-ins & extra staff — type freely');
-  h+=fld('Call in \u2014 RN', STAFFREQ_CALLRN, 'callrn', 'names or count');
-  h+=fld('Call in \u2014 PCT', STAFFREQ_CALLPCT, 'callpct', 'names or count');
-  h+=fld('Willing to work (RN / PCT)', STAFFREQ_WTW, 'wtw', 'who is willing');
-  h+=fld('Float', STAFFREQ_FLOAT, 'float', 'float in / out, to / from');
-  h+=secHead('Charge fills in');
-  h+=`<input class="hudnote" style="min-height:0;height:38px;margin-bottom:8px" placeholder="Expected ORs / out-of-OR times" value="${esc(STAFFREQ_OR)}" oninput="setStaffReqOR(this.value)">`;
-  h+=`<textarea class="hudnote" placeholder="Notes (optional)" oninput="setStaffReqNote(this.value)">${esc(STAFFREQ_NOTE)}</textarea>`;
+  h+=secHead('Next to float');
+  h+=fld('Next to float','float','','who floats next · to / from');
+  h+=secHead('Census & clinical — edit anything');
+  h+=fld('Expected census @ start','census',d.projCensus,'');
+  h+=fld('Anticipated discharges','dc', d.dc.length+(d.dc.length?' (Rm '+d.dc.join(', ')+')':''),'');
+  h+=fld('Insulin gtt on floor','ins', d.ins.length?'Rm '+d.ins.join(', '):'none','');
+  h+=fld('Expected ORs / out-of-OR','or','','times');
+  h+=`<textarea class="hudnote" placeholder="Notes (optional)" oninput="setSRF('note',this.value)">${esc(srv('note',''))}</textarea>`;
   h+=`<div class="hudactions"><button class="btn primary" onclick="staffReqPDF()">\uD83D\uDCC4 Save / Share PDF</button><button class="btn" onclick="copyMeetingPrep()">Copy</button></div>`;
   h+=`</div>`;
   el.innerHTML=h;
 }
-
 function huddleData(){
   const occ=occupied();
   const oos=occ.filter(r=>r.flags.includes('oos')).map(r=>r.id);
@@ -6275,7 +6287,7 @@ function nextShift(){ if(!chargeMode)return;
   rosterN.forEach(n=>{ n.scoredDone=false; n.breakSlot=''; n.breakApproved=false; });  // reset scoring-done + breaks for the new shift
   [rosterN,rosterP,rosterS,rosterH].forEach(arr=>arr.forEach(x=>{ if(x.holdover){ x.holdover=false; x.on=false; } }));  // holdovers were ad-hoc for the ending shift — they go home
   DC_BARRIERS={}; HUDDLE_NOTE='';   // huddle is per-shift; bed-capability (BED_CAP) is permanent
-  STAFFREQ_OR=''; STAFFREQ_NOTE=''; STAFFREQ_CALLRN=''; STAFFREQ_CALLPCT=''; STAFFREQ_WTW=''; STAFFREQ_FLOAT=''; _rnReqAdj=null; _pctReqAdj=null; _hucReqAdj=null;
+  STAFFREQ_F={}; _rnReqAdj=null; _pctReqAdj=null; _hucReqAdj=null;
   rosterP.forEach(p=>{ p.breakSlot=''; p.breakApproved=false; });
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
