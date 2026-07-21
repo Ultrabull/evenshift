@@ -2848,7 +2848,7 @@ function renderReport(){
     `<p class="covnote">Tap what went wrong, add a line if you can, and send. No patient names — just what the app did.</p>`
     +`<div class="rcats">${chips}</div>`
     +`<textarea id="reportText" class="hudnote" placeholder="Optional: what were you doing when it broke?"></textarea>`
-    +`<div class="hudactions"><button class="btn primary" onclick="submitReport()">Send to Neo</button><button class="btn" onclick="closeReport()">Cancel</button></div>`
+    +`<div class="hudactions"><button class="btn primary" onclick="submitReport()">Send to Amith</button><button class="btn" onclick="closeReport()">Cancel</button></div>`
     +`<div id="reportMsg" class="hint" style="margin-top:8px;"></div>`;
 }
 async function submitReport(){
@@ -2862,7 +2862,7 @@ async function submitReport(){
     try{
       const {error}=await sb.from('reports').insert(row);
       if(error) throw error;
-      if(msg) msg.textContent='✓ Sent — thank you. Neo will see this.';
+      if(msg) msg.textContent='✓ Sent — thank you. Amith will see this.';
       setTimeout(closeReport,1200); return;
     }catch(e){ /* fall through to email fallback */ }
   }
@@ -2874,7 +2874,7 @@ function reportEmailFallback(row){
   const body=`What broke: ${row.category}\n${row.message?('Details: '+row.message+'\n'):''}\n— context —\nScreen: ${row.screen}\nMode: ${row.mode}\nShift: ${row.shift}\nPosted: ${row.posted}\nLast error: ${row.last_error}\nWhen: ${new Date().toLocaleString()}\nApp: EvenShift`;
   const url='mailto:amith.v.alias@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   try{ window.location.href=url; closeReport(); }
-  catch(e){ try{ navigator.clipboard.writeText(body); const m=document.getElementById('reportMsg'); if(m) m.textContent='Offline — report copied. Paste it to Neo.'; }catch(_){ alert('Email this to amith.v.alias@gmail.com:\n\n'+body); } }
+  catch(e){ try{ navigator.clipboard.writeText(body); const m=document.getElementById('reportMsg'); if(m) m.textContent='Offline — report copied. Paste it to Amith.'; }catch(_){ alert('Email this to amith.v.alias@gmail.com:\n\n'+body); } }
 }
 function openTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.add('on'); }
 function closeTools(){ const s=document.getElementById('toolsScrim'); if(s) s.classList.remove('on'); }
