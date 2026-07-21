@@ -3397,13 +3397,18 @@ function balanceReport(){
   // 1:1 rooms with no sitter covering them — surface even if balance is fine
   const uncovered=occupied().filter(r=>r.flags.includes('sit')||r.flags.includes('1:1')).map(r=>r.id).filter(rid=>!sitters.find(s=>String(s.room)===String(rid)));
   let sitWarn = uncovered.length ? `<div class="balsit">⚠ 1:1 room${uncovered.length>1?'s':''} <b>${uncovered.join(', ')}</b> ${uncovered.length>1?'have':'has'} no sitter assigned. Set one in 👥 Who\u2019s Working.</div>` : '';
+  // A nurse on the crew with no patients (usually added after the board was built) — nudge to rebuild.
+  const emptyNs=nurses.filter(n=>!occupied().some(r=>r.nurse===n.id));
+  const boardBuilt=nurses.filter(n=>occupied().filter(r=>r.nurse===n.id).length>=2).length>=2;
+  let emptyWarn=(emptyNs.length && boardBuilt) ? `<div class="balsit">👤 <b>${emptyNs.map(n=>esc(n.name)).join(', ')}</b> ${emptyNs.length>1?'have':'has'} no patients yet — tap <b>Make Assignment</b> to include ${emptyNs.length>1?'them':'them'}, or drag rooms onto their card. <button class="balfix" onclick="generate()">Make Assignment</button></div>` : '';
+  const topWarn=emptyWarn+sitWarn;
   const withRooms=nurses.map(n=>({n, rs:occupied().filter(r=>r.nurse===n.id)})).filter(x=>x.rs.length);
-  if(withRooms.length<2){ if(sitWarn){ banner.innerHTML=sitWarn; banner.style.display=''; } else banner.style.display='none'; return; }
+  if(withRooms.length<2){ if(topWarn){ banner.innerHTML=topWarn; banner.style.display=''; } else banner.style.display='none'; return; }
   const load=x=>x.rs.reduce((s,r)=>s+r.acuity,0);
   const sorted=withRooms.slice().sort((a,b)=>load(b)-load(a));
   const hi=sorted[0], lo=sorted[sorted.length-1];
   const gap=load(hi)-load(lo);
-  if(gap < 2.0){ if(sitWarn){ banner.innerHTML=sitWarn; banner.style.display=''; } else banner.style.display='none'; return; }
+  if(gap < 2.0){ if(topWarn){ banner.innerHTML=topWarn; banner.style.display=''; } else banner.style.display='none'; return; }
   const hiKept=hi.rs.filter(r=>r.lock===hi.n.id);
   const hiKeptHrs=hiKept.reduce((s,r)=>s+r.acuity,0);
   let msg='';
@@ -3420,7 +3425,7 @@ function balanceReport(){
       msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
     }
   }
-  banner.innerHTML = sitWarn + `<span class="rose-icon">⚖️</span> ${msg}`;
+  banner.innerHTML = emptyWarn + sitWarn + `<span class="rose-icon">⚖️</span> ${msg}`;
   banner.style.display='';
 }
 function balanceMove(rn,nid){ if(!chargeMode)return; pushUndo(); const r=rooms[rn]; if(r){ r.nurse=nid; if(r.lock&&r.lock!==nid)r.lock=null; } renderAssign(); scheduleSave(); checkFlagViolations(); balanceReport(); }
