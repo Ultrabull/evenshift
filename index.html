@@ -1155,7 +1155,6 @@
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openLastShift()">📋 Last shift’s board</button>
-          <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openReportsView()">🐞 Bug reports</button>
         </div>
       </details>
     </div>
@@ -1298,6 +1297,7 @@
         <button class="btile" onclick="closeTools(); openPctFlagCfg();"><span class="btemoji">🧑‍⚕️</span><span class="btlabel">PCT care flags</span><span class="btsub">what PCTs see &amp; edit</span></button>
         <button class="btile" onclick="closeTools(); resetRosterDefault();"><span class="btemoji">♻️</span><span class="btlabel">Reset teams</span><span class="btsub">reload roster + Vocera</span></button>
         <button class="btile" onclick="closeTools(); openMgrConsole();"><span class="btemoji">🗂️</span><span class="btlabel">Manager console</span><span class="btsub">floor · codes · erase</span></button>
+        <button class="btile" onclick="closeTools(); openAdminConsole();"><span class="btemoji">🛰️</span><span class="btlabel">Admin console</span><span class="btsub">house view · bug reports</span></button>
       </div>
       <div class="cardsec">Board tools</div>
       <div class="btilegrid">
@@ -1321,6 +1321,21 @@
         <button class="btile" onclick="closeMgrConsole(); setHucCode();"><span class="btemoji">📟</span><span class="btlabel">HUC code</span><span class="btsub">Vocera access</span></button>
         <button class="btile" onclick="closeMgrConsole(); setMgrCode();"><span class="btemoji">📊</span><span class="btlabel">Manager code</span><span class="btsub">analysis access</span></button>
         <button class="btile danger" onclick="closeMgrConsole(); clearFloor();"><span class="btemoji">⚠️</span><span class="btlabel">Erase floor</span><span class="btsub">wipe all — new unit only</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="adminConsoleScrim" onclick="if(event.target===this)closeAdminConsole()">
+  <div class="modal">
+    <div class="mhead"><span class="rt">🛰️ Admin console</span><button class="btn" onclick="closeAdminConsole()">Close</button></div>
+    <div class="mbody">
+      <div class="hint" style="margin-top:0;">System &amp; house-wide tools — for the admin only, behind its own code (separate from the manager code).</div>
+      <div class="btilegrid">
+        <button class="btile" onclick="closeAdminConsole(); showHouseView();"><span class="btemoji">🏥</span><span class="btlabel">House View</span><span class="btsub">all units · beds</span></button>
+        <button class="btile" onclick="closeAdminConsole(); showReportsView();"><span class="btemoji">🐞</span><span class="btlabel">Bug reports</span><span class="btsub">what staff sent</span></button>
+        <button class="btile" onclick="closeAdminConsole(); openImpact();"><span class="btemoji">📈</span><span class="btlabel">Impact &amp; savings</span><span class="btsub">time &amp; cost saved</span></button>
+        <button class="btile" onclick="closeAdminConsole(); setAdminCode();"><span class="btemoji">🔑</span><span class="btlabel">Admin code</span><span class="btsub">change the code</span></button>
       </div>
     </div>
   </div>
@@ -3693,6 +3708,7 @@ function refreshViewOptions(){
 let chargeMode=false, chargePin=null;   // chargeMode = editing unlocked; chargePin = soft gate (charge/ANM)
 let hucPin=null;                        // separate simple code so a HUC can edit Vocera without full charge access
 let mgrPin=pinStore('0000');            // manager-only gate for Manager analysis. Placeholder 0000 — change in More Tools.
+let adminPin=pinStore('0000');          // admin-only gate for the Admin console (house view / bug reports). Separate from the manager code.
 function pinStore(p){ try{ return btoa(unescape(encodeURIComponent(p+'::es'))); }catch(e){ return p; } }
 /* Open the Vocera editor for a HUC: charge is always allowed; otherwise ask for the HUC code (or charge PIN). */
 function openVoceraGated(){
@@ -5042,7 +5058,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -5089,6 +5105,7 @@ function applyState(st){
   if(st.pin) chargePin=st.pin;
   if(st.hucPin) hucPin=st.hucPin;
   if(st.mgrPin) mgrPin=st.mgrPin;
+  if(st.adminPin) adminPin=st.adminPin;
   if(st.prevShift) PREV_SHIFT=st.prevShift;
   if(st.prevByShift) PREV_BY_SHIFT={Day:st.prevByShift.Day||null,Night:st.prevByShift.Night||null};
   else if(st.prevShift){ PREV_BY_SHIFT={Day:null,Night:null}; PREV_BY_SHIFT[(st.shiftType==='Night')?'Day':'Night']=st.prevShift; }   // legacy: the old single snapshot was the shift BEFORE the saved one
@@ -5910,6 +5927,30 @@ function openMgrConsole(){
   document.getElementById('mgrConsoleScrim').classList.add('on');
 }
 function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
+function openAdminConsole(){
+  // Admin-only tier (house view, bug reports). Its own code — the manager code does NOT open this.
+  if(!chargeMode){ alert('The admin console is available to the charge nurse.'); return; }
+  const v=(prompt('Admin console — house view and bug reports.\nEnter the admin code:')||'').trim();
+  if(v==='') return;
+  if(pinStore(v)!==adminPin){ alert('That code didn’t match the admin code.'); return; }
+  document.getElementById('adminConsoleScrim').classList.add('on');
+}
+function closeAdminConsole(){ const s=document.getElementById('adminConsoleScrim'); if(s) s.classList.remove('on'); }
+function setAdminCode(){
+  if(!chargeMode){ alert('Unlock the Charge console first, then open More Tools → Admin console.'); return; }
+  const isDefault = !adminPin || adminPin===pinStore('0000');
+  if(!isDefault){
+    const old=(prompt('Enter the CURRENT admin code first:')||'').trim();
+    if(old==='') return;
+    if(pinStore(old)!==adminPin){ alert('That doesn’t match the current admin code — the code was NOT changed.'); return; }
+  }
+  const cur=(prompt('Set a new ADMIN code (for the Admin console).\nThis is separate from the charge PIN and the manager code — only the admin should know it.\nUse 4+ digits or letters.')||'').trim();
+  if(cur==='') return;
+  if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters. Try again from More Tools → Admin console.'); return; }
+  adminPin=pinStore(cur); scheduleSave(); alert('✓ Admin code saved. Only people with this code can open the Admin console.');
+}
+function showHouseView(){ document.getElementById('houseScrim').classList.add('on'); _houseTab='rollup'; loadHouse(); }
+function showReportsView(){ document.getElementById('reportsViewScrim').classList.add('on'); loadReportsView(); }
 function showHistory(){ document.getElementById('histScrim').classList.add('on'); loadHistory(); }
 function openHistory(){
   // Manager-only: requires the manager PIN (charge PIN does NOT open this).
