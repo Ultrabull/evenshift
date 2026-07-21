@@ -474,6 +474,13 @@
   body.locked .boardstack #cardStack{order:2;}
   body.locked .boardstack #postFinalWrap{order:3;}
   .boardtoggle{width:100%;margin:14px 0 4px;padding:11px;border:1px solid var(--line);background:var(--surface);border-radius:11px;font-family:var(--display);font-weight:700;font-size:14px;color:var(--ink-soft);cursor:pointer;text-align:left;}
+  .priopick{margin:12px 0 4px;padding:12px 13px;border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:var(--shadow);}
+  .priopick .prioq{font-family:var(--display);font-weight:800;font-size:13.5px;color:var(--ink);display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .prio-seg{display:flex;gap:0;border:1px solid var(--line-strong);border-radius:11px;overflow:hidden;}
+  .prio-seg button{flex:1;padding:10px 8px;border:0;background:var(--surface);color:var(--ink-soft);font-family:var(--display);font-weight:700;font-size:13px;cursor:pointer;}
+  .prio-seg button+button{border-left:1px solid var(--line-strong);}
+  .prio-seg button.on{background:var(--teal);color:#fff;}
+  .priosub{margin-top:7px;font-size:11.5px;color:var(--ink-soft);line-height:1.45;}
   .prevboard{margin:16px 0 4px;border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden;}
   .prevboard>summary{list-style:none;cursor:pointer;padding:12px 14px;font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);display:flex;align-items:center;gap:7px;}
   .prevboard>summary::-webkit-details-marker{display:none;}
@@ -1218,6 +1225,14 @@
     <div class="acureview chargeOnly" id="capReview" style="display:none;"></div>
     <div class="acureview chargeOnly" id="flagViol" style="display:none;"></div>
     <div class="tilegrid chargeOnly" id="buildTiles"></div>
+    <div class="priopick chargeOnly" id="prioPick">
+      <div class="prioq">When hours and geography clash, which wins? <button class="qhelp" onclick="showHelp('priority')" title="What’s this?">?</button></div>
+      <div class="seg prio-seg">
+        <button id="prioH" class="on" onclick="setPriority('hallway')">🏥 Keep rooms close</button>
+        <button id="prioE" onclick="setPriority('hours')">⚖️ Even the hours</button>
+      </div>
+      <div class="priosub" id="prioSub"></div>
+    </div>
     <div class="bighint chargeOnly">New here? Tap any <span class="qinline">?</span> for a quick plain-English explanation.</div>
     <!-- hidden status elements kept so the rest of the app keeps working -->
     <div style="display:none;">
@@ -1866,6 +1881,7 @@ function acuLabel(h){return{L:'Low',M:'Moderate',H:'High',X:'Intensive'}[acuClas
 function assignVisible(){ const b=document.getElementById('v-build'), a=document.getElementById('v-assign'); return (b&&b.classList.contains('on'))||(a&&a.classList.contains('on')); }
 /* ===== Tap-a-? help popups — plain language, written for a brand-new nurse ===== */
 const HELP={
+  priority:['When hours and geography conflict','Most shifts the app keeps each nurse’s rooms close together AND evens out the hours. When it can’t have both, this tells it which to bend.\n\n• Keep rooms close — each nurse stays tight to one hall; someone might carry a little more or less than the others.\n\n• Even the hours — everyone’s hours land within about half an hour; a nurse might pick up one room farther away to get there.\n\nSafety caps (insulin, behavioral, new-grad limits) are always honored either way. Keep rooms close is the usual choice.'],
   make:['✨ Make assignment','Tap this and the app splits all the patients between your nurses for you. It tries to give everyone about the same amount of work, keeps each nurse\u2019s rooms close together, and spreads out the busy patients. You can always move a room afterward.'],
   post:['📌 Post','While you\u2019re still setting things up, staff see a “still being built” note. When you tap Post, it tells everyone “this is final” so they know they can trust it. Tap it again to un-post.'],
   staff:['👥 Staff','This is where you pick who\u2019s working. Open it, tap the names of the nurses, PCTs and sitters who are here this shift. You can also keep your whole unit list here so you never retype names.'],
@@ -2534,6 +2550,7 @@ function renderBuildTiles(){
   h+=tile(s4,'🔎','5','Check & Post',checkStatus, s4==='wait'?'showHelp(\'make\')':'show(\'assign\')','post');
   h+=tile('util','⚙️','','More Tools','settings','openTools()','');
   el.innerHTML=h; el.style.display='';
+  syncPrioUI();
 }
 function openVocera(){ const b=document.getElementById('vocCardBody'); if(b) b.innerHTML=renderVoceraCard(); document.getElementById('vocScrim').classList.add('on'); }
 function closeVocera(){ document.getElementById('vocScrim').classList.remove('on'); vocConfirmed=true; renderBuildTiles(); renderNextStep(); scheduleSave(); }
@@ -3624,7 +3641,17 @@ function keepGroup(nid){ if(!chargeMode)return; pushUndo();
   renderAssign(); scheduleSave();
 }
 function resetBoard(){ if(!chargeMode)return;pushUndo();occupied().forEach(r=>{r.nurse=r.lock||null;});selectedRoom=null;renderAssign();scheduleSave();}
-function setPriority(p){ balancePriority=p; document.getElementById('prioH').classList.toggle('on',p==='hallway'); document.getElementById('prioE').classList.toggle('on',p==='hours'); generate(); }
+const PRIO_SUB={ hallway:'Each nurse stays tight to one hall; hours may vary a little more.', hours:'Hours land within about half an hour; a nurse may pick up a farther room.' };
+function syncPrioUI(){
+  const ph=document.getElementById('prioH'), pe=document.getElementById('prioE'), sub=document.getElementById('prioSub');
+  if(ph) ph.classList.toggle('on',balancePriority==='hallway');
+  if(pe) pe.classList.toggle('on',balancePriority==='hours');
+  if(sub) sub.textContent=PRIO_SUB[balancePriority]||PRIO_SUB.hallway;
+}
+function setPriority(p){
+  balancePriority=p; syncPrioUI(); scheduleSave();
+  if(occupied().some(r=>r.nurse)) generate();   // re-balance only if a board already exists
+}
 function toggleTip(id){ const el=document.getElementById(id); el.style.display = el.style.display==='none' ? 'block' : 'none'; }
 
 /* ---------- roles: charge vs single nurse ---------- */
@@ -5030,7 +5057,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); const ph=document.getElementById('prioH'); if(ph)ph.classList.toggle('on',balancePriority==='hallway'); const pe=document.getElementById('prioE'); if(pe)pe.classList.toggle('on',balancePriority==='hours'); }
+function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
 function setShiftType(t){ shiftType=t; syncWorking(); applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 /* ═══════════════════════════════════════════════════════════
