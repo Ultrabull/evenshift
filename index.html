@@ -1333,7 +1333,7 @@
       <div class="btilegrid">
         <button class="btile" onclick="closeAdminConsole(); showHouseView();"><span class="btemoji">🏥</span><span class="btlabel">House View</span><span class="btsub">all units · beds</span></button>
         <button class="btile" onclick="closeAdminConsole(); showReportsView();"><span class="btemoji">🐞</span><span class="btlabel">Bug reports</span><span class="btsub">what staff sent</span></button>
-        <button class="btile" onclick="closeAdminConsole(); openDevGate();"><span class="btemoji">⚙️</span><span class="btlabel">Developer settings</span><span class="btsub">units · backend</span></button>
+        <button class="btile" onclick="closeAdminConsole(); showDevPanel();"><span class="btemoji">⚙️</span><span class="btlabel">Developer settings</span><span class="btsub">units · backend</span></button>
         <button class="btile" onclick="closeAdminConsole(); setAdminCode();"><span class="btemoji">🔑</span><span class="btlabel">Console code</span><span class="btsub">change the code</span></button>
       </div>
     </div>
@@ -1397,11 +1397,7 @@
         <div class="rsharebtns"><button class="btn primary" onclick="saveCloudKeys()">Connect</button></div>
         <div id="cloudMsg" class="rmsg"></div>
       </details>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);">
-        <label class="rubfield" style="margin-bottom:6px;">Developer code <span class="flhint">change the code that opens this screen</span><input id="devCodeIn" inputmode="numeric" placeholder="New developer code"></label>
-        <div class="rsharebtns"><button class="btn" onclick="setDevCode()">Save developer code</button></div>
-        <div id="devCodeMsg" class="rmsg" style="color:var(--ink-soft)"></div>
-      </div>
+      <p class="covnote" style="margin-top:14px;">This screen opens from the <b>Developer console</b> (long-press the top-left logo) — it uses that one console code, so there is no separate code here.</p>
     </div>
   </div>
 </div>
@@ -1581,6 +1577,18 @@
       <div class="rsharebtns"><button class="btn primary" id="pinBtn" onclick="submitPin()">Unlock</button></div>
       <div id="pinErr" class="rmsg" style="color:var(--bad);"></div>
       <p class="covnote" style="margin-top:12px;">Soft gate for a shared unit tablet — it keeps nurses and visitors from changing the board. It is not hospital-grade login; anyone given the PIN can edit.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Reusable masked code entry (manager / developer console / HUC / dev codes) — never shows the typed characters -->
+<div class="scrim" id="askCodeScrim" onclick="if(event.target===this)askCodeResolve('')">
+  <div class="modal pinmodal">
+    <div class="mhead"><span class="rt" id="askCodeTitle">Enter code</span><button class="btn" onclick="askCodeResolve('')">Cancel</button></div>
+    <div class="mbody">
+      <p class="imps" id="askCodeMsg" style="white-space:pre-line;"></p>
+      <input id="askCodeInput" class="pinin" type="password" inputmode="text" maxlength="24" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter')askCodeResolve(this.value); else if(event.key==='Escape')askCodeResolve('')">
+      <div class="rsharebtns"><button class="btn primary" onclick="askCodeResolve(document.getElementById('askCodeInput').value)">OK</button><button class="btn" onclick="askCodeResolve('')">Cancel</button></div>
     </div>
   </div>
 </div>
@@ -3221,10 +3229,9 @@ function renderUnitPicker(){
       +`</span></div>`;
   }).join('');
 }
-function openDevGate(){
-  const v=(prompt('Developer settings (backend config).\nEnter the developer code:')||'').trim();
-  if(v==='') return;
-  if(v!==DEV_CODE){ alert('That code didn\u2019t match the developer code.'); return; }
+// Opens the Developer settings panel directly. No separate code: the Developer console already
+// gated entry with the console code, so unit + backend settings open with that one code.
+function showDevPanel(){
   const u=document.getElementById('sbUrl'), k=document.getElementById('sbKey'), dc=document.getElementById('devCodeIn');
   try{ const saved=JSON.parse(localStorage.getItem('evenshift_cloud')||'{}'); if(u)u.value=saved.url||''; if(k)k.value=saved.key||''; }catch(e){}
   if(dc) dc.value='';
@@ -3710,10 +3717,10 @@ let mgrPin=pinStore('0000');            // manager-only gate for Manager analysi
 let adminPin=pinStore('0000');          // gate for the Developer console (house view / bug reports / backend settings). Separate from the manager code.
 function pinStore(p){ try{ return btoa(unescape(encodeURIComponent(p+'::es'))); }catch(e){ return p; } }
 /* Open the Vocera editor for a HUC: charge is always allowed; otherwise ask for the HUC code (or charge PIN). */
-function openVoceraGated(){
+async function openVoceraGated(){
   if(chargeMode){ openVocera(); return; }
   if(!hucPin){ alert('No HUC code is set yet.\n\nAsk the charge nurse to set one: 🔓 Charge console → ⚙️ More Tools → Manager console → HUC code.'); return; }
-  const v=(prompt('Enter the HUC code to open the Vocera phones:')||'').trim();
+  const v=await askCode('Enter the HUC code to open the Vocera phones:','📟 HUC code');
   if(!v) return;
   if(pinStore(v)===hucPin || (chargePin && pinStore(v)===chargePin)){ openVocera(); }
   else alert('Wrong code. Ask the charge nurse if you\u2019re not sure.');
@@ -3726,8 +3733,8 @@ function resetRosterDefault(){ if(!chargeMode)return;
   scheduleSave(); refreshViewOptions(); applyAccessUI(); renderAcuity(); renderAssign();
   alert('Day & night teams and Vocera numbers reloaded from the unit default. Open 👥 Who\u2019s Working to pick today\u2019s crew.');
 }
-function setHucCode(){ if(!chargeMode)return;
-  const v=(prompt('Set a simple HUC code (4+ characters). The HUC uses this to open and edit the Vocera phones without the full charge PIN:', '')||'').trim();
+async function setHucCode(){ if(!chargeMode)return;
+  const v=await askCode('Set a simple HUC code (4+ characters). The HUC uses this to open and edit the Vocera phones without the full charge PIN:','📟 Set HUC code');
   if(!v) return;
   if(v.length<4){ alert('Use at least 4 characters.'); return; }
   hucPin=pinStore(v); scheduleSave(); alert('HUC code saved. The HUC can now tap 📟 Vocera on the board and enter this code.');
@@ -3768,6 +3775,24 @@ function openPin(){ const setup=!chargePin;
   const i=document.getElementById('pinInput'); if(i)i.value=''; const e=document.getElementById('pinErr'); if(e)e.textContent='';
   document.getElementById('pinScrim').classList.add('on'); setTimeout(()=>{const x=document.getElementById('pinInput'); if(x)x.focus();},60); }
 function closePin(){ document.getElementById('pinScrim').classList.remove('on'); }
+// Masked code prompt (replaces window.prompt for any PIN/code) — the typed characters are never shown.
+let _askCodeResolve=null;
+function askCode(message, title){
+  return new Promise(resolve=>{
+    if(_askCodeResolve) _askCodeResolve('');   // resolve any prior open prompt
+    _askCodeResolve=resolve;
+    const t=document.getElementById('askCodeTitle'); if(t) t.textContent=title||'Enter code';
+    const m=document.getElementById('askCodeMsg'); if(m) m.textContent=message||'';
+    const i=document.getElementById('askCodeInput'); if(i) i.value='';
+    document.getElementById('askCodeScrim').classList.add('on');
+    setTimeout(()=>{ const x=document.getElementById('askCodeInput'); if(x) x.focus(); },60);
+  });
+}
+function askCodeResolve(val){
+  const s=document.getElementById('askCodeScrim'); if(s) s.classList.remove('on');
+  const r=_askCodeResolve; _askCodeResolve=null;
+  if(r) r((val||'').trim());
+}
 function submitPin(){ const v=(document.getElementById('pinInput').value||'').trim(); const e=document.getElementById('pinErr');
   if(v.length<4){ if(e)e.textContent='Use at least 4 digits.'; return; }
   if(!chargePin){ chargePin=pinStore(v); chargeMode=true; closePin(); applyAccessUI(); jumpToNextStep(); scheduleSave(); return; }   // first run: set it
@@ -5917,32 +5942,32 @@ function downloadSnapshot(){ pushHistory(); }
 
 let _histSnaps=[], _histRange=7;
 
-function openMgrConsole(){
+async function openMgrConsole(){
   // Groups floor setup + access codes + erase. Manager-code gated (holds destructive controls).
   if(!chargeMode){ alert('The manager console is available to the charge nurse.'); return; }
-  const v=(prompt('Manager console — floor setup and access codes.\nEnter the manager code:')||'').trim();
+  const v=await askCode('Enter the manager code:','🗂️ Manager console');
   if(v==='') return;
   if(pinStore(v)!==mgrPin){ alert('That code didn’t match the manager code.'); return; }
   document.getElementById('mgrConsoleScrim').classList.add('on');
 }
 function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
-function openAdminConsole(){
+async function openAdminConsole(){
   // Developer / system-owner tier (house view, bug reports, backend settings). Reached ONLY by the hidden
   // long-press gesture — no visible button — and gated by its own code (the manager code does NOT open this).
-  const v=(prompt('Developer console — house view, bug reports and settings.\nEnter the developer console code:')||'').trim();
+  const v=await askCode('Enter the developer console code:','🛠️ Developer console');
   if(v==='') return;
   if(pinStore(v)!==adminPin){ alert('That code didn’t match the developer console code.'); return; }
   document.getElementById('adminConsoleScrim').classList.add('on');
 }
 function closeAdminConsole(){ const s=document.getElementById('adminConsoleScrim'); if(s) s.classList.remove('on'); }
-function setAdminCode(){
+async function setAdminCode(){
   const isDefault = !adminPin || adminPin===pinStore('0000');
   if(!isDefault){
-    const old=(prompt('Enter the CURRENT developer console code first:')||'').trim();
+    const old=await askCode('Enter the CURRENT developer console code first:','🛠️ Change console code');
     if(old==='') return;
     if(pinStore(old)!==adminPin){ alert('That doesn’t match the current developer console code — the code was NOT changed.'); return; }
   }
-  const cur=(prompt('Set a new DEVELOPER CONSOLE code.\nThis is separate from the charge PIN and the manager code — only the developer / system owner should know it.\nUse 4+ digits or letters.')||'').trim();
+  const cur=await askCode('Set a new DEVELOPER CONSOLE code (4+ digits or letters).\nSeparate from the charge PIN and the manager code — only the developer / system owner should know it.','🛠️ New console code');
   if(cur==='') return;
   if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters. Try again from More Tools → Developer console.'); return; }
   adminPin=pinStore(cur); scheduleSave(); alert('✓ Developer console code saved. Only people with this code can open the Developer console.');
@@ -5950,9 +5975,9 @@ function setAdminCode(){
 function showHouseView(){ document.getElementById('houseScrim').classList.add('on'); _houseTab='rollup'; loadHouse(); }
 function showReportsView(){ document.getElementById('reportsViewScrim').classList.add('on'); loadReportsView(); }
 function showHistory(){ document.getElementById('histScrim').classList.add('on'); loadHistory(); }
-function openHistory(){
+async function openHistory(){
   // Manager-only: requires the manager PIN (charge PIN does NOT open this).
-  const v=(prompt('Manager analysis is for unit leadership.\nEnter the manager code:')||'').trim();
+  const v=await askCode('Enter the manager code:','\ud83d\udcca Manager analysis');
   if(v===''){ return; }
   if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
   showHistory();
@@ -5960,8 +5985,8 @@ function openHistory(){
 
 /* ───────── HOUSE VIEW — supervisor suite (reads all units from the cloud) ───────── */
 let _houseRows=[], _houseTab='rollup', _bedNeed='any';
-function openHouseView(){
-  const v=(prompt('House View is for the house / staffing supervisor.\nEnter the manager code:')||'').trim();
+async function openHouseView(){
+  const v=await askCode('Enter the manager code:','\ud83c\udfe5 House View');
   if(v===''){ return; }
   if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
   document.getElementById('houseScrim').classList.add('on');
@@ -5969,8 +5994,8 @@ function openHouseView(){
 }
 function closeHouse(){ const s=document.getElementById('houseScrim'); if(s) s.classList.remove('on'); }
 /* Manager-gated viewer to read bug reports without opening Supabase. */
-function openReportsView(){
-  const v=(prompt('Bug reports are for unit leadership.\nEnter the manager code:')||'').trim();
+async function openReportsView(){
+  const v=await askCode('Enter the manager code:','\ud83d\udc1e Bug reports');
   if(v===''){ return; }
   if(pinStore(v)!==mgrPin){ alert('That code didn\u2019t match the manager code.'); return; }
   document.getElementById('reportsViewScrim').classList.add('on'); loadReportsView();
@@ -6098,17 +6123,17 @@ function houseBeds(){
   return h;
 }
 
-function setMgrCode(){
-  if(!chargeMode){ alert('Unlock as Charge first (tap 🔒 Charge at the top), then open More Tools → Manager code.'); return; }
+async function setMgrCode(){
+  if(!chargeMode){ alert('Unlock as Charge first (tap 🔒 Charge console at the top), then open More Tools → Manager console → Manager code.'); return; }
   // Changing the manager code requires knowing the CURRENT one — it outranks charge access.
   // Only the factory placeholder (0000) / first-time setup skips this check.
   const isDefault = !mgrPin || mgrPin===pinStore('0000');
   if(!isDefault){
-    const old=(prompt('Enter the CURRENT manager code first:')||'').trim();
+    const old=await askCode('Enter the CURRENT manager code first:','🗂️ Change manager code');
     if(old==='') return;   // cancelled
     if(pinStore(old)!==mgrPin){ alert('That doesn\u2019t match the current manager code — the code was NOT changed.'); return; }
   }
-  const cur=(prompt('Set a new MANAGER code (for Manager analysis).\nThis is separate from the charge PIN — only leadership should know it.\nUse 4+ digits or letters.')||'').trim();
+  const cur=await askCode('Set a new MANAGER code (4+ digits or letters).\nSeparate from the charge PIN — only leadership should know it.','🗂️ New manager code');
   if(cur===''){ return; }   // cancelled
   if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters. Try again from More Tools → Manager code.'); return; }
   mgrPin=pinStore(cur); scheduleSave(); alert('✓ Manager code saved. Only people with this code can open Manager analysis (⋯ menu → Manager analysis).');
