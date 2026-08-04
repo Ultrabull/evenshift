@@ -1334,6 +1334,7 @@
         <button class="btile" onclick="closeAdminConsole(); showHouseView();"><span class="btemoji">🏥</span><span class="btlabel">House View</span><span class="btsub">all units · beds</span></button>
         <button class="btile" onclick="closeAdminConsole(); showReportsView();"><span class="btemoji">🐞</span><span class="btlabel">Bug reports</span><span class="btsub">what staff sent</span></button>
         <button class="btile" onclick="closeAdminConsole(); showDevPanel();"><span class="btemoji">⚙️</span><span class="btlabel">Developer settings</span><span class="btsub">units · backend</span></button>
+        <button class="btile" onclick="closeAdminConsole(); resetMgrCode();"><span class="btemoji">🗂️</span><span class="btlabel">Reset manager code</span><span class="btsub">forgot it? set a new one</span></button>
         <button class="btile" onclick="closeAdminConsole(); setAdminCode();"><span class="btemoji">🔑</span><span class="btlabel">Console code</span><span class="btsub">change the code</span></button>
       </div>
     </div>
@@ -5971,6 +5972,14 @@ async function setAdminCode(){
   if(cur==='') return;
   if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters. Try again from More Tools → Developer console.'); return; }
   adminPin=pinStore(cur); scheduleSave(); alert('✓ Developer console code saved. Only people with this code can open the Developer console.');
+}
+// Admin recovery: reset a FORGOTTEN manager code. Reachable only from the Developer console (which is
+// itself gated), so the developer/system owner can set a fresh manager code without the old one.
+async function resetMgrCode(){
+  const cur=await askCode('Set a NEW manager code (4+ digits or letters).\nUse this when the manager code was forgotten — no old code needed.','🗂️ Reset manager code');
+  if(cur==='') return;
+  if(cur.length<4){ alert('That code is too short — use at least 4 digits or letters.'); return; }
+  mgrPin=pinStore(cur); scheduleSave(); alert('✓ Manager code reset. The Manager console and Manager analysis now open with the new code.');
 }
 function showHouseView(){ document.getElementById('houseScrim').classList.add('on'); _houseTab='rollup'; loadHouse(); }
 function showReportsView(){ document.getElementById('reportsViewScrim').classList.add('on'); loadReportsView(); }
