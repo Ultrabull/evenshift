@@ -1409,6 +1409,7 @@
         <label class="tsfld">Your initials<input id="tsInit" maxlength="4" placeholder="e.g. JS" autocomplete="off"></label>
         <span class="note" id="tsCtx"></span>
       </div>
+      <div class="note" id="tsSync" style="margin:-4px 0 10px;"></div>
       <div class="tstimers">
         <div class="tstimer hand" id="tsCardHand">
           <div class="tl"><span class="dot"></span>By hand · current board</div>
@@ -2023,10 +2024,16 @@ function closeLastShift(){ document.getElementById('lastShiftScrim').classList.r
 /* ───────── TIME STUDY — measure the build: by hand vs EvenShift (device-local) ───────── */
 const TS_KEY='evenshift_timestudy_v1';
 let TS=(function(){ try{ const j=JSON.parse(localStorage.getItem(TS_KEY)); if(j&&j.entries) return j; }catch(e){} return {initials:'',entries:[],running:{hand:null,app:null}}; })();
+if(!TS.entries) TS.entries=[];
+function _tsNewId(){ return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7); }
+TS.entries.forEach(e=>{ if(e&&!e.id) e.id=_tsNewId(); });   // migrate pre-sync entries
+TS.cloud=[];   // shared unit log — fetched live from the cloud, not persisted locally
 let _tsMa='hand', _tsRaf={hand:null,app:null};
-function tsSave(){ try{ localStorage.setItem(TS_KEY, JSON.stringify(TS)); }catch(e){} }
+function tsSave(){ try{ const {cloud,...keep}=TS; localStorage.setItem(TS_KEY, JSON.stringify(keep)); }catch(e){} }
 function tsPad(n){ return String(n).padStart(2,'0'); }
 function tsFmt(sec){ return tsPad(Math.floor(sec/60))+':'+tsPad(Math.floor(sec%60)); }
+// combined view: this device's local entries + everyone's cloud entries, de-duped by id
+function tsAll(){ const map={}; (TS.cloud||[]).forEach(e=>{ if(e&&e.id) map[e.id]=e; }); (TS.entries||[]).forEach(e=>{ if(e&&e.id) map[e.id]=e; }); return Object.values(map).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
 function openTimeStudy(){
   document.querySelectorAll('details.help[open]').forEach(d=>d.removeAttribute('open'));
   const i=document.getElementById('tsInit'); if(i) i.value=TS.initials||chargeName||'';
@@ -2035,6 +2042,7 @@ function openTimeStudy(){
   ['hand','app'].forEach(m=>{ if(TS.running&&TS.running[m]) _tsStartTick(m); });   // resume any running timer
   tsRender();
   document.getElementById('tsScrim').classList.add('on');
+  tsLoadCloud().then(()=>{ tsRender(); tsSyncUp(); });   // pull the shared log, then push any local-only timings
 }
 function closeTimeStudy(){ document.getElementById('tsScrim').classList.remove('on'); }
 function _tsCap(m){ return m==='hand'?'Hand':'App'; }
@@ -2050,38 +2058,52 @@ function tsToggle(m){
 function tsAddEntry(m, sec, banner){
   const init=(document.getElementById('tsInit')||{}).value; if(init!=null) TS.initials=String(init).trim().toUpperCase();
   const d=new Date(); const date=d.getFullYear()+'-'+tsPad(d.getMonth()+1)+'-'+tsPad(d.getDate());
-  TS.entries.unshift({ method:m, sec:Math.round(sec), date, shift:shiftType, by:TS.initials||'', pts:occupied().length||'', ts:Date.now() });
-  tsSave(); tsRender();
+  const e={ id:_tsNewId(), method:m, sec:Math.round(sec), date, shift:shiftType, by:TS.initials||'', pts:occupied().length||'', ts:Date.now() };
+  TS.entries.unshift(e); tsSave(); tsRender(); tsPushCloud(e);
 }
 function tsManualAdd(){ const v=parseFloat((document.getElementById('tsMaMin')||{}).value); if(!(v>0)){ alert('Enter minutes first.'); return; } tsAddEntry(_tsMa, v*60, false); document.getElementById('tsMaMin').value=''; }
-function tsDel(ts){ TS.entries=TS.entries.filter(e=>e.ts!==ts); tsSave(); tsRender(); }
-function _tsStats(m){ const s=TS.entries.filter(e=>e.method===m).map(e=>e.sec); if(!s.length) return null; const sum=s.reduce((a,b)=>a+b,0); const so=[...s].sort((a,b)=>a-b); const mid=Math.floor(so.length/2); const med=so.length%2?so[mid]:(so[mid-1]+so[mid])/2; return {n:s.length,avg:sum/s.length/60,med:med/60,lo:Math.min(...s)/60,hi:Math.max(...s)/60}; }
+function tsDel(id){ TS.entries=TS.entries.filter(e=>e.id!==id); TS.cloud=(TS.cloud||[]).filter(e=>e.id!==id); tsSave(); tsRender(); if(cloudOn()&&sb){ try{ sb.from('timestudy').delete().eq('id',id); }catch(e){} } }
+function _tsStats(m){ const s=tsAll().filter(e=>e.method===m).map(e=>e.sec); if(!s.length) return null; const sum=s.reduce((a,b)=>a+b,0); const so=[...s].sort((a,b)=>a-b); const mid=Math.floor(so.length/2); const med=so.length%2?so[mid]:(so[mid-1]+so[mid])/2; return {n:s.length,avg:sum/s.length/60,med:med/60,lo:Math.min(...s)/60,hi:Math.max(...s)/60}; }
 function _tsR(x){ return x.toFixed(x%1?1:0); }
 function tsRender(){
   const h=_tsStats('hand'), a=_tsStats('app');
   const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.innerHTML=v; };
   set('tsHAvg', h?_tsR(h.avg)+'m':'—'); set('tsHMeta', h?('n='+h.n+' · median '+_tsR(h.med)+' · '+_tsR(h.lo)+'–'+_tsR(h.hi)+'m'):'no timings yet');
   set('tsAAvg', a?_tsR(a.avg)+'m':'—'); set('tsAMeta', a?('n='+a.n+' · median '+_tsR(a.med)+' · '+_tsR(a.lo)+'–'+_tsR(a.hi)+'m'):'no timings yet');
-  const sb=document.getElementById('tsSaved');
-  if(h&&a){ set('tsSavedNum', _tsR(h.avg-a.avg)+' min'); set('tsSavedCap','average saved per board · <b>'+_tsR(a.avg)+' min</b> EvenShift vs <b>'+_tsR(h.avg)+' min</b> by hand'); if(sb)sb.style.display=''; }
-  else if(sb) sb.style.display='none';
+  const sbox=document.getElementById('tsSaved');
+  if(h&&a){ set('tsSavedNum', _tsR(h.avg-a.avg)+' min'); set('tsSavedCap','average saved per board · <b>'+_tsR(a.avg)+' min</b> EvenShift vs <b>'+_tsR(h.avg)+' min</b> by hand'); if(sbox)sbox.style.display=''; }
+  else if(sbox) sbox.style.display='none';
+  const all=tsAll();
+  const sy=document.getElementById('tsSync'); if(sy) sy.innerHTML = cloudOn()
+    ? '☁ <b>Shared unit log</b> — every charge’s timings roll up here'+(all.length?(' ('+all.length+' so far)'):'')+'.'
+    : '⚠ Offline — saved on this device; it syncs to the shared log when you reconnect.';
   const body=document.getElementById('tsLogBody'); if(!body) return;
-  if(!TS.entries.length){ body.innerHTML='<tr><td colspan="7" class="note" style="padding:12px 4px;">No timings yet — tap Start on a stopwatch, or add one by hand.</td></tr>'; return; }
-  body.innerHTML=TS.entries.map(e=>`<tr><td><span class="mp ${e.method}">${e.method==='hand'?'By hand':'EvenShift'}</span></td><td class="d">${tsFmt(e.sec)}</td><td>${e.date}</td><td>${e.shift||''}</td><td>${esc(e.by)||'—'}</td><td>${e.pts||'—'}</td><td><button class="x" onclick="tsDel(${e.ts})" aria-label="Delete">×</button></td></tr>`).join('');
+  if(!all.length){ body.innerHTML='<tr><td colspan="7" class="note" style="padding:12px 4px;">No timings yet — tap Start on a stopwatch, or add one by hand.</td></tr>'; return; }
+  body.innerHTML=all.map(e=>`<tr><td><span class="mp ${e.method}">${e.method==='hand'?'By hand':'EvenShift'}</span></td><td class="d">${tsFmt(e.sec)}</td><td>${e.date}</td><td>${e.shift||''}</td><td>${esc(e.by)||'—'}</td><td>${e.pts||'—'}</td><td><button class="x" onclick="tsDel('${e.id}')" aria-label="Delete">×</button></td></tr>`).join('');
 }
 function tsReport(){
-  const h=_tsStats('hand'), a=_tsStats('app'); const L=['EvenShift time study - 10 Green','Task timed: build the assignment, first acuity number to printed/posted.',''];
+  const h=_tsStats('hand'), a=_tsStats('app'); const L=['EvenShift time study - 10 Green (shared pilot log)','Task timed: build the assignment, first acuity number to printed/posted.',''];
   const line=(nm,s)=> s? nm+': n='+s.n+'  avg '+s.avg.toFixed(1)+' min  median '+s.med.toFixed(1)+'  range '+s.lo.toFixed(0)+'-'+s.hi.toFixed(0)+' min' : nm+': no timings yet';
   L.push(line('By hand (current board)', h)); L.push(line('EvenShift             ', a));
   if(h&&a){ L.push(''); L.push('Average time saved: '+(h.avg-a.avg).toFixed(1)+' min per board  (median '+(h.med-a.med).toFixed(1)+')');
     L.push('At 2 boards/day that is about '+Math.round((h.avg-a.avg)*2*365/60)+' hours a year for the unit.'); }
   L.push('','Detail:');
-  TS.entries.slice().reverse().forEach(e=> L.push(e.date+'  '+String(e.shift||'').padEnd(5)+' '+String(e.by||'--').padEnd(4)+' '+(e.method==='hand'?'by hand ':'evenshift')+'  '+tsFmt(e.sec)+(e.pts?('  ('+e.pts+' pts)'):'')));
+  tsAll().slice().reverse().forEach(e=> L.push(e.date+'  '+String(e.shift||'').padEnd(5)+' '+String(e.by||'--').padEnd(4)+' '+(e.method==='hand'?'by hand ':'evenshift')+'  '+tsFmt(e.sec)+(e.pts?('  ('+e.pts+' pts)'):'')));
   return L.join('\n');
 }
 function tsCopy(){ const t=tsReport(); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>alert('Report copied — paste it into a text or email to your manager.')).catch(()=>prompt('Copy this report:',t)); } else prompt('Copy this report:',t); }
-function tsCSV(){ const rows=[['date','shift','initials','method','seconds','minutes','patients']]; TS.entries.slice().reverse().forEach(e=>rows.push([e.date,e.shift||'',e.by||'',e.method==='hand'?'by_hand':'evenshift',e.sec,(e.sec/60).toFixed(2),e.pts||''])); const csv=rows.map(r=>r.join(',')).join('\n'); try{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='evenshift-timestudy.csv'; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ prompt('Copy this CSV:',csv); } }
-function tsClear(){ if(confirm('Delete all timings on this device? This cannot be undone.')){ TS.entries=[]; TS.running={hand:null,app:null}; tsSave(); tsRender(); const s=document.getElementById('tsSaved'); if(s)s.style.display='none'; } }
+function tsCSV(){ const rows=[['date','shift','initials','method','seconds','minutes','patients']]; tsAll().slice().reverse().forEach(e=>rows.push([e.date,e.shift||'',e.by||'',e.method==='hand'?'by_hand':'evenshift',e.sec,(e.sec/60).toFixed(2),e.pts||''])); const csv=rows.map(r=>r.join(',')).join('\n'); try{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='evenshift-timestudy.csv'; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ prompt('Copy this CSV:',csv); } }
+function tsClear(){ if(!confirm('Clear the WHOLE shared pilot log for this unit — every charge’s timings? This cannot be undone.')) return; TS.entries=[]; TS.cloud=[]; TS.running={hand:null,app:null}; tsSave(); tsRender(); const s=document.getElementById('tsSaved'); if(s)s.style.display='none'; if(cloudOn()&&sb){ try{ sb.from('timestudy').delete().eq('unit',unitId); }catch(e){} } }
+// ── shared pilot log (Supabase table `timestudy`) ──
+async function tsLoadCloud(){ if(!cloudOn()||!sb){ TS.cloud=[]; return; }
+  try{ const {data,error}=await sb.from('timestudy').select('*').eq('unit',unitId); if(error) throw error;
+    TS.cloud=(data||[]).map(r=>({ id:r.id, method:r.method, sec:r.seconds, date:r.measured_on, shift:r.shift||'', by:r.initials||'', pts:r.pts||'', ts:r.created_at?new Date(r.created_at).getTime():Date.now() }));
+  }catch(e){ TS.cloud=[]; }   // table missing or offline → local-only, no crash
+}
+async function tsPushCloud(e){ if(!cloudOn()||!sb) return;
+  try{ await sb.from('timestudy').insert({ id:e.id, unit:unitId, method:e.method, seconds:e.sec, minutes:+(e.sec/60).toFixed(2), shift:e.shift||'', initials:e.by||'', pts:e.pts||null, measured_on:e.date }); }catch(err){}
+}
+async function tsSyncUp(){ if(!cloudOn()||!sb) return; const have=new Set((TS.cloud||[]).map(e=>e.id)); for(const e of (TS.entries||[])){ if(!have.has(e.id)) await tsPushCloud(e); } }
 document.addEventListener('click',function(e){ const b=e.target.closest('#tsMaMethod button'); if(b){ _tsMa=b.dataset.m; document.querySelectorAll('#tsMaMethod button').forEach(x=>x.classList.toggle('on',x===b)); } });
 function renderLastShift(){
   const body=document.getElementById('lastShiftBody'); if(body) body.innerHTML=lastShiftHTML();
