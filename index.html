@@ -617,6 +617,47 @@
   .hbody .hsub{color:var(--ink);font-weight:800;margin:13px 0 5px;font-family:var(--display);}
   .hbody ul{margin:5px 0 9px;padding-left:19px;}
   .hbody li{margin:5px 0;}
+  /* ── time study ── */
+  .tsentry{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
+  .tsrule{background:var(--teal-wash);border:1px solid var(--teal);border-radius:11px;padding:10px 12px;font-size:12.5px;color:var(--ink);margin-bottom:12px;}
+  .tsrule b{color:var(--teal-deep);}
+  .tsrule .tsr{display:flex;gap:8px;align-items:baseline;margin-top:4px;}
+  .tsrule .tsr .k{font-weight:800;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep);min-width:42px;}
+  .tsset{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .tsfld{display:flex;flex-direction:column;gap:3px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;}
+  .tsfld input{font-family:var(--body);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;padding:8px 10px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);width:120px;}
+  .tstimers{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .tstimer{border:1px solid var(--line);border-top-width:3px;border-radius:13px;padding:12px;display:flex;flex-direction:column;gap:9px;background:var(--surface);}
+  .tstimer.hand{border-top-color:#B26A12;} .tstimer.app{border-top-color:var(--good,#12925F);}
+  .tstimer .tl{display:flex;align-items:center;gap:7px;font-weight:750;font-size:13px;}
+  .tstimer .tl .dot{width:9px;height:9px;border-radius:50%;}
+  .tstimer.hand .dot{background:#B26A12;} .tstimer.app .dot{background:var(--good,#12925F);}
+  .tstimer .tclock{font-family:var(--mono,ui-monospace,monospace);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.01em;}
+  .tstimer.running .tclock{color:var(--teal);}
+  .tstimer .tbtn{border:0;border-radius:10px;padding:12px;font-family:var(--display);font-weight:750;font-size:15px;color:#fff;background:var(--teal);cursor:pointer;}
+  .tstimer.running .tbtn{background:#D1435B;}
+  .tssaved{margin-top:12px;text-align:center;background:var(--good-wash,#E4F3EC);border:1px solid var(--good,#12925F);border-radius:12px;padding:11px;}
+  .tssaved .num{font-size:26px;font-weight:800;color:var(--good,#12925F);font-variant-numeric:tabular-nums;}
+  .tssaved .cap{font-size:12px;color:var(--ink);}
+  .tssaved .cap b{color:var(--good,#12925F);}
+  .tsstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .tsstat{border:1px solid var(--line);border-radius:11px;padding:10px 12px;}
+  .tsstat .t{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;}
+  .tsstat .big{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .tsstat.hand .big{color:#B26A12;} .tsstat.app .big{color:var(--good,#12925F);}
+  .tsstat .m{font-size:11px;color:var(--ink-soft);}
+  .tslogwrap{overflow-x:auto;margin-top:12px;}
+  .tslog{width:100%;border-collapse:collapse;font-size:12px;}
+  .tslog th,.tslog td{text-align:left;padding:6px 7px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .tslog th{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint,#8394AC);font-weight:700;}
+  .tslog td.d{font-variant-numeric:tabular-nums;font-weight:700;}
+  .tslog .mp{font-size:10px;font-weight:700;padding:1px 6px;border-radius:12px;}
+  .tslog .mp.hand{background:#FBF0DF;color:#B26A12;} .tslog .mp.app{background:var(--good-wash,#E4F3EC);color:var(--good,#12925F);}
+  .tslog .x{border:0;background:transparent;color:var(--ink-faint,#8394AC);cursor:pointer;font-size:15px;}
+  .tsmanual{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .tsmin{width:92px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:9px;font-size:14px;background:var(--surface);color:var(--ink);}
+  .tsactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  @media (max-width:460px){.tstimers,.tsstats{grid-template-columns:1fr;}}
   .tip{display:inline-block;vertical-align:middle;}
   .tip>summary{list-style:none;cursor:pointer;display:inline-flex;width:17px;height:17px;border-radius:50%;border:1px solid var(--line-strong);color:var(--ink-soft);align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#fff;}
   .tip>summary::-webkit-details-marker{display:none;}
@@ -1204,6 +1245,13 @@
         <li><b>Flags:</b> ISO = isolation · D/C = discharge · ADM = admission · BEH = behavioral · Conf = confused / fall risk · Trach = trach · Drip = IV drip · INS = insulin drip · CVL = central line · Wound = wound care · Total = total care · 1:1 = sitter · PD = dialysis. 🔒 keeps a patient with the same nurse across a re-generate.</li>
         <li>🔒 <b>Room numbers only</b> — no patient names or PHI are ever stored.</li>
       </ul>
+      <div class="tsentry">
+        <div>
+          <p class="hsub" style="margin:0;">⏱ Time study</p>
+          <span class="note">Time the board by hand vs. EvenShift, the same way both ways, and copy a report for your manager.</span>
+        </div>
+        <button class="btn primary sm" onclick="openTimeStudy()">Open time study</button>
+      </div>
     </div>
   </details>
 
@@ -1345,6 +1393,52 @@
   <div class="modal">
     <div class="mhead"><span class="rt">📋 Last shift’s board</span><button class="btn" onclick="closeLastShift()">Close</button></div>
     <div class="mbody"><div id="lastShiftBody"></div></div>
+  </div>
+</div>
+
+<div class="scrim" id="tsScrim" onclick="if(event.target===this)closeTimeStudy()">
+  <div class="modal">
+    <div class="mhead"><span class="rt">⏱ Time study</span><button class="btn" onclick="closeTimeStudy()">Close</button></div>
+    <div class="mbody">
+      <div class="tsrule">
+        <b>Measure the same thing both ways:</b>
+        <div class="tsr"><span class="k">Start</span><span>when you enter the <b>first acuity number</b>.</span></div>
+        <div class="tsr"><span class="k">Stop</span><span>when the assignment is <b>printed</b> (by hand) or <b>posted</b> (EvenShift).</span></div>
+      </div>
+      <div class="tsset">
+        <label class="tsfld">Your initials<input id="tsInit" maxlength="4" placeholder="e.g. JS" autocomplete="off"></label>
+        <span class="note" id="tsCtx"></span>
+      </div>
+      <div class="tstimers">
+        <div class="tstimer hand" id="tsCardHand">
+          <div class="tl"><span class="dot"></span>By hand · current board</div>
+          <div class="tclock" id="tsClockHand">00:00</div>
+          <button class="tbtn" id="tsBtnHand" onclick="tsToggle('hand')">Start</button>
+        </div>
+        <div class="tstimer app" id="tsCardApp">
+          <div class="tl"><span class="dot"></span>EvenShift</div>
+          <div class="tclock" id="tsClockApp">00:00</div>
+          <button class="tbtn" id="tsBtnApp" onclick="tsToggle('app')">Start</button>
+        </div>
+      </div>
+      <div class="tssaved" id="tsSaved" style="display:none;"><div class="num" id="tsSavedNum">—</div><div class="cap" id="tsSavedCap"></div></div>
+      <div class="tsstats">
+        <div class="tsstat hand"><div class="t">By hand</div><div class="big" id="tsHAvg">—</div><div class="m" id="tsHMeta">no timings yet</div></div>
+        <div class="tsstat app"><div class="t">EvenShift</div><div class="big" id="tsAAvg">—</div><div class="m" id="tsAMeta">no timings yet</div></div>
+      </div>
+      <div class="tslogwrap"><table class="tslog"><thead><tr><th>Method</th><th>Time</th><th>Date</th><th>Shift</th><th>By</th><th>Pts</th><th></th></tr></thead><tbody id="tsLogBody"></tbody></table></div>
+      <div class="tsmanual">
+        <span class="seg" id="tsMaMethod"><button data-m="hand" class="on">By hand</button><button data-m="app">EvenShift</button></span>
+        <input id="tsMaMin" inputmode="decimal" placeholder="minutes" class="tsmin">
+        <button class="btn sm" onclick="tsManualAdd()">+ Add</button>
+      </div>
+      <div class="tsactions">
+        <button class="btn primary sm" onclick="tsCopy()">Copy report for manager</button>
+        <button class="btn sm" onclick="tsCSV()">CSV</button>
+        <button class="btn sm" onclick="tsClear()">Clear all</button>
+      </div>
+      <div class="note" style="margin-top:8px;">Saves on this device only. Get a few of each — the report shows median and range, so one odd time can’t skew it.</div>
+    </div>
   </div>
 </div>
 
@@ -1925,6 +2019,70 @@ function showHelp(key){ const h=HELP[key]; if(!h)return; document.getElementById
 function closeHelp(){ document.getElementById('helpScrim').classList.remove('on'); }
 function openLastShift(){ renderLastShift(); document.getElementById('lastShiftScrim').classList.add('on'); }
 function closeLastShift(){ document.getElementById('lastShiftScrim').classList.remove('on'); }
+
+/* ───────── TIME STUDY — measure the build: by hand vs EvenShift (device-local) ───────── */
+const TS_KEY='evenshift_timestudy_v1';
+let TS=(function(){ try{ const j=JSON.parse(localStorage.getItem(TS_KEY)); if(j&&j.entries) return j; }catch(e){} return {initials:'',entries:[],running:{hand:null,app:null}}; })();
+let _tsMa='hand', _tsRaf={hand:null,app:null};
+function tsSave(){ try{ localStorage.setItem(TS_KEY, JSON.stringify(TS)); }catch(e){} }
+function tsPad(n){ return String(n).padStart(2,'0'); }
+function tsFmt(sec){ return tsPad(Math.floor(sec/60))+':'+tsPad(Math.floor(sec%60)); }
+function openTimeStudy(){
+  document.querySelectorAll('details.help[open]').forEach(d=>d.removeAttribute('open'));
+  const i=document.getElementById('tsInit'); if(i) i.value=TS.initials||chargeName||'';
+  const ctx=document.getElementById('tsCtx'); if(ctx) ctx.textContent='Auto-tagged: '+shiftType+' shift · '+occupied().length+' patients';
+  document.querySelectorAll('#tsMaMethod button').forEach(b=>b.classList.toggle('on',b.dataset.m===_tsMa));
+  ['hand','app'].forEach(m=>{ if(TS.running&&TS.running[m]) _tsStartTick(m); });   // resume any running timer
+  tsRender();
+  document.getElementById('tsScrim').classList.add('on');
+}
+function closeTimeStudy(){ document.getElementById('tsScrim').classList.remove('on'); }
+function _tsCap(m){ return m==='hand'?'Hand':'App'; }
+function _tsTick(m){ const t0=TS.running[m]; if(t0==null) return; const el=document.getElementById('tsClock'+_tsCap(m)); if(el) el.textContent=tsFmt((Date.now()-t0)/1000); _tsRaf[m]=requestAnimationFrame(()=>_tsTick(m)); }
+function _tsStartTick(m){ const card=document.getElementById(m==='hand'?'tsCardHand':'tsCardApp'), btn=document.getElementById('tsBtn'+_tsCap(m)); if(card)card.classList.add('running'); if(btn)btn.textContent='Stop'; cancelAnimationFrame(_tsRaf[m]); _tsTick(m); }
+function tsToggle(m){
+  const card=document.getElementById(m==='hand'?'tsCardHand':'tsCardApp'), btn=document.getElementById('tsBtn'+_tsCap(m));
+  if(TS.running[m]!=null){ const sec=(Date.now()-TS.running[m])/1000; TS.running[m]=null; cancelAnimationFrame(_tsRaf[m]);
+    if(card)card.classList.remove('running'); if(btn)btn.textContent='Start'; const cl=document.getElementById('tsClock'+_tsCap(m)); if(cl)cl.textContent='00:00';
+    tsAddEntry(m, sec, true);
+  } else { TS.running[m]=Date.now(); tsSave(); _tsStartTick(m); }
+}
+function tsAddEntry(m, sec, banner){
+  const init=(document.getElementById('tsInit')||{}).value; if(init!=null) TS.initials=String(init).trim().toUpperCase();
+  const d=new Date(); const date=d.getFullYear()+'-'+tsPad(d.getMonth()+1)+'-'+tsPad(d.getDate());
+  TS.entries.unshift({ method:m, sec:Math.round(sec), date, shift:shiftType, by:TS.initials||'', pts:occupied().length||'', ts:Date.now() });
+  tsSave(); tsRender();
+}
+function tsManualAdd(){ const v=parseFloat((document.getElementById('tsMaMin')||{}).value); if(!(v>0)){ alert('Enter minutes first.'); return; } tsAddEntry(_tsMa, v*60, false); document.getElementById('tsMaMin').value=''; }
+function tsDel(ts){ TS.entries=TS.entries.filter(e=>e.ts!==ts); tsSave(); tsRender(); }
+function _tsStats(m){ const s=TS.entries.filter(e=>e.method===m).map(e=>e.sec); if(!s.length) return null; const sum=s.reduce((a,b)=>a+b,0); const so=[...s].sort((a,b)=>a-b); const mid=Math.floor(so.length/2); const med=so.length%2?so[mid]:(so[mid-1]+so[mid])/2; return {n:s.length,avg:sum/s.length/60,med:med/60,lo:Math.min(...s)/60,hi:Math.max(...s)/60}; }
+function _tsR(x){ return x.toFixed(x%1?1:0); }
+function tsRender(){
+  const h=_tsStats('hand'), a=_tsStats('app');
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.innerHTML=v; };
+  set('tsHAvg', h?_tsR(h.avg)+'m':'—'); set('tsHMeta', h?('n='+h.n+' · median '+_tsR(h.med)+' · '+_tsR(h.lo)+'–'+_tsR(h.hi)+'m'):'no timings yet');
+  set('tsAAvg', a?_tsR(a.avg)+'m':'—'); set('tsAMeta', a?('n='+a.n+' · median '+_tsR(a.med)+' · '+_tsR(a.lo)+'–'+_tsR(a.hi)+'m'):'no timings yet');
+  const sb=document.getElementById('tsSaved');
+  if(h&&a){ set('tsSavedNum', _tsR(h.avg-a.avg)+' min'); set('tsSavedCap','average saved per board · <b>'+_tsR(a.avg)+' min</b> EvenShift vs <b>'+_tsR(h.avg)+' min</b> by hand'); if(sb)sb.style.display=''; }
+  else if(sb) sb.style.display='none';
+  const body=document.getElementById('tsLogBody'); if(!body) return;
+  if(!TS.entries.length){ body.innerHTML='<tr><td colspan="7" class="note" style="padding:12px 4px;">No timings yet — tap Start on a stopwatch, or add one by hand.</td></tr>'; return; }
+  body.innerHTML=TS.entries.map(e=>`<tr><td><span class="mp ${e.method}">${e.method==='hand'?'By hand':'EvenShift'}</span></td><td class="d">${tsFmt(e.sec)}</td><td>${e.date}</td><td>${e.shift||''}</td><td>${esc(e.by)||'—'}</td><td>${e.pts||'—'}</td><td><button class="x" onclick="tsDel(${e.ts})" aria-label="Delete">×</button></td></tr>`).join('');
+}
+function tsReport(){
+  const h=_tsStats('hand'), a=_tsStats('app'); const L=['EvenShift time study - 10 Green','Task timed: build the assignment, first acuity number to printed/posted.',''];
+  const line=(nm,s)=> s? nm+': n='+s.n+'  avg '+s.avg.toFixed(1)+' min  median '+s.med.toFixed(1)+'  range '+s.lo.toFixed(0)+'-'+s.hi.toFixed(0)+' min' : nm+': no timings yet';
+  L.push(line('By hand (current board)', h)); L.push(line('EvenShift             ', a));
+  if(h&&a){ L.push(''); L.push('Average time saved: '+(h.avg-a.avg).toFixed(1)+' min per board  (median '+(h.med-a.med).toFixed(1)+')');
+    L.push('At 2 boards/day that is about '+Math.round((h.avg-a.avg)*2*365/60)+' hours a year for the unit.'); }
+  L.push('','Detail:');
+  TS.entries.slice().reverse().forEach(e=> L.push(e.date+'  '+String(e.shift||'').padEnd(5)+' '+String(e.by||'--').padEnd(4)+' '+(e.method==='hand'?'by hand ':'evenshift')+'  '+tsFmt(e.sec)+(e.pts?('  ('+e.pts+' pts)'):'')));
+  return L.join('\n');
+}
+function tsCopy(){ const t=tsReport(); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>alert('Report copied — paste it into a text or email to your manager.')).catch(()=>prompt('Copy this report:',t)); } else prompt('Copy this report:',t); }
+function tsCSV(){ const rows=[['date','shift','initials','method','seconds','minutes','patients']]; TS.entries.slice().reverse().forEach(e=>rows.push([e.date,e.shift||'',e.by||'',e.method==='hand'?'by_hand':'evenshift',e.sec,(e.sec/60).toFixed(2),e.pts||''])); const csv=rows.map(r=>r.join(',')).join('\n'); try{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='evenshift-timestudy.csv'; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ prompt('Copy this CSV:',csv); } }
+function tsClear(){ if(confirm('Delete all timings on this device? This cannot be undone.')){ TS.entries=[]; TS.running={hand:null,app:null}; tsSave(); tsRender(); const s=document.getElementById('tsSaved'); if(s)s.style.display='none'; } }
+document.addEventListener('click',function(e){ const b=e.target.closest('#tsMaMethod button'); if(b){ _tsMa=b.dataset.m; document.querySelectorAll('#tsMaMethod button').forEach(x=>x.classList.toggle('on',x===b)); } });
 function renderLastShift(){
   const body=document.getElementById('lastShiftBody'); if(body) body.innerHTML=lastShiftHTML();
 }
