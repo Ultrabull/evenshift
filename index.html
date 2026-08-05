@@ -763,9 +763,11 @@
   .postbanner .pb-time{font-size:11.5px;color:var(--ink-soft);font-weight:400;}
   #postBtn.posted{background:#E3F4EA;border-color:#1C7A46;color:#1C7A46;}
   .offlinebar{background:#FBE9E9;border-bottom:1.5px solid #E8B4B4;color:#9A2A2A;font-size:12.5px;padding:8px 14px;line-height:1.4;}
-  .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .roomjump input{width:140px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 11px;font-size:14px;font-family:inherit;color:var(--ink);background:#fff;}
   .roomjump span{font-size:12px;color:var(--ink-soft);}
+  .roomjump .tsgo{margin-left:auto;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);font-weight:700;}
+  .roomjump .tsgo:hover{background:var(--teal);color:#fff;}
   .rcard.jumphi{outline:3px solid var(--teal);outline-offset:2px;box-shadow:0 0 0 4px var(--teal-wash);}
   .introcard{text-align:center;padding:14px 10px 6px;}
   .intro-ico{font-size:46px;margin-bottom:10px;}
@@ -1257,7 +1259,7 @@
 
   <div class="view on" id="v-acuity">
     <div class="hint" style="font-size:12.5px;margin-bottom:6px;">Tap a room to score it — tally what the patient needs and it totals the acuity number.</div>
-    <div class="roomjump"><input id="roomSearch" inputmode="numeric" placeholder="Jump to room #" oninput="jumpRoom(this.value,false)" onkeydown="if(event.key==='Enter'){jumpRoom(this.value,true);this.blur();}"><button class="btn sm" onclick="jumpRoom(document.getElementById('roomSearch').value,true)">Go</button><span id="roomJumpMsg"></span></div>
+    <div class="roomjump"><input id="roomSearch" inputmode="numeric" placeholder="Jump to room #" oninput="jumpRoom(this.value,false)" onkeydown="if(event.key==='Enter'){jumpRoom(this.value,true);this.blur();}"><button class="btn sm" onclick="jumpRoom(document.getElementById('roomSearch').value,true)">Go</button><span id="roomJumpMsg"></span><button class="btn sm tsgo" onclick="openTimeStudy()" title="Time the build — by hand vs EvenShift">⏱ Time study</button></div>
     <div class="rubrictag chargeOnly" id="rubricTag" onclick="openRubric()" title="Edit acuity rubric"></div>
     <div class="scoreprog chargeOnly" id="scoreProg" style="display:none;"></div>
     <div id="halls"></div>
