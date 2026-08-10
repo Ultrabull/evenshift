@@ -791,6 +791,8 @@
   .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .roomjump input{width:140px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 11px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--field);}
   .roomjump span{font-size:12px;color:var(--ink-soft);}
+  .evtoast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--bg);padding:11px 17px;border-radius:11px;font-size:13.5px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:9998;box-shadow:var(--shadow);max-width:90vw;text-align:center;}
+  .evtoast.on{opacity:1;transform:translateX(-50%) translateY(0);}
   .roomjump .tsgo{margin-left:auto;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);font-weight:700;}
   .roomjump .tsgo:hover{background:var(--teal);color:#fff;}
   .rcard.jumphi{outline:3px solid var(--teal);outline-offset:2px;box-shadow:0 0 0 4px var(--teal-wash);}
@@ -2363,6 +2365,7 @@ function recalc(){
   document.getElementById('mPts').textContent=(Math.round(pts*100)/100); document.getElementById('mHrs').textContent=acuFmt(pts/DIVISOR);
 }
 function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoom]; let hrs;
+  const _wasOcc=!!r.occupied;   // was this bed already filled? (a no → someone just arrived)
   if(modalMode==='express'){ hrs=modalExpress!=null?modalExpress:0; r.tally={}; }
   else { let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0); hrs=pts/DIVISOR; r.tally=modalTally; }
   // Big acuity swing must have a reason (Other counts).
@@ -2400,7 +2403,15 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
       }
     } else SCORES_OK=false;
   }
+  // A patient who arrives mid-shift used to sit in the Pending pile until someone noticed them.
+  // Once a board exists, give them a nurse right away — same rules Make Assignment uses.
+  let _placedWith=null;
+  if(chargeMode && hrs>0 && !_wasOcc && !r.nurse && occupied().some(x=>x.nurse&&x.id!==r.id)){
+    assignBest(r.id);
+    if(r.nurse){ checkFlagViolations(); const n=nurseObj(r.nurse); _placedWith=n?n.name:null; }
+  }
   closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
+  if(_placedWith) evToast('Room '+r.id+' → '+_placedWith+' · '+cntOf(r.nurse)+' patients');
 }
 function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom];
   r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;
@@ -4091,17 +4102,44 @@ function saveFloor(){
 }
 
 /* ---------- discharge / admit ---------- */
+/* Brief message at the bottom of the screen — used when the app does something on its own
+   (placing a mid-shift admit), so it never happens silently. */
+let _evToastT=null;
+function evToast(msg){
+  let el=document.getElementById('evToast');
+  if(!el){ el=document.createElement('div'); el.id='evToast'; el.className='evtoast'; document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_evToastT); _evToastT=setTimeout(()=>{ el.classList.remove('on'); }, 3600);
+}
+/* Where should ONE room go? Mirrors Make Assignment's rules so a patient who arrives mid-shift
+   lands where the engine would have put them: safety caps are hard limits, "spread" flags
+   (admits, discharges, confused, total care, sitters, lines) get shared out rather than stacked,
+   and the load is evened before geography breaks the tie. */
 function assignBest(id){
   const r=rooms[id]; if(!r||!r.occupied) return;
+  const has=(x,c)=>(x.flags||[]).includes(c)||(x.tags||[]).includes(c);
+  const M=Math.max(1,nurses.length);
+  const rc=ratioCapCodesFast();
+  const myCodes=getActiveFlags().map(x=>x[0]).filter(c=>has(r,c)&&flagRule(c).mode!=='none');
+  const fairOf={}; myCodes.forEach(c=>{ fairOf[c]=Math.ceil(occupied().filter(x=>has(x,c)).length/M); });   // even share of each flag
+  const capOf=rs=>{ let cap=(FLOOR.ratio||99), any=false;
+    rs.forEach(x=>rc.forEach(c=>{ if(has(x,c)){ any=true; cap=Math.min(cap,Math.max(1,flagRule(c).ratio||cap)); } })); return any?cap:Infinity; };
   let best=null,bestC=Infinity;
   nurses.forEach(n=>{ if(!eligible(n,r)) return;
     const mine=occupied().filter(x=>x.nurse===n.id&&x.id!==r.id);
-    const near=mine.length?Math.min(...mine.map(x=>roomDist(r.id,x.id))):6;   // closeness to this nurse's cluster
+    let hard=0, rule=0;
+    for(const c of myCodes){ const ru=flagRule(c), k=mine.filter(x=>has(x,c)).length+1;
+      if(ru.mode==='cap'){ if(k>Math.max(1,ru.cap||1)) hard++; }                       // e.g. 1 behavioral per nurse
+      else if(ru.mode==='ratiocap'){ if(k>Math.max(1,ru.ratio||99)) hard++; }
+      else if(ru.mode==='spread'){ if(k>fairOf[c]) rule+=(k-fairOf[c])*(k-fairOf[c])*4; }   // share admits/DCs around
+    }
+    if(mine.length+1 > capOf(mine.concat([r]))) hard++;                                 // a ratio-cap patient limits TOTAL patients
+    const near=mine.length?Math.min(...mine.map(x=>roomDist(r.id,x.id))):6;             // closeness to this nurse's cluster
     let pen=0;
-    if(r.acuity>=5 && mine.some(x=>x.acuity>=5)) pen+=3;                       // avoid two heavies
-    if(r.flags.includes('beh') && mine.some(x=>x.flags.includes('beh'))) pen+=4; // avoid two behavioral
-    if(r.flags.includes('adm') && mine.some(x=>x.flags.includes('dc'))) pen+=2.5; // avoid discharge+admit churn
-    const c=near + rawHrs(n.id)*0.05 + cntOf(n.id)*0.3 + pen;
+    if(r.acuity>=5 && mine.some(x=>x.acuity>=5)) pen+=1.5;                              // avoid two heavies
+    if(has(r,'adm') && mine.some(x=>has(x,'dc'))) pen+=1.5;                             // avoid discharge+admit churn
+    // even load first (patients, then hours), geography as the tiebreaker
+    const c=hard*1000 + rule + mine.length*1.6 + mine.reduce((s,x)=>s+x.acuity,0)*0.35 + near*0.6 + pen;
     if(c<bestC){ bestC=c; best=n.id; }
   });
   if(best) r.nurse=best;
