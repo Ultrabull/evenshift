@@ -2280,9 +2280,8 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   _prevNow = (r.acuity!=null) ? r.acuity : null;   // the score before this edit, for swing detection
   modalReason = r.acuityReason || ''; modalReasonOther = r.acuityReasonOther || '';
   const hasTally=Object.keys(modalTally).length>0;
-  if(r.occupied && r.acuity!=null && !hasTally){ modalMode='express'; modalExpress=r.acuity; }
-  else { modalMode='quick'; if(!hasTally) modalTally['Assessment & Meds|0']=1; }
-  if(!chargeMode){ modalMode='full'; modalExpress=null; if(!hasTally) modalTally['Assessment & Meds|0']=1; }   // staff always tally the full list; Quick/Express are charge shortcuts
+  if(chargeMode){ modalMode='express'; modalExpress=(r.acuity!=null?r.acuity:0); }                            // charge scores fast by default — Quick/Full list are a tap away
+  else { modalMode='full'; modalExpress=null; if(!hasTally) modalTally['Assessment & Meds|0']=1; }            // staff always tally the full list; Quick/Express are charge shortcuts
   document.getElementById('mRoom').textContent='Room '+rn+(r.occupied?'':' · admit');
   if(chargeMode && r.editedBy && r.editedBy!=='Charge'){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · last edit by '+r.editedBy+(r.editedAt?' ('+_qhTime(r.editedAt)+')':''); }
   if(chargeMode && r.flagsEditedAt){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · flags by '+((r.flagsEditedBy||'?').split(' ')[0])+' ('+_qhTime(r.flagsEditedAt)+')'; }
@@ -2394,7 +2393,9 @@ function recalc(){
 }
 function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoom]; let hrs;
   const _wasOcc=!!r.occupied;   // was this bed already filled? (a no → someone just arrived)
-  if(modalMode==='express'){ hrs=modalExpress!=null?modalExpress:0; r.tally={}; }
+  if(modalMode==='express'){ hrs=modalExpress!=null?modalExpress:0;
+    if(!(_prevNow!=null && Math.abs(hrs-_prevNow)<1e-9)) r.tally={};   // number changed → the old itemization no longer matches; untouched → keep what staff tallied
+  }
   else { let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0); hrs=pts/DIVISOR; r.tally=modalTally; }
   // Big acuity swing must have a reason (Other counts).
   if(swingInfo().big && !modalReason){
@@ -4051,8 +4052,10 @@ function askCodeResolve(val){
 }
 function submitPin(){ const v=(document.getElementById('pinInput').value||'').trim(); const e=document.getElementById('pinErr');
   if(v.length<4){ if(e)e.textContent='Use at least 4 digits.'; return; }
-  if(!chargePin){ chargePin=pinStore(v); chargeMode=true; closePin(); applyAccessUI(); jumpToNextStep(); scheduleSave(); return; }   // first run: set it
-  if(pinStore(v)===chargePin){ chargeMode=true; closePin(); applyAccessUI(); jumpToNextStep(); }
+  // Unlocking as charge always lands on the FULL board — otherwise a staff pick from "Who are you?"
+  // stays in effect and the charge only sees that one nurse's rooms (used to need a refresh).
+  if(!chargePin){ chargePin=pinStore(v); chargeMode=true; viewAs='charge'; closePin(); applyAccessUI(); jumpToNextStep(); scheduleSave(); return; }   // first run: set it
+  if(pinStore(v)===chargePin){ chargeMode=true; viewAs='charge'; closePin(); applyAccessUI(); jumpToNextStep(); }
   else { if(e)e.textContent='Wrong PIN.'; const i=document.getElementById('pinInput'); if(i)i.value=''; } }
 function changePin(){ if(!chargeMode)return; chargePin=null; scheduleSave(); openPin(); }
 
