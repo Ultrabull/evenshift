@@ -517,7 +517,7 @@
   .finalpre{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55;color:var(--ink);background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);overflow-x:auto;}
   .pctcard .name{font-size:15px;}
   .pctbadge{background:var(--now-wash2);color:var(--teal-deep);}
-  .pctchip{background:var(--bg);border:1.5px solid var(--line-strong);color:var(--ink);border-radius:9px;padding:7px 11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .pctchip{background:var(--bg);border:1px solid var(--line-strong);color:var(--ink);border-radius:9px;padding:5px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
   .pctchip.moved{background:var(--moved-wash);border-color:var(--moved-line);color:var(--moved-ink);}
   .pctchip.selreq{background:var(--teal);border-color:var(--teal);color:#fff;}
   .pctcard.targetable{border-color:var(--teal);border-style:dashed;}
@@ -808,6 +808,14 @@
   .acustat .as-i.hi{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
   .acustat .as-i.hi b{color:var(--warn-ink);}
   .loadnum .hiflag{color:var(--warn-ink);font-weight:800;}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;}
+  .confetti span{position:fixed;will-change:transform,opacity;animation:cfly 1.25s cubic-bezier(.2,.7,.3,1) forwards;}
+  @keyframes cfly{0%{transform:translate(0,0) rotate(0) scale(.5);opacity:0;}
+    18%{opacity:1;transform:translate(calc(var(--dx)*.28),calc(var(--dy)*.42)) rotate(calc(var(--rot)*.25)) scale(1.15);}
+    100%{transform:translate(var(--dx),calc(var(--dy) + 90px)) rotate(var(--rot)) scale(.85);opacity:0;}}
+  @keyframes dpop{0%{transform:scale(1);}38%{transform:scale(1.07);}70%{transform:scale(.985);}100%{transform:scale(1);}}
+  .donebtn.pop{animation:dpop .42s ease-out;}
+  @media (prefers-reduced-motion: reduce){ .confetti{display:none;} .donebtn.pop{animation:none;} }
   .evtoast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--bg);padding:11px 17px;border-radius:11px;font-size:13.5px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:9998;box-shadow:var(--shadow);max-width:90vw;text-align:center;}
   .evtoast.on{opacity:1;transform:translateX(-50%) translateY(0);}
   .roomjump .tsgo{margin-left:auto;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);font-weight:700;}
@@ -2567,6 +2575,9 @@ function renderAssign(){
   if(!chargeMode){
     const role=lockedRole();
     const c=document.getElementById('nurses');
+    // These paths return early, so refresh the support stack here too — otherwise locking the
+    // console leaves the charge's editable PCT/sitter controls sitting on screen for staff.
+    if(role===null||role==='pct'||role==='sitter') renderSupport();
     if(role===null){ if(c) c.innerHTML='<div class="pickprompt">👆 Tap your name above to see your patients and score them.<br><span>Charge / ANM: tap <b>🔒 Charge console</b> at the top to unlock.</span></div>'; return; }
     if(role==='pct'){ renderMyPCT(); return; }
     if(role==='sitter'){ renderMySitter(); return; }
@@ -3541,9 +3552,39 @@ function updatePostUI(){
 }
 function fmtAgo(ts){ const m=Math.round((Date.now()-ts)/60000); if(m<1)return 'just now'; if(m<60)return m+' min ago'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m ago'; }
 
+/* A little party when a nurse finishes scoring — the one moment in the shift worth celebrating. */
+const CHEERS=['Scores are in — nice work! 🎉','Done and dusted 🙌','Charge has your numbers ✨',
+  'That was quick! ⚡','Look at you go 🌟','All scored — go get a coffee ☕'];
+function confetti(fromEl){
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const r=fromEl?fromEl.getBoundingClientRect():{left:innerWidth/2,top:innerHeight/2,width:0,height:0};
+  const x0=r.left+r.width/2, y0=r.top+r.height/2;
+  const bits=['🎉','✨','🩺','💙','⭐','🎊'];
+  const box=document.createElement('div'); box.className='confetti';
+  for(let i=0;i<18;i++){
+    const s=document.createElement('span');
+    s.textContent=bits[i%bits.length];
+    const ang=(-90+(Math.random()*120-60))*Math.PI/180, dist=70+Math.random()*130;
+    s.style.left=x0+'px'; s.style.top=y0+'px';
+    s.style.setProperty('--dx',(Math.cos(ang)*dist).toFixed(1)+'px');
+    s.style.setProperty('--dy',(Math.sin(ang)*dist).toFixed(1)+'px');
+    s.style.setProperty('--rot',(Math.random()*720-360).toFixed(0)+'deg');
+    s.style.animationDelay=(Math.random()*140).toFixed(0)+'ms';
+    s.style.fontSize=(13+Math.random()*11).toFixed(0)+'px';
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(()=>box.remove(),1700);
+}
 function markScoredDone(nid){
   const n=rosterN.find(x=>x.id===nid)||nurses.find(x=>x.id===nid); if(!n) return;
   n.scoredDone=!n.scoredDone;
+  if(n.scoredDone){
+    const btn=document.querySelector(`.donebtn[onclick*="${nid}"]`);
+    if(btn) btn.classList.add('pop');
+    confetti(btn);
+    evToast(CHEERS[Math.floor(Math.random()*CHEERS.length)]);
+  }
   renderAssign(); scheduleSave();
 }
 
@@ -5146,11 +5187,21 @@ function renderSupport(){
       pctInner+=`<div class="pctbar"><button class="btn sm" onclick="rebalancePct()">⚖️ Re-balance</button>${hasOverride?'<span class="pctmoved">manual moves active</span>':''}</div>`;
       if(selectedPctRoom!=null) pctInner+=`<div class="movehint armed">Room <b>${selectedPctRoom}</b> picked — tap a PCT below to move it.</div>`;
     }
+    // Same anatomy as a nurse card — head, halls, Vocera, load bar, then rooms — so the two read alike.
+    const zoneMax=Math.max(1,...zones.map(z=>z.rooms.length));
     pctInner+=zones.map(z=>{
       const rms=z.rooms.slice().sort((a,b)=>WALKPOS[a]-WALKPOS[b]); const voc=vocForPct(z.pct.id);
+      const halls=[...new Set(rms.map(r=>RHALL[r]))].sort((a,b)=>a-b);
+      const wings=[...new Set(rms.map(r=>rwing(r)))];
+      const hcov = halls.length? halls.map(x=>HALL_LABEL[x]).join(' + ') : '—';
+      const slot = pcts.findIndex(x=>x.id===z.pct.id)+1;
+      const barw = Math.min(100,(rms.length/zoneMax)*100);
       const tapNurse = chargeMode ? ` onclick="movePctRoom('${z.pct.id}')"` : '';
       return `<div class="nurse pctcard${chargeMode&&selectedPctRoom!=null?' targetable':''}"${tapNurse}>`+
-        `<div class="nhead">${editableName(z.pct.id,'p',z.pct.name)}<span class="badge pctbadge">PCT</span>${voc?`<span class="vocpill">📟 ${esc(voc)}</span>`:''}</div>`+
+        `<div class="nhead">${editableName(z.pct.id,'p',z.pct.name)}<span class="badge pctbadge">PCT</span></div>`+
+        `<div class="hcov ${wings.length>1?'warn':''}">${hcov}</div>`+
+        (voc?`<div class="buddyline">📟 Vocera <b>${esc(voc)}</b> · PCT ${slot}</div>`:'')+
+        `<div class="loadrow"><div class="loadbar"><i style="width:${barw}%"></i></div><span class="loadnum"><b>${rms.length}</b> rooms</span></div>`+
         `<div class="chips">${rms.length? rms.map(r=>{ const moved=PCT_MANUAL[r]?' moved':''; const sel=(selectedPctRoom===r)?' selreq':'';
           return chargeMode
             ? `<button class="chip pctchip${moved}${sel}" onclick="event.stopPropagation(); selectPctRoom(${r})">${r}</button>`
