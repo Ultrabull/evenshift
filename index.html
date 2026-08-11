@@ -767,8 +767,13 @@
   body.locked .lockedOnly{display:flex;}
   body.locked .botnav{justify-content:center;}
   body.locked .cols{grid-template-columns:1fr!important;}
-  .lockbtn{font-family:var(--display);font-weight:700;font-size:11.5px;padding:7px 11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:.14s;}
-  .lockbtn.unlocked{background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);}
+  /* Two states a charge must never confuse: LOCKED is a quiet outline, UNLOCKED is a solid filled
+     pill with a different word. Padlock emoji alone are near-identical at this size. */
+  .lockbtn{font-family:var(--display);font-weight:700;font-size:11.5px;padding:7px 11px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap;transition:.14s;display:inline-flex;align-items:center;gap:5px;}
+  .lockbtn .lki{width:13px;height:13px;flex:none;display:block;}
+  .lockbtn:hover{border-color:var(--teal);color:var(--teal-deep);}
+  .lockbtn.unlocked{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 1px 7px rgba(46,107,230,.34);}
+  .lockbtn.unlocked:hover{background:var(--teal-deep);border-color:var(--teal-deep);color:#fff;}
   .nursepick{align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:10px 13px;margin-bottom:14px;box-shadow:var(--shadow);}
   .nursepick{flex-direction:column;gap:8px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);}
   .nursepick .npk{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);}
@@ -1213,7 +1218,7 @@
       </div>
     </div>
     <div class="ab-right">
-      <button class="lockbtn" id="lockBtn" onclick="toggleLock()">🔒 Charge console</button>
+      <button class="lockbtn" id="lockBtn" onclick="toggleLock()" title="Tap to unlock the charge console" aria-pressed="false"><svg class="lki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Charge console</span></button>
       <span class="savestate" id="saveState">—</span>
       <details class="menu">
         <summary class="iconbtn" aria-label="Menu" title="Menu">
@@ -4009,12 +4014,24 @@ function fillWho(){
   if(sitters.length) h+=`<div class="wgrp"><span class="wgrplbl">Sitters</span><div class="wbrow">${sitters.map(x=>`<button class="whobtn${viewAs==='s:'+x.id?' sel':''}" onclick="setViewAs('s:${x.id}')">${esc(x.name)}</button>`).join('')}</div></div>`;
   b.innerHTML=h;
 }
+/* Drawn padlock rather than an emoji — 🔒 and 🔓 are nearly identical at this size, and the open
+   shackle here trails off to the side so the two states read apart at a glance. */
+function lockIcon(open){
+  return '<svg class="lki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    +'<rect x="3" y="11" width="18" height="11" rx="2"/>'
+    +(open?'<path d="M7 11V7a5 5 0 0 1 9.9-1"/>':'<path d="M7 11V7a5 5 0 0 1 10 0v4"/>')+'</svg>';
+}
 function applyAccessUI(){
   if(chargeMode && (viewAs===''||(viewAs!=='charge'&&!nurses.find(n=>n.id===viewAs)))) viewAs='charge';   // charge sees full board
   if(!chargeMode && viewAs==='charge') viewAs='';                                                         // hide full board from nurses
   document.body.classList.toggle('locked', !chargeMode);
   document.querySelectorAll('.chargeOnly').forEach(el=>{ el.style.display=''; });   // let CSS (body.locked) govern visibility
-  const lb=document.getElementById('lockBtn'); if(lb){ lb.textContent=chargeMode?'🔓 Charge console':'🔒 Charge console'; lb.classList.toggle('unlocked',chargeMode); }
+  const lb=document.getElementById('lockBtn'); if(lb){
+    lb.innerHTML = lockIcon(chargeMode) + '<span>' + (chargeMode?'Unlocked':'Charge console') + '</span>';
+    lb.classList.toggle('unlocked',chargeMode);
+    lb.title = chargeMode ? 'Charge console is unlocked — tap to lock it' : 'Tap to unlock the charge console';
+    lb.setAttribute('aria-pressed', chargeMode?'true':'false');
+  }
   if(!chargeMode){ fillWho(); show('assign'); }
   updateScoreTab();
   refreshViewOptions();
