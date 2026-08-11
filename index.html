@@ -791,6 +791,13 @@
   .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .roomjump input{width:140px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 11px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--field);}
   .roomjump span{font-size:12px;color:var(--ink-soft);}
+  .acustat{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;}
+  .acustat .as-i{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--ink-soft);font-weight:600;}
+  .acustat .as-i b{color:var(--ink);font-weight:800;}
+  .acustat .as-i small{font-weight:600;opacity:.75;}
+  .acustat .as-i.hi{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
+  .acustat .as-i.hi b{color:var(--warn-ink);}
+  .loadnum .hiflag{color:var(--warn-ink);font-weight:800;}
   .evtoast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--bg);padding:11px 17px;border-radius:11px;font-size:13.5px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:9998;box-shadow:var(--shadow);max-width:90vw;text-align:center;}
   .evtoast.on{opacity:1;transform:translateX(-50%) translateY(0);}
   .roomjump .tsgo{margin-left:auto;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);font-weight:700;}
@@ -1288,6 +1295,7 @@
     <div class="hint" style="font-size:12.5px;margin-bottom:6px;">Tap a room to score it — tally what the patient needs and it totals the acuity number.</div>
     <div class="roomjump"><input id="roomSearch" inputmode="numeric" placeholder="Jump to room #" oninput="jumpRoom(this.value,false)" onkeydown="if(event.key==='Enter'){jumpRoom(this.value,true);this.blur();}"><button class="btn sm" onclick="jumpRoom(document.getElementById('roomSearch').value,true)">Go</button><span id="roomJumpMsg"></span><button class="btn sm tsgo" onclick="openTimeStudy()" title="Time the build — by hand vs EvenShift">⏱ Time study</button></div>
     <div class="rubrictag chargeOnly" id="rubricTag" onclick="openRubric()" title="Edit acuity rubric"></div>
+    <div class="acustat chargeOnly" id="acuStat" style="display:none;"></div>
     <div class="scoreprog chargeOnly" id="scoreProg" style="display:none;"></div>
     <div id="halls"></div>
   </div>
@@ -2021,6 +2029,9 @@ const SWING_REASONS=['Procedure / surgery','Off a drip','Stabilized','Decompensa
 let balancePriority='hallway';   // 'hallway' = keep halls tight; 'hours' = chase a <=0.5 spread
 let HOME={};                      // each nurse's home hall, frozen after the first pass
 let viewAs='charge';              // 'charge' sees everything; a nurse id sees only their patients
+/* 10 Green counts a patient at or above this as high acuity. */
+const HIGH_ACUITY=3.75;
+function isHigh(r){ return (r&&r.acuity||0)>=HIGH_ACUITY; }
 function acuClass(h){if(h<2.5)return'L';if(h<3.5)return'M';if(h<5)return'H';return'X';}
 function acuFmt(x){ return (Math.round((+x||0)*100)/100).toFixed(2).replace(/(\.\d)0$/,'$1'); }   // 2.75 stays 2.75; 2.50 -> 2.5; 3 -> 3.0
 function acuLabel(h){return{L:'Low',M:'Moderate',H:'High',X:'Intensive'}[acuClass(h)];}
@@ -2209,6 +2220,7 @@ function show(v){
 }
 function renderAcuity(){
   updateRubricTag();
+  updateAcuStat();
   renderNextStep();
   updateScoreProgress();   // top tile: next-shift scoring status (self-hides for staff / per-nurse views)
   let html='';
@@ -2581,7 +2593,7 @@ function renderAssign(){
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
-      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt</span></div>
+      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(HIGH_ACUITY)}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
@@ -4031,6 +4043,19 @@ function changePin(){ if(!chargeMode)return; chargePin=null; scheduleSave(); ope
 /* ---------- acuity rubric editor (manager / PIN-gated) ---------- */
 let _rub=[], _rdiv=2, _rlbl='', _rname='';
 function updateRubricTag(){ const e=document.getElementById('rubricTag'); if(e) e.textContent=RUBRIC_NAME+' · ÷'+DIVISOR+' = '+ACUITY_LABEL; }
+/* Unit snapshot for the charge: how heavy is tonight overall, and how many heavy patients. */
+function updateAcuStat(){
+  const el=document.getElementById('acuStat'); if(!el) return;
+  const scored=occupied().filter(r=>r.acuity>0);
+  if(!scored.length){ el.style.display='none'; return; }
+  const sum=scored.reduce((s,r)=>s+r.acuity,0), avg=sum/scored.length;
+  const high=scored.filter(isHigh);
+  el.innerHTML=`<span class="as-i"><b>${scored.length}</b> scored</span>`
+    +`<span class="as-i">avg <b>${acuFmt(avg)}</b> hrs</span>`
+    +`<span class="as-i ${high.length?'hi':''}" title="${high.length?'Rooms: '+high.map(r=>r.id).join(', '):'none'}"><b>${high.length}</b> high acuity <small>(${acuFmt(HIGH_ACUITY)}+)</small></span>`
+    +`<span class="as-i">total <b>${acuFmt(sum)}</b> hrs</span>`;
+  el.style.display='';
+}
 function openRubric(){ if(!chargeMode)return; _rub=cloneSecs(RUBRIC); _rdiv=DIVISOR; _rlbl=ACUITY_LABEL; _rname=RUBRIC_NAME; renderRubricModal(); document.getElementById('rubScrim').classList.add('on'); }
 function closeRubric(){ document.getElementById('rubScrim').classList.remove('on'); }
 function syncRubDOM(){
