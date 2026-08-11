@@ -791,6 +791,11 @@
   .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .roomjump input{width:140px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 11px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--field);}
   .roomjump span{font-size:12px;color:var(--ink-soft);}
+  .mgrset{border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin:0 0 12px;background:var(--panel-faint);}
+  .mgrset label{display:block;font-size:13px;color:var(--ink);}
+  .mgrset .flhint{display:block;font-weight:400;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .mgrsetrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .mgrsetrow input{width:88px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 10px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--field);}
   .acustat{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;}
   .acustat .as-i{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--ink-soft);font-weight:600;}
   .acustat .as-i b{color:var(--ink);font-weight:800;}
@@ -1398,6 +1403,15 @@
     <div class="mhead"><span class="rt">🗂️ Manager console</span><button class="btn" onclick="closeMgrConsole()">Close</button></div>
     <div class="mbody">
       <div class="hint" style="margin-top:0;">Unit setup &amp; leadership controls. These change the floor and the access codes for everyone on the unit.</div>
+      <div class="mgrset">
+        <label for="mgrHiAcu"><b>High-acuity threshold</b><span class="flhint">a patient at or above this counts as high acuity on the Score page and each nurse card</span></label>
+        <div class="mgrsetrow">
+          <input id="mgrHiAcu" type="number" inputmode="decimal" min="1" max="8" step="0.25">
+          <span class="note">hrs</span>
+          <button class="btn sm primary" onclick="saveHighAcuity()">Save</button>
+          <span class="note" id="mgrHiAcuMsg"></span>
+        </div>
+      </div>
       <div class="btilegrid">
         <button class="btile" onclick="closeMgrConsole(); showHistory();"><span class="btemoji">📊</span><span class="btlabel">Manager analysis</span><span class="btsub">trends &amp; savings</span></button>
         <button class="btile" onclick="closeMgrConsole(); openFloor();"><span class="btemoji">🏥</span><span class="btlabel">Floor &amp; beds</span><span class="btsub">rooms &amp; halls</span></button>
@@ -2029,9 +2043,11 @@ const SWING_REASONS=['Procedure / surgery','Off a drip','Stabilized','Decompensa
 let balancePriority='hallway';   // 'hallway' = keep halls tight; 'hours' = chase a <=0.5 spread
 let HOME={};                      // each nurse's home hall, frozen after the first pass
 let viewAs='charge';              // 'charge' sees everything; a nurse id sees only their patients
-/* 10 Green counts a patient at or above this as high acuity. */
-const HIGH_ACUITY=3.75;
-function isHigh(r){ return (r&&r.acuity||0)>=HIGH_ACUITY; }
+/* A patient at or above this many hours counts as high acuity. Unit-settable in the Manager
+   console (defaults to 3.75 for 10 Green); rides along in FLOOR so it saves and syncs. */
+const HIGH_ACUITY_DEFAULT=3.75;
+function highCut(){ const v=+(FLOOR&&FLOOR.highAcuity); return v>0?v:HIGH_ACUITY_DEFAULT; }
+function isHigh(r){ return (r&&r.acuity||0)>=highCut(); }
 function acuClass(h){if(h<2.5)return'L';if(h<3.5)return'M';if(h<5)return'H';return'X';}
 function acuFmt(x){ return (Math.round((+x||0)*100)/100).toFixed(2).replace(/(\.\d)0$/,'$1'); }   // 2.75 stays 2.75; 2.50 -> 2.5; 3 -> 3.0
 function acuLabel(h){return{L:'Low',M:'Moderate',H:'High',X:'Intensive'}[acuClass(h)];}
@@ -2593,7 +2609,7 @@ function renderAssign(){
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
-      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(HIGH_ACUITY)}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}</span></div>
+      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
@@ -4052,7 +4068,7 @@ function updateAcuStat(){
   const high=scored.filter(isHigh);
   el.innerHTML=`<span class="as-i"><b>${scored.length}</b> scored</span>`
     +`<span class="as-i">avg <b>${acuFmt(avg)}</b> hrs</span>`
-    +`<span class="as-i ${high.length?'hi':''}" title="${high.length?'Rooms: '+high.map(r=>r.id).join(', '):'none'}"><b>${high.length}</b> high acuity <small>(${acuFmt(HIGH_ACUITY)}+)</small></span>`
+    +`<span class="as-i ${high.length?'hi':''}" title="${high.length?'Rooms: '+high.map(r=>r.id).join(', '):'none'}"><b>${high.length}</b> high acuity <small>(${acuFmt(highCut())}+)</small></span>`
     +`<span class="as-i">total <b>${acuFmt(sum)}</b> hrs</span>`;
   el.style.display='';
 }
@@ -6229,7 +6245,20 @@ async function openMgrConsole(){
   const v=await askCode('Enter the manager code:','🗂️ Manager console');
   if(v==='') return;
   if(pinStore(v)!==mgrPin){ alert('That code didn’t match the manager code.'); return; }
+  const hi=document.getElementById('mgrHiAcu'); if(hi) hi.value=acuFmt(highCut());
+  const hm=document.getElementById('mgrHiAcuMsg'); if(hm) hm.textContent='';
   document.getElementById('mgrConsoleScrim').classList.add('on');
+}
+/* Unit-settable high-acuity line. Lives in FLOOR so it saves and syncs with the rest of the setup. */
+function saveHighAcuity(){
+  const el=document.getElementById('mgrHiAcu'), msg=document.getElementById('mgrHiAcuMsg');
+  const v=parseFloat(el&&el.value);
+  if(!(v>0)||v>8){ if(msg){ msg.textContent='Enter a number between 1 and 8.'; } return; }
+  FLOOR.highAcuity=Math.round(v*100)/100;
+  if(el) el.value=acuFmt(FLOOR.highAcuity);
+  renderAcuity(); if(assignVisible()) renderAssign();
+  if(cloudOn()) pushMeta(); else scheduleSave();
+  if(msg) msg.textContent='✓ Saved — now counting '+acuFmt(FLOOR.highAcuity)+'+ as high acuity.';
 }
 function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
 async function openAdminConsole(){
