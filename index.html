@@ -3008,7 +3008,7 @@ function renderReturning(){
   // ---- NURSES (from the last same-shift snapshot + any added by hand) ----
   const snapNids = hasSnap ? (P.nurses||[]).filter(rec=>rosterN.find(n=>n.id===rec.id) && retNurseRooms(rec.id).length).map(r=>r.id) : [];
   const manualNids = Object.keys(RET.manualN||{}).filter(id=>rosterN.find(n=>n.id===id));
-  const allNids=[...new Set([...snapNids,...manualNids])];
+  const allNids=[...new Set([...snapNids,...manualNids])].sort((a,b)=>byName(rosterN.find(n=>n.id===a),rosterN.find(n=>n.id===b)));
   if(allNids.length){
     h+=`<div class="grp"><h4>Nurses</h4>`;
     allNids.forEach(nid=>{
@@ -3032,7 +3032,7 @@ function renderReturning(){
   // ---- PCTs (snapshot zone, or a hallway chosen by hand) ----
   const snapPids = hasSnap ? (P.pcts||[]).filter(rec=>rosterP.find(p=>p.id===rec.id) && rec.rooms.some(rn=>rooms[rn]&&rooms[rn].occupied)).map(r=>r.id) : [];
   const manualPids = Object.keys(RET.pctHall||{}).filter(id=>rosterP.find(p=>p.id===id));
-  const allPids=[...new Set([...snapPids,...manualPids])];
+  const allPids=[...new Set([...snapPids,...manualPids])].sort((a,b)=>byName(rosterP.find(p=>p.id===a),rosterP.find(p=>p.id===b)));
   if(allPids.length){
     h+=`<div class="grp"><h4>PCTs · keep zone</h4>`;
     allPids.forEach(pid=>{
@@ -3055,7 +3055,7 @@ function renderReturning(){
     h+=`</div>`;
   }
   // ---- Sitters (from the last same-shift snapshot) ----
-  const retS = hasSnap ? (P.sitters||[]).filter(rec=>rosterS.find(s=>s.id===rec.id) && rooms[rec.room] && rooms[rec.room].occupied) : [];
+  const retS = hasSnap ? (P.sitters||[]).filter(rec=>rosterS.find(s=>s.id===rec.id) && rooms[rec.room] && rooms[rec.room].occupied).sort(byName) : [];
   if(retS.length){
     h+=`<div class="grp"><h4>Sitters · keep 1:1 room</h4>`;
     retS.forEach(rec=>{ const on=!!RET.sitters[rec.id];
@@ -3065,10 +3065,10 @@ function renderReturning(){
   }
   // ---- Add returning staff by hand (nurse picks rooms, PCT picks a hallway) ----
   const takenN=new Set(Object.keys(RET.nurses));
-  const addNList=rosterN.filter(n=>!takenN.has(n.id) && (nurses.find(x=>x.id===n.id)||(n.shift||'Day')===shiftType));
+  const addNList=rosterN.filter(n=>!takenN.has(n.id) && (nurses.find(x=>x.id===n.id)||(n.shift||'Day')===shiftType)).sort(byName);
   const addNopts=addNList.map(n=>`<option value="${n.id}">${esc(n.name)}${nurses.find(x=>x.id===n.id)?'':' (add to crew)'}</option>`).join('');
   const takenP=new Set(Object.keys(RET.pcts));
-  const addPList=rosterP.filter(p=>!takenP.has(p.id) && (pcts.find(x=>x.id===p.id)||(p.shift||'Day')===shiftType));
+  const addPList=rosterP.filter(p=>!takenP.has(p.id) && (pcts.find(x=>x.id===p.id)||(p.shift||'Day')===shiftType)).sort(byName);
   const addPopts=addPList.map(p=>`<option value="${p.id}">${esc(p.name)}${pcts.find(x=>x.id===p.id)?'':' (add to crew)'}</option>`).join('');
   h+=`<div class="grp"><h4>Add returning staff by hand</h4>`
     +`<div class="retmini" style="margin-bottom:6px;">Pick a nurse to choose the rooms they keep, or a PCT to pick their hallway. Use this before the app has a saved ${esc(shiftType.toLowerCase())} shift, or to add anyone the list missed.</div>`
@@ -4531,6 +4531,14 @@ function renderVoceraCard(){
 
 /* a person belongs to the team matching their shift tag (defaults to Day if unset) */
 function inTeam(x,team){ return (x.shift||'Day')===team; }
+/* Alphabetical for every staff list. A row still being named has no name yet, so it sorts last and
+   stays where it was just added; it moves into place on the next render. Sorting is display-only —
+   the roster editor maps inputs to array positions and Vocera slots use them. */
+function byName(a,b){
+  const an=((a&&a.name)||'').trim(), bn=((b&&b.name)||'').trim();
+  if(!an&&!bn) return 0; if(!an) return 1; if(!bn) return -1;
+  return an.localeCompare(bn,undefined,{sensitivity:'base',numeric:true});
+}
 
 /* TAB — Day/Night team: tap names (filtered to this team) to set who's working the next shift. */
 /* Rooms flagged 1:1 during scoring create a sitter demand the charge fills here. */
@@ -4576,7 +4584,8 @@ function addSitterFor(rid,team){
 function nameSitter(sid,v){ const s=_ws.find(x=>x.id===sid); if(s){ s.name=v; scheduleSave(); } }
 
 function renderTeamTab(team){
-  const fN=_wn.filter(x=>inTeam(x,team)), fP=_wp.filter(x=>inTeam(x,team)), fS=_ws.filter(x=>inTeam(x,team)), fH=_wh.filter(x=>inTeam(x,team));
+  const fN=_wn.filter(x=>inTeam(x,team)).sort(byName), fP=_wp.filter(x=>inTeam(x,team)).sort(byName),
+        fS=_ws.filter(x=>inTeam(x,team)).sort(byName), fH=_wh.filter(x=>inTeam(x,team)).sort(byName);
   const onN=fN.filter(x=>x.on!==false).length, onP=fP.filter(x=>x.on!==false).length, onS=fS.filter(x=>x.on!==false).length, onH=fH.filter(x=>x.on!==false).length;
   let h=`<div class="staffsum">${team} team working: <b>${onN}</b> nurses · <b>${onP}</b> PCT · <b>${onS}</b> sitter · <b>${onH}</b> HUC<button class="allon" onclick="clearTeam('${team}')">Clear</button></div>`;
   const uncovered=oneToOneRooms().filter(rid=>!sitterForRoom(rid));
@@ -4644,7 +4653,7 @@ function renderRosterTab(occRooms){
   };
 
   const section=(title,arr,t)=>{
-    const items=arr.map((x,i)=>({x,i})).filter(o=>match(o.x)&&inShift(o.x));
+    const items=arr.map((x,i)=>({x,i})).filter(o=>match(o.x)&&inShift(o.x)).sort((p,q)=>byName(p.x,q.x));
     let s=`<div class="grp"><h4>${title} <span class="rcount">${items.length}</span></h4>`;
     if(!items.length) s+=`<div class="hint" style="margin:0 0 4px;">${searching?'No matches.':'None on '+_rosterShift.toLowerCase()+'.'}</div>`;
     else s+=`<div class="rchips">`+items.map(o=>chip(t,o.i,o.x)).join('')+`</div>`;
