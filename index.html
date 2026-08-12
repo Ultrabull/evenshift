@@ -268,6 +268,13 @@
   .flagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
   .ftog{font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--field);cursor:pointer;color:var(--ink-soft);}
   .ftog.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  /* flags the engine actually balances around — tinted so the charge can tell them apart at a glance */
+  .ftog.rulefl{background:var(--teal-wash);border-color:var(--teal);color:var(--teal-deep);}
+  .ftog.rulefl.on{background:var(--teal-deep);border-color:var(--teal-deep);color:#fff;}
+  .flagleg{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11px;color:var(--ink-soft);line-height:1.35;}
+  .flagleg .legchip{flex:none;width:13px;height:13px;border-radius:4px;background:var(--teal-wash);border:1px solid var(--teal);}
+  .fkrow.rule b{color:var(--teal-deep);}
+  .fkeff{display:block;margin-top:2px;font-size:11px;font-weight:700;color:var(--teal-deep);}
   .noteIn{width:100%;border:1px solid var(--line-strong);border-radius:9px;padding:8px;font-family:inherit;font-size:12.5px;margin-top:8px;resize:vertical;min-height:46px;}
   .seg{display:flex;gap:4px;background:var(--track);padding:4px;border-radius:10px;margin:8px 0 6px;}
   .seg button{flex:1;border:none;background:transparent;font-family:var(--display);font-weight:600;font-size:12.5px;padding:7px;border-radius:7px;color:var(--ink-soft);cursor:pointer;}
@@ -2409,19 +2416,32 @@ function setMode(m){
   if(m==='express' && modalExpress==null){ modalExpress=currentHrs(); }
   modalMode=m; renderModalBody();
 }
+/* Plain-English version of what a flag does to the board — '' when it does nothing. */
+function flagEffectText(code){
+  const r=flagRule(code)||{};
+  if(r.mode==='cap') return 'no more than '+Math.max(1,r.cap||1)+' per nurse';
+  if(r.mode==='ratiocap') return 'that nurse takes at most '+Math.max(1,r.ratio||4)+' patients';
+  if(r.mode==='spread') return 'shared out evenly between nurses';
+  return '';
+}
 function flagsNoteHTML(){
   const r=rooms[modalRoom];
-  const toggles=getActiveFlags().map(([f,l,full])=>`<button class="ftog ${modalFlags.includes(f)?'on':''}" id="ft-${f}" title="${full}" onclick="togFlag('${f}')">${l}</button>`).join('');
-  const key=getActiveFlags().map(([f,l,full])=>`<b>${l}</b> ${full}`).join(' · ');
+  const toggles=getActiveFlags().map(([f,l,full])=>{
+    const eff=flagEffectText(f);
+    return `<button class="ftog ${eff?'rulefl ':''}${modalFlags.includes(f)?'on':''}" id="ft-${f}" title="${full}${eff?' — changes the board: '+eff:''}" onclick="togFlag('${f}')">${l}</button>`;
+  }).join('');
+  const anyRule=getActiveFlags().some(([f])=>flagEffectText(f));
+  const legend=anyRule?`<div class="flagleg"><span class="legchip"></span> tinted flags change how the board is built — tap <b>?</b> above for what each one does</div>`:'';
   const isoSel=modalFlags.includes('iso')?`<div class="subfield"><span class="sublab">Isolation type</span><div class="isorow">
     ${['Contact','Droplet','Airborne'].map(t=>`<label class="isotog"><input type="radio" name="isoType" value="${t[0]}" ${(r.isoType||'')===(t[0])?'checked':''} onchange="document.getElementById('isoType_val').value=this.value"> ${t}</label>`).join('')}
     <input type="hidden" id="isoType_val" value="${esc(r.isoType||'')}"></div></div>`:'';
   const dcField=modalFlags.includes('dc')?`<div class="subfield"><span class="sublab">Expected D/C time / notes</span><input class="subin" id="dcTimeIn" value="${esc(r.dcTime||'')}" placeholder="e.g. By noon · Awaiting transport · After family arrives"></div>`:'';
   const admField=modalFlags.includes('adm')?`<div class="subfield"><span class="sublab">Expected admit source / time</span><input class="subin" id="admTimeIn" value="${esc(r.admTime||'')}" placeholder="e.g. From ED ~1400 · ICU transfer · Post-op"></div>`:'';
-  return `<div class="grp"><h4>Flags <span style="font-weight:400;color:var(--ink-soft)">· tap what applies</span><button class="qhelp" onclick="showFlagKey()" title="What do these mean?">?</button></h4><div class="flagrow">`+toggles+`</div>${isoSel}${dcField}${admField}</div>`;
+  return `<div class="grp"><h4>Flags <span style="font-weight:400;color:var(--ink-soft)">· tap what applies</span><button class="qhelp" onclick="showFlagKey()" title="What do these mean?">?</button></h4><div class="flagrow">`+toggles+`</div>${legend}${isoSel}${dcField}${admField}</div>`;
 }
 function showFlagKey(){
-  const rows=getActiveFlags().map(([f,l,full])=>`<div class="fkrow"><b>${esc(l)}</b><span>${esc(full)}</span></div>`).join('');
+  const rows=getActiveFlags().map(([f,l,full])=>{ const eff=flagEffectText(f);
+    return `<div class="fkrow ${eff?'rule':''}"><b>${esc(l)}</b><span>${esc(full)}${eff?`<span class="fkeff">⚖ ${esc(eff)}</span>`:''}</span></div>`; }).join('');
   document.getElementById('helpTitle').textContent='What the flags mean';
   document.getElementById('helpBody').innerHTML=`<div class="fklist">${rows}</div>`;
   document.getElementById('helpScrim').classList.add('on');
