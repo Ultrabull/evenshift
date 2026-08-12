@@ -2912,6 +2912,7 @@ function renderBuildTiles(){
   const haveStaff=nurses.length>0;
   const anyAssigned=occ.some(r=>r.nurse);
   const hasPrev = (()=>{ const P=retSnap(); return !!(P&&(P.nurses||[]).length); })();
+  retPrune();
   const retCount = Object.keys(RET.nurses).length+Object.keys(RET.pcts).length+Object.keys(RET.sitters).length;
   // Returning-staff is a required checkpoint when there IS a previous shift: charge must set returns OR tap "no one returns".
   const retAck = !hasPrev || RET.done;
@@ -2956,6 +2957,32 @@ let _retThenMake=false;
 function openReturning(thenMake){ if(!chargeMode)return; _retThenMake=!!thenMake; renderReturning(); document.getElementById('retScrim').classList.add('on'); }
 function closeReturning(){ applyReturning(); document.getElementById('retScrim').classList.remove('on'); RET.done=true; renderBuildTiles(); renderNextStep(); const ss=document.getElementById('staffScrim'); if(ss&&ss.classList.contains('on')) renderStaffModal();
   if(_retThenMake){ _retThenMake=false; generate(); show('assign'); } }
+/* Drop returning picks the list can no longer show — the person left the roster, or every patient
+   they were keeping has gone home. The picker hides those people but the tile still counted them,
+   so "3 returning" could read as 4. Mirrors the filters renderReturning uses. */
+function retPrune(){
+  const P=retSnap()||{};
+  const snapN=P.nurses||[], snapP=P.pcts||[], snapS=P.sitters||[];
+  let dropped=0;
+  RET.nurses=RET.nurses||{}; RET.pcts=RET.pcts||{}; RET.sitters=RET.sitters||{};
+  Object.keys(RET.nurses).forEach(id=>{
+    const manual=!!(RET.manualN&&RET.manualN[id]);
+    const shown=snapN.some(rec=>rec.id===id) && retNurseRooms(id).length>0;
+    if(!rosterN.find(x=>x.id===id) || !(manual||shown)){ delete RET.nurses[id]; if(RET.manualN) delete RET.manualN[id]; dropped++; }
+  });
+  Object.keys(RET.pcts).forEach(id=>{
+    const manual=!!(RET.pctHall && (id in RET.pctHall));
+    const rec=snapP.find(x=>x.id===id);
+    const shown=!!rec && (rec.rooms||[]).some(rn=>rooms[rn]&&rooms[rn].occupied);
+    if(!rosterP.find(x=>x.id===id) || !(manual||shown)){ delete RET.pcts[id]; if(RET.pctHall) delete RET.pctHall[id]; dropped++; }
+  });
+  Object.keys(RET.sitters).forEach(id=>{
+    const rec=snapS.find(x=>x.id===id);
+    const shown=!!rec && rooms[rec.room] && rooms[rec.room].occupied;
+    if(!rosterS.find(x=>x.id===id) || !shown){ delete RET.sitters[id]; dropped++; }
+  });
+  return dropped;
+}
 function retNurseRooms(nid){ // this shift-type's last rooms for this nurse that still exist & are occupied
   const P=retSnap(); if(!P) return [];
   const rec=(P.nurses||[]).find(x=>x.id===nid); if(!rec) return [];
@@ -2973,6 +3000,7 @@ function retDefaultKeep(nid){
 function retRoomOptions(nid){ return (RET.manualN&&RET.manualN[nid]) ? occupied().map(r=>r.id).sort((a,b)=>a-b) : retNurseRooms(nid); }
 function renderReturning(){
   const body=document.getElementById('retBody'); if(!body) return;
+  retPrune();   // keep the footer count matching what's actually listed
   const P=retSnap();
   const hasSnap=!!(P && (P.nurses||[]).length);
   let h=`<div class="staffhelp">Mark who’s staying from last shift. Each returning nurse keeps some of their heaviest staying patients — continuity where it matters while hours still balance. Tap rooms to keep more or fewer; kept rooms are locked and <b>Make Assignment</b> fills everyone else around them.</div>`;
