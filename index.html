@@ -2071,7 +2071,36 @@ function syncWorking(){                       // pull today's working set out of
   sitters = rosterS.filter(onShift);
   hucs    = rosterH.filter(onShift);
 }
-let _uid=200; const newId=p=>p+(_uid++);
+/* Staff ids must be unique for the life of the unit, not just this page view. The counter alone
+   restarted at 200 every load, so the next person added collided with someone already on the
+   roster — tapping one chip toggled the other, and both cards matched the same rooms. Check every
+   id in play (saved rosters and the staff-modal working copies) and add a random tail so two
+   phones adding staff at the same time can't land on the same id either. */
+let _uid=200;
+function _idsInUse(){
+  const s=new Set();
+  [typeof rosterN!=='undefined'&&rosterN, typeof rosterP!=='undefined'&&rosterP,
+   typeof rosterS!=='undefined'&&rosterS, typeof rosterH!=='undefined'&&rosterH,
+   typeof _wn!=='undefined'&&_wn, typeof _wp!=='undefined'&&_wp,
+   typeof _ws!=='undefined'&&_ws, typeof _wh!=='undefined'&&_wh]
+    .forEach(a=>{ if(Array.isArray(a)) a.forEach(x=>{ if(x&&x.id) s.add(x.id); }); });
+  return s;
+}
+const newId=p=>{ const used=_idsInUse(); let id;
+  do{ id=p+(_uid++)+Math.random().toString(36).slice(2,5); }while(used.has(id));
+  return id; };
+/* Repair rosters saved before the fix: a duplicate id keeps its first holder (so their rooms stay
+   put) and every later holder is issued a fresh one. Returns how many were re-issued. */
+function dedupeStaffIds(){
+  const seen=new Set(); let fixed=0;
+  [[typeof rosterN!=='undefined'&&rosterN,'n'],[typeof rosterP!=='undefined'&&rosterP,'p'],
+   [typeof rosterS!=='undefined'&&rosterS,'s'],[typeof rosterH!=='undefined'&&rosterH,'h']]
+    .forEach(([arr,p])=>{ if(!Array.isArray(arr)) return;
+      arr.forEach(x=>{ if(!x) return;
+        if(!x.id || seen.has(x.id)){ x.id=newId(p); fixed++; }
+        seen.add(x.id); }); });
+  return fixed;
+}
 function defaultRoster(){
   // Full 10 Green roster from the official contact sheet (updated 06.22.2026), tagged Day/Night.
   // First names; a last initial is added only where two people share a first name on the same shift.
@@ -5573,6 +5602,7 @@ function applyState(st){
   if(st.priority) balancePriority=st.priority;
   if(st.shiftDate) shiftDate=st.shiftDate;
   if(st.shiftType) shiftType=st.shiftType;
+  if(dedupeStaffIds()) scheduleSave();   // repair rosters saved with colliding ids (see newId)
   syncWorking();   // AFTER shiftType is applied — filtering the crew with the old shift left a stale/empty working set
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.chargeOncoming==='string') chargeOncoming=st.chargeOncoming;
