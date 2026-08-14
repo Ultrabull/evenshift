@@ -2590,7 +2590,9 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
     assignBest(r.id);
     if(r.nurse){ checkFlagViolations(); const n=nurseObj(r.nurse); _placedWith=n?n.name:null; }
   }
-  closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } else scheduleSave();
+  closeModal(); renderAcuity(); if(assignVisible()) renderAssign();
+  scheduleSave();   // always keep a local copy on THIS device — never depend on the cloud push landing
+  if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); }
   if(_placedWith) evToast('Room '+r.id+' → '+_placedWith+' · '+cntOf(r.nurse)+' patients');
 }
 function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom];
@@ -3362,7 +3364,7 @@ function renderRecipe(){
 let undoStack=[];
 function snapRooms(){ const s={}; Object.values(rooms).forEach(r=>{ s[r.id]={acuity:r.acuity,occupied:r.occupied,tally:JSON.parse(JSON.stringify(r.tally||{})),flags:[...(r.flags||[])],lock:r.lock,nurse:r.nurse,tags:[...(r.tags||[])],avoid:[...(r.avoid||[])]}; }); return s; }
 function pushUndo(){ undoStack.push(snapRooms()); if(undoStack.length>25) undoStack.shift(); updateUndoBtn(); }
-function undo(){ if(!chargeMode||!undoStack.length)return; const s=undoStack.pop(); Object.values(rooms).forEach(r=>{ const d=s[r.id]; if(d) Object.assign(r,d); }); selectedRoom=null; updateUndoBtn(); renderAcuity(); if(assignVisible()) renderAssign(); if(cloudOn()&&chargeMode) pushMeta(); else scheduleSave(); }
+function undo(){ if(!chargeMode||!undoStack.length)return; const s=undoStack.pop(); Object.values(rooms).forEach(r=>{ const d=s[r.id]; if(d) Object.assign(r,d); }); selectedRoom=null; updateUndoBtn(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); }
 function updateUndoBtn(){ const b=document.getElementById('undoBtn'); if(b) b.style.display=(chargeMode&&undoStack.length)?'':'none'; }
 function selectRoom(id){ if(!chargeMode)return; selectedRoom=(selectedRoom===id)?null:id; renderAssign(); const ph=document.getElementById('poolHint'); if(ph) ph.textContent=selectedRoom?`Selected ${selectedRoom}. Tap a nurse to assign, or tap Unassigned to release.`:'Tap a room, then tap a nurse. On a laptop you can also drag.'; }
 function placeHere(nid){ if(!chargeMode)return; if(!selectedRoom)return; pushUndo(); const r=rooms[selectedRoom]; if(r.lock&&r.lock!==nid)r.lock=null; r.nurse=nid; selectedRoom=null; renderAssign(); scheduleSave(); }
@@ -5084,7 +5086,9 @@ function savePctScore(){ if(_pctScoreRoom==null) return; const r=rooms[_pctScore
   if(PCT_MODE){ r.pctFlags=_pctScoreFlags.slice(); r.pctBurden=pctRoomBurden(r); }
   // PCT attribution only — does NOT count as an acuity re-score (freshness tracking stays honest)
   r.pctEditedBy = chargeMode ? 'Charge' : (_quickViewerName()||'PCT'); r.pctEditedAt=Date.now();
-  closePctScore(); renderAssign(); renderAcuity(); if(cloudOn()){ pushAcuity(); } else scheduleSave();
+  closePctScore(); renderAssign(); renderAcuity();
+  scheduleSave();   // always keep a local copy on THIS device — never depend on the cloud push landing
+  if(cloudOn()) pushAcuity();
 }
 let CODE_OVERRIDE={};   // role -> staff name chosen by charge (overrides auto-fill; e.g. swap out someone who can't do CPR)
 function setCodeRole(role,name){ if(name) CODE_OVERRIDE[role]=name; else delete CODE_OVERRIDE[role]; scheduleSave(); renderAssign(); }
@@ -5610,7 +5614,7 @@ function setUnitPass(){ if(!chargeMode)return; const el=document.getElementById(
   try{ if(unitPass) localStorage.setItem('ev_unit_ok_'+unitId,unitPass); else localStorage.removeItem('ev_unit_ok_'+unitId); }catch(e){}
   if(el) el.value='';
   const m=document.getElementById('unitPassMsg'); if(m) m.textContent = unitPass? 'Access code set — other devices will need it to open this board.' : 'Access code cleared — anyone with the link can open this board.';
-  applyGate(); if(cloudOn()&&chargeMode) pushMeta(); else scheduleSave();
+  applyGate(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta();
 }
 async function cloudInit(){
   if(!CLOUD.url || !CLOUD.key || typeof window==='undefined' || typeof window.supabase==='undefined') return false;
@@ -5650,8 +5654,58 @@ function cloudSubscribe(){
     })
     .subscribe();
 }
-async function pushMeta(){ if(!cloudOn())return; try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:stateObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error; setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
-async function pushAcuity(){ if(!cloudOn())return; try{ const {error}=await sb.from('boards').upsert({unit:unitId, acuity:acuityObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error; setSaved('☁ Saved'); }catch(e){ setSaved('☁ offline'); } }
+/* A failed push must never mean the change is gone — hospital wifi drops constantly. Each push
+   keeps retrying on its own (an exponential-ish backoff, capped) until it lands, and picks back up
+   immediately when the tab comes back online or into view. The edit itself is always safe on this
+   device already (scheduleSave() ran before either of these was called) — this is purely about
+   getting it to the SHARED board so the next person to open the app sees it too. */
+let _cloudDirty={acuity:false, meta:false};
+let _cloudRetryTimer={acuity:null, meta:null};
+let _cloudRetryDelay={acuity:4000, meta:4000};
+function _cloudRetryReset(kind){ _cloudRetryDelay[kind]=4000; clearTimeout(_cloudRetryTimer[kind]); _cloudRetryTimer[kind]=null; }
+function _cloudRetrySchedule(kind, fn){
+  clearTimeout(_cloudRetryTimer[kind]);
+  _cloudRetryTimer[kind]=setTimeout(fn, _cloudRetryDelay[kind]);
+  _cloudRetryDelay[kind]=Math.min(_cloudRetryDelay[kind]*1.6, 30000);   // back off, but never give up
+}
+async function pushMeta(){
+  if(!cloudOn())return;
+  try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:stateObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error;
+    _cloudDirty.meta=false; _cloudRetryReset('meta'); setSaved('☁ Saved');
+  }catch(e){ _cloudDirty.meta=true; setSaved('⚠ Saved on this device — syncing…'); _cloudRetrySchedule('meta',pushMeta); }
+}
+async function pushAcuity(){
+  if(!cloudOn())return;
+  try{ const {error}=await sb.from('boards').upsert({unit:unitId, acuity:acuityObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error;
+    _cloudDirty.acuity=false; _cloudRetryReset('acuity'); setSaved('☁ Saved');
+  }catch(e){ _cloudDirty.acuity=true; setSaved('⚠ Saved on this device — syncing…'); _cloudRetrySchedule('acuity',pushAcuity); }
+}
+function retryCloudPushes(){ if(!cloudOn())return; if(_cloudDirty.acuity) pushAcuity(); if(_cloudDirty.meta) pushMeta(); }
+if(typeof window!=='undefined'){
+  window.addEventListener('online', retryCloudPushes);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) retryCloudPushes(); });
+}
+/* On boot, the fresh cloud pull always wins EXCEPT for a room this device scored more recently
+   than the server copy — that only happens when an earlier push silently failed (dropped wifi,
+   backgrounded mid-request) and the page then reloaded before it could retry. Without this, that
+   reload would quietly discard the score the pull just overwrote it with. */
+async function reconcileLocalAcuity(){
+  try{
+    const res=await STORE.get(STORE_KEY); if(!res||!res.value) return;
+    const local=JSON.parse(res.value); if(!local||!local.rooms) return;
+    let newer=false;
+    Object.entries(local.rooms).forEach(([id,d])=>{
+      const r=rooms[+id]; if(!r||!d) return;
+      if((d.editedAt||0) > (r.editedAt||0)){
+        r.acuity=d.acuity; r.nextAcuity=(d.nextAcuity!=null)?d.nextAcuity:d.acuity;
+        r.tally=d.tally||{}; r.flags=d.flags||[]; r.occupied=!!d.occupied;
+        r.editedBy=d.editedBy||r.editedBy; r.editedAt=d.editedAt; r.scoredBy=d.scoredBy||r.scoredBy;
+        newer=true;
+      }
+    });
+    if(newer){ renderAcuity(); if(assignVisible()) renderAssign(); pushAcuity(); }
+  }catch(e){}
+}
 function showFlipBar(to,from){ const b=document.getElementById('flipBar'); if(!b) return;
   b.innerHTML=`⚠ <b>Another device or tab switched this board to ${esc(String(to).toUpperCase())}</b> — you were working the ${esc(String(from).toUpperCase())} board. `
     +`<button class="btn sm" onclick="undoShiftFlip()">Switch back to ${esc(String(from).toUpperCase())}</button> `
@@ -6542,7 +6596,7 @@ function saveHighAcuity(){
   FLOOR.highAcuity=Math.round(v*100)/100;
   if(el) el.value=acuFmt(FLOOR.highAcuity);
   renderAcuity(); if(assignVisible()) renderAssign();
-  if(cloudOn()) pushMeta(); else scheduleSave();
+  scheduleSave(); if(cloudOn()) pushMeta();
   if(msg) msg.textContent='✓ Saved — now counting '+acuFmt(FLOOR.highAcuity)+'+ as high acuity.';
 }
 function closeMgrConsole(){ const s=document.getElementById('mgrConsoleScrim'); if(s) s.classList.remove('on'); }
@@ -7456,7 +7510,7 @@ buildLegend();
     logo.addEventListener('touchstart',start,{passive:true}); logo.addEventListener('touchend',cancel); logo.addEventListener('touchmove',cancel);
     logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
   }
-  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(!cloud) await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); setTimeout(maybeShowIntro,400); })();
+  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); setTimeout(maybeShowIntro,400); })();
 // Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
 document.addEventListener('click',function(e){
   document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
