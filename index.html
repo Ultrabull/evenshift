@@ -160,6 +160,7 @@
   .rcard .rno{font-family:var(--display);font-weight:700;font-size:15px;}
   .rcard .acu{font-family:var(--display);font-weight:700;font-size:22px;line-height:1;margin-top:6px;}
   .rcard .acu small{font-size:11px;font-weight:600;color:var(--ink-soft);}
+  .rcard .was{font-size:10.5px;font-weight:700;color:var(--ink-soft);opacity:.85;margin-top:-2px;}
   .rcard .pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-top:7px;}
   .pL{background:var(--aL);color:var(--aLt);} .pM{background:var(--aM);color:var(--aMt);}
   .pH{background:var(--aH);color:var(--aHt);} .pX{background:var(--aX);color:var(--aXt);}
@@ -1110,6 +1111,9 @@
   .pnote{font-size:10.5px;color:var(--ink-soft);margin-top:9px;font-style:italic;}
   .logsum{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;padding:6px 0;}
   .nxt{font-size:10px;opacity:.8;margin-left:2px;font-weight:700;}
+  /* the big number on a room chip is now the PREDICTED next-shift score; .was is the small
+     current-score reminder shown only when a prediction changed it */
+  .was{display:block;font-size:8.5px;opacity:.75;font-weight:700;line-height:1.1;margin-top:1px;}
   .swinggrp h4{color:var(--moved-ink);}
   .rsnchips{display:flex;flex-wrap:wrap;gap:6px;}
   .rsnchip{padding:7px 11px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;color:var(--ink);cursor:pointer;}
@@ -2171,7 +2175,12 @@ let viewAs='charge';              // 'charge' sees everything; a nurse id sees o
    console (defaults to 3.75 for 10 Green); rides along in FLOOR so it saves and syncs. */
 const HIGH_ACUITY_DEFAULT=3.75;
 function highCut(){ const v=+(FLOOR&&FLOOR.highAcuity); return v>0?v:HIGH_ACUITY_DEFAULT; }
-function isHigh(r){ return (r&&r.acuity||0)>=highCut(); }
+/* The number every card and summary shows: the predicted next-shift load, since that's what
+   Make Assignment actually builds from. Falls back to the current score for a room whose
+   prediction was never touched (saveScore defaults nextAcuity to the current score, so this is
+   only ever different when someone deliberately changed the slider). */
+function dispAcu(r){ return (r&&r.nextAcuity!=null)?r.nextAcuity:(r?r.acuity:null); }
+function isHigh(r){ return (dispAcu(r)||0)>=highCut(); }
 function acuClass(h){if(h<2.5)return'L';if(h<3.5)return'M';if(h<5)return'H';return'X';}
 function acuFmt(x){ return (Math.round((+x||0)*100)/100).toFixed(2).replace(/(\.\d)0$/,'$1'); }   // 2.75 stays 2.75; 2.50 -> 2.5; 3 -> 3.0
 function acuLabel(h){return{L:'Low',M:'Moderate',H:'High',X:'Intensive'}[acuClass(h)];}
@@ -2358,6 +2367,15 @@ function show(v){
   window.scrollTo(0,0);
   if(v==='build'||v==='assign') renderAssign();
 }
+/* Shared body for the big Score-tab room card: predicted number is the headline (what Make
+   Assignment actually builds from), current score shown small underneath only when a prediction
+   changed it. */
+function rcardScoredBody(r){
+  const dv=dispAcu(r), cls=acuClass(dv);
+  const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
+  const wasLine = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<div class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)} hrs</div>` : '';
+  return `<div class="acu">${acuFmt(dv)} <small>hrs</small></div>${wasLine}<span class="pill p${cls}">${acuLabel(dv)}</span>${flags?`<div class="flags">${flags}</div>`:''}`;
+}
 function renderAcuity(){
   updateRubricTag();
   updateAcuStat();
@@ -2371,9 +2389,7 @@ function renderAcuity(){
     if(!mine.length) html+='<div class="empty2">No patients assigned to you yet.</div>';
     mine.forEach(rn=>{ const r=rn;
       if(!(r.acuity>0)){ html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`; return; }
-      const cls=acuClass(r.acuity);
-      const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div class="acu">${acuFmt(r.acuity)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
+      html+=`<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div>${rcardScoredBody(r)}</div>`;
     });
     html+='</div></div>';
     document.getElementById('halls').innerHTML=html;
@@ -2386,9 +2402,7 @@ function renderAcuity(){
       if(!r.occupied){ html+=`<div class="rcard empty" data-room="${rn}" onclick="openModal(${rn})"><div class="rno" style="color:#9AA6B6">${rn}</div><div style="font-size:11px;color:#9AA6B6;margin-top:18px;">Empty · tap to admit</div></div>`; }
       else if(!(r.acuity>0)){ html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`; }
       else{
-        const cls=acuClass(r.acuity);
-        const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div class="acu">${acuFmt(r.acuity)} <small>hrs</small></div><span class="pill p${cls}">${acuLabel(r.acuity)}</span>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
+        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div>${rcardScoredBody(r)}</div>`;
       }
     });
     html+='</div></div>';
@@ -2606,7 +2620,9 @@ function rnChip(r){
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
   const scored=r.acuity>0;
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
-  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(r.acuity):'0'}">${scored?acuFmt(r.acuity):'tap'}</span></span>`;
+  const dv=dispAcu(r);
+  const wasTag = (scored && r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)}</span>` : '';
+  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(dv):'0'}">${scored?acuFmt(dv):'tap'}${wasTag}</span></span>`;
 }
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(miniFlag).join(' ');
@@ -2616,7 +2632,9 @@ function roomChip(r){
     : (r.lock?'<span title="continuity / requested nurse">🔒</span>':'');
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
   const editTag = (chargeMode && r.editedBy && r.editedBy!=='Charge') ? `<span class="editby" title="Last edited by ${esc(r.editedBy)}${r.editedAt?' · '+_qhTime(r.editedAt):''}">✎ ${esc((r.editedBy||'').split(' ')[0])}</span>` : '';
-  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${acuFmt(r.prevAcuity)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(r.acuity)}">${acuFmt(r.acuity)}${(r.nextAcuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25)?`<span class="nxt" title="predicted for next shift">→${acuFmt(r.nextAcuity)}</span>`:''}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${editTag}${lockBtn}</span>`;
+    const dv=dispAcu(r);
+  const wasTag = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)}</span>` : '';
+  return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${acuFmt(r.prevAcuity)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(dv)}" title="predicted for the oncoming shift">${acuFmt(dv)}${wasTag}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${editTag}${lockBtn}</span>`;
 }
 function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r||!r.occupied) return;
   if(r.lock){ r.lock=null; }
@@ -3045,7 +3063,7 @@ function renderReturning(){
       if(on){
         h+=`<div class="retmini" style="margin-top:7px;">Tap the room numbers to choose which patients they keep — <b>blue = kept</b>:</div>`
           +`<div class="retchips">`+rms.map(rn=>{ const r=rooms[rn]; if(!r||!r.occupied) return ''; const k=kept.includes(rn); const dc=(r.flags||[]).includes('dc');
-          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${nid}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(r.acuity)}">${acuFmt(r.acuity)}</span></button>`; }).join('')
+          return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${nid}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(dispAcu(r))}">${acuFmt(dispAcu(r))}</span></button>`; }).join('')
           +`</div><div class="retmini"><button class="linkx" onclick="keepAllRooms('${nid}')">Keep all</button> · <button class="linkx" onclick="keepNoRooms('${nid}')">Keep none</button>${manual?'':` · <button class="linkx" onclick="keepDefaultRooms('${nid}')">Back to suggested ${RET_KEEP_MAX}</button>`}</div>`;
       }
       h+=`</div>`;
@@ -4311,12 +4329,12 @@ function updateAcuStat(){
   const el=document.getElementById('acuStat'); if(!el) return;
   const scored=occupied().filter(r=>r.acuity>0);
   if(!scored.length){ el.style.display='none'; return; }
-  const sum=scored.reduce((s,r)=>s+r.acuity,0), avg=sum/scored.length;
+  const sum=scored.reduce((s,r)=>s+dispAcu(r),0), avg=sum/scored.length;   // predicted next-shift load — what the next board is built from
   const high=scored.filter(isHigh);
   el.innerHTML=`<span class="as-i"><b>${scored.length}</b> scored</span>`
-    +`<span class="as-i">avg <b>${acuFmt(avg)}</b> hrs</span>`
+    +`<span class="as-i" title="predicted for the oncoming shift">avg <b>${acuFmt(avg)}</b> hrs</span>`
     +`<span class="as-i ${high.length?'hi':''}" title="${high.length?'Rooms: '+high.map(r=>r.id).join(', '):'none'}"><b>${high.length}</b> high acuity <small>(${acuFmt(highCut())}+)</small></span>`
-    +`<span class="as-i">total <b>${acuFmt(sum)}</b> hrs</span>`;
+    +`<span class="as-i" title="predicted for the oncoming shift">total <b>${acuFmt(sum)}</b> hrs</span>`;
   el.style.display='';
 }
 function openRubric(){ if(!chargeMode)return; _rub=cloneSecs(RUBRIC); _rdiv=DIVISOR; _rlbl=ACUITY_LABEL; _rname=RUBRIC_NAME; renderRubricModal(); document.getElementById('rubScrim').classList.add('on'); }
