@@ -1860,7 +1860,7 @@
   <div class="modal">
     <div class="mhead"><span class="rt">Print / share</span><button class="btn" onclick="closeShare()">Close</button></div>
     <div class="mbody">
-      <label class="rubfield chargeOnly" style="display:block;margin-bottom:11px;">Charge nurse <span class="flhint">prints on the sheet</span><input id="chgName" oninput="setChargeName(this.value)" placeholder="Your name"></label>
+      <label class="rubfield chargeOnly" style="display:block;margin-bottom:11px;">Charge for this assignment <span class="flhint">the oncoming charge — prints on the sheet</span><input id="chgName" oninput="setAssignCharge(this.value)" placeholder="who’s charging the shift this board is for"></label>
       <div class="shareRow"><button class="btn primary" onclick="printAssign()">🖨 Print / Save PDF</button><button class="btn" onclick="shareAssign()">📤 Share</button><button class="btn" onclick="copyAssign()">Copy as text</button></div>
       <div id="copyMsg" class="hint" style="margin-top:7px;min-height:14px;"></div>
       <p class="covnote" style="margin-top:8px;"><b>Share</b> opens your phone's share sheet (AirDrop, Messages, Email, WhatsApp) — no download needed. On a PC it opens the sheet in a new tab to share from the browser.</p>
@@ -7263,7 +7263,10 @@ function assignText(){
   return L.join('\n');
 }
 function setChargeName(v){ chargeName=v; scheduleSave(); }
-function openShare(){ const c=document.getElementById('chgName'); if(c)c.value=chargeName; document.getElementById('shareScrim').classList.add('on'); document.getElementById('copyMsg').textContent=''; renderQR(); }
+/* The Share box edits the name printed on the sheet, which is the charge the assignment is
+   for (the oncoming one) — not the charge who prepared it. */
+function setAssignCharge(v){ chargeOncoming=(v||'').trim(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); }
+function openShare(){ const c=document.getElementById('chgName'); if(c)c.value=assignmentCharge(); document.getElementById('shareScrim').classList.add('on'); document.getElementById('copyMsg').textContent=''; renderQR(); }
 function closeShare(){ document.getElementById('shareScrim').classList.remove('on'); }
 /* ---------- impact & savings ---------- */
 let impactCfg={pages:30,shifts:2,mins:25,wage:45,otNurses:2,otMins:30,turnover:1};
@@ -7326,7 +7329,12 @@ function prInitials(){ const m={},seen={}; nurses.forEach(n=>{ const w=(n.name||
 function buildPrint(){
   const NC=prColors(), NI=prInitials(), occ=occupied();
   const total=(typeof TOTAL_BEDS!=='undefined'&&TOTAL_BEDS)?TOTAL_BEDS:(typeof allRooms!=='undefined'?allRooms.length:occ.length);
-  const chg=chargeName.trim()?esc(chargeName.trim()):'________';
+  // The sheet is handed to the ONCOMING crew, so the charge it names must be the one running
+  // that shift. assignmentCharge() prefers the oncoming charge and falls back to the preparer.
+  const _ac=assignmentCharge().trim();
+  const chg=_ac?esc(_ac):'________';
+  const _prep=(chargeName||'').trim();
+  const prepTag=(_prep && _prep!==_ac) ? `Prepared by ${esc(_prep)} \u00b7 ` : '';
   const anyA=occ.some(r=>r.nurse), lds=nurses.map(n=>nurseLoad(n.id).adj);
   const spread=(anyA&&lds.length)?(Math.max(...lds)-Math.min(...lds)):0;
   let stamp='';
@@ -7385,7 +7393,7 @@ function buildPrint(){
      `<div><div class="prcap">Code blue team</div>${codeH}</div></div>`;
   if(UNITINFO.directory&&UNITINFO.directory.trim()) h+=`<div class="pr-dir">\u260e ${esc(UNITINFO.directory).replace(/\n/g,'<br>')}</div>`;
   const ts=new Date().toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  h+=`<div class="pr-foot">Generated with EvenShift \u00b7 ${ts} \u00b7 acuity-balanced, 1:${FLOOR.ratio||4} ratio checked \u00b7 room numbers only, no PHI</div>`;
+  h+=`<div class="pr-foot">${prepTag}Generated with EvenShift \u00b7 ${ts} \u00b7 acuity-balanced, 1:${FLOOR.ratio||4} ratio checked \u00b7 room numbers only, no PHI</div>`;
   document.getElementById('printArea').innerHTML=h;
 }
 function shareAssign(){
