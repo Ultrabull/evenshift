@@ -594,6 +594,9 @@
   b.vs-ret{color:var(--good);} b.vs-lost{color:#B42318;} b.vs-rep{color:var(--moved-ink);}
   .vbbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
   .meetSec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:10px 0 4px;}
+  .meetSince{display:block;font-weight:600;font-size:10px;letter-spacing:.02em;text-transform:none;color:var(--ink-soft);opacity:.85;margin-top:1px;}
+  .deltaHd{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:9px 0 4px;}
+  .deltaHd.new{color:var(--warn-ink);} .deltaHd.gone{color:var(--ok-ink);}
   .meetRow{font-size:13px;padding:6px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;margin-bottom:4px;line-height:1.5;}
   .meetRow b{color:var(--ink);}
   .meetRow.warn{background:var(--warn-wash);border-color:var(--warn-line);}
@@ -6095,14 +6098,23 @@ function renderHuddleTab(){
   h+=`<div class="livehdr">📋 Your unit right now <span class="livesub">${esc(FLOOR.unit)} · ${esc(shiftType)} · prepared for handoff</span></div>`;
   // ── What changed since last huddle ──
   const delta=huddleDelta();
-  if(delta && delta.items.length){
-    h+=secHead('🔺 What changed since last huddle');
-    delta.items.slice(0,12).forEach(it=>{
-      h+=`<div class="meetRow ${it.type==='new'?'warn':'ok'}">${it.type==='new'?'＋ New':'－ Cleared'} ${esc(it.lab)} · <b>Rm ${it.rm}</b></div>`;
-    });
-  } else if(delta){
-    h+=secHead('🔺 What changed since last huddle');
-    h+=`<div class="meetRow">No changes since last huddle — steady.</div>`;
+  if(delta){
+    const since=huddleDeltaSince(delta);
+    h+=secHead('🔺 What changed since last huddle'+(since?` <span class="meetSince">vs ${esc(since)}</span>`:''));
+    const news=huddleDeltaGroups(delta,'new'), gone=huddleDeltaGroups(delta,'gone');
+    const nN=delta.items.filter(it=>it.type==='new').length, nG=delta.items.length-nN;
+    if(!delta.items.length){
+      h+=`<div class="meetRow ok">No changes since last huddle — steady.</div>`;
+    } else {
+      if(news.length){
+        h+=`<div class="deltaHd new">＋ ${nN} new</div>`;
+        news.forEach(g=>h+=`<div class="meetRow warn"><b>${esc(g.lab)}</b> — Rm ${g.rms.join(', ')}</div>`);
+      }
+      if(gone.length){
+        h+=`<div class="deltaHd gone">－ ${nG} cleared</div>`;
+        gone.forEach(g=>h+=`<div class="meetRow ok"><b>${esc(g.lab)}</b> — Rm ${g.rms.join(', ')}</div>`);
+      }
+    }
   }
   // ── Watch: complex patients (risk combinations) ──
   const risks=huddleRiskCombos();
@@ -6389,6 +6401,17 @@ function captureHuddleSnapshot(){
   scheduleSave();
 }
 /* Compare current live inventory to the most recent PRIOR capture (not this shift). */
+/* Roll the raw per-room delta into one line per category — "Isolation — Rm 33, 41" instead of a
+   repeated row for every single room, split into what's new vs what cleared. */
+function huddleDeltaGroups(delta,type){
+  const rows={};
+  ((delta&&delta.items)||[]).filter(it=>it.type===type).forEach(it=>{ (rows[it.lab]=rows[it.lab]||[]).push(it.rm); });
+  return Object.entries(rows).map(([lab,rms])=>({
+    lab: lab.charAt(0).toUpperCase()+lab.slice(1),
+    rms: [...new Set(rms)].sort((a,b)=>a-b)
+  })).sort((a,b)=>a.lab.localeCompare(b.lab));
+}
+function huddleDeltaSince(delta){ const pr=delta&&delta.prior; return pr?(pr.shift+' · '+pr.date):''; }
 function huddleDelta(){
   const prior=HUDDLE_HISTORY.filter(h=>!(h.date===shiftDate && h.shift===shiftType)).slice(-1)[0];
   if(!prior) return null;
@@ -6438,7 +6461,14 @@ function huddleText(){
   L.push(`Reported by: ${chargeName||'Charge RN'}`);
   // what changed
   const delta=huddleDelta();
-  if(delta && delta.items.length){ L.push(''); L.push('What changed since last huddle:'); delta.items.slice(0,12).forEach(it=>L.push(`  ${it.type==='new'?'+ New':'- Cleared'} ${it.lab} · Rm ${it.rm}`)); }
+  if(delta && delta.items.length){
+    const since=huddleDeltaSince(delta).replace(' · ',' ');
+    L.push(''); L.push(`What changed since last huddle${since?' (vs '+since+')':''}:`);
+    const nN=delta.items.filter(it=>it.type==='new').length, nG=delta.items.length-nN;
+    const grp=(t,head)=>{ const gs=huddleDeltaGroups(delta,t); if(!gs.length) return;
+      L.push(`  ${head}`); gs.forEach(g=>L.push(`    ${g.lab}: Rm ${g.rms.join(', ')}`)); };
+    grp('new', `NEW (${nN})`); grp('gone', `CLEARED (${nG})`);
+  }
   // complex patients
   const risks=huddleRiskCombos();
   if(risks.length){ L.push(''); L.push('Watch — most complex patients:'); risks.slice(0,6).forEach(x=>L.push(`  Rm ${x.rm}: ${x.items.join(' + ')}`)); }
