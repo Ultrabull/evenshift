@@ -291,6 +291,12 @@
   .slider{width:100%;margin:14px 0 6px;accent-color:var(--teal);height:24px;}
   .expval{font-family:var(--display);font-weight:700;font-size:30px;text-align:center;color:var(--teal-deep);}
   .expval small{font-size:13px;color:var(--ink-soft);}
+  .nextbig{font-family:var(--display);font-weight:700;font-size:31px;text-align:center;color:var(--teal-deep);line-height:1.02;}
+  .nextbig small{display:block;font-family:var(--body);font-size:11.5px;font-weight:600;color:var(--ink-soft);margin-top:3px;letter-spacing:.01em;}
+  .nextdelta{text-align:center;font-size:12.5px;font-weight:600;margin-top:7px;color:var(--ink-soft);line-height:1.45;}
+  .nextdelta.up{color:var(--warn-ink);} .nextdelta.down{color:var(--ok-ink);}
+  .nextdelta b{font-weight:800;}
+  .nextsame{display:block;margin:9px auto 0;padding:5px 13px;border-radius:9px;border:1px solid var(--line-strong);background:var(--field);color:var(--ink);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
   .mfoot{padding:13px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);flex:none;padding-bottom:calc(13px + env(safe-area-inset-bottom,0px));}
   .savebig{font-weight:800;}
   @media(max-width:560px){
@@ -2187,6 +2193,7 @@ function defaultRoster(){
 defaultRoster();
 
 let selectedRoom=null, modalRoom=null, modalTally={}, modalFlags=[], modalMode='quick', modalExpress=null, dragId=null, modalPin='', modalAvoid=[], modalNext=null, modalReason='', modalReasonOther='', _prevNow=null;
+let _nextTouched=false;   // did someone deliberately predict a different next-shift load, or is it just following the score?
 const ACUITY_SWING=1.5;  // hrs change that requires a reason (now-vs-prev OR now-vs-next)
 const SWING_REASONS=['Procedure / surgery','Off a drip','Stabilized','Decompensating','New admit workup','Discharge pending','Code / Rapid response','Off isolation','Sitter added / removed','Other'];
 let balancePriority='hallway';   // 'hallway' = keep halls tight; 'hours' = chase a <=0.5 spread
@@ -2436,6 +2443,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   modalTally=JSON.parse(JSON.stringify(r.tally||{})); modalFlags=[...(r.flags||[])]; modalExpress=null;
   modalPin=r.lock||''; modalAvoid=[...(r.avoid||[])];
   modalNext = (r.nextAcuity!=null) ? r.nextAcuity : (r.acuity!=null ? r.acuity : null);
+  _nextTouched = (r.nextAcuity!=null && r.acuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25);
   _prevNow = (r.acuity!=null) ? r.acuity : null;   // the score before this edit, for swing detection
   modalReason = r.acuityReason || ''; modalReasonOther = r.acuityReasonOther || '';
   const hasTally=Object.keys(modalTally).length>0;
@@ -2547,24 +2555,49 @@ function swingReasonHTML(){
     +`<div class="rsnchips">${chips}</div>${otherBox}</div>`;
 }
 function setSwingReason(r){ modalReason=(modalReason===r)?'':r; const w=document.getElementById('swingReasonWrap'); if(w) w.innerHTML=swingReasonHTML(); }
+function _modalNow(){ return (modalMode==='express') ? (modalExpress!=null?modalExpress:0) : currentHrs(); }
+/* The readout used to print "now 0.5 → next 2" in one big line, which read as two competing scores
+   and went stale as the tally changed. Now the next-shift number is the headline, the comparison is
+   in plain words underneath, and — unless someone deliberately predicted a change — it simply
+   follows the score being entered, so it can never drift out of step with it. */
+function nextReadoutHTML(){
+  const now=_modalNow(); const nv=(modalNext!=null)?modalNext:now;
+  const d=Math.round((nv-now)*100)/100;
+  let cls,txt;
+  if(Math.abs(d)<0.01){ cls='same'; txt='Same as the score you\u2019re entering \u2014 nothing changes for them'; }
+  else if(d>0){ cls='up'; txt=`<b>${acuFmt(d)} hrs heavier</b> than the ${acuFmt(now)} you\u2019re entering`; }
+  else { cls='down'; txt=`<b>${acuFmt(Math.abs(d))} hrs lighter</b> than the ${acuFmt(now)} you\u2019re entering`; }
+  return `<div class="nextbig">${acuFmt(nv)}<small>hrs for the oncoming shift</small></div>`
+    +`<div class="nextdelta ${cls}">${cls==='same'?'\u2713':(cls==='up'?'\u2191':'\u2193')} ${txt}</div>`
+    +(cls==='same'?'':`<button type="button" class="nextsame" onclick="nextSameAsNow()">\u21ba Same as now</button>`);
+}
+function _refreshNext(){
+  if(!_nextTouched) modalNext=_modalNow();
+  const sl=document.getElementById('nextSlider'); if(sl && String(sl.value)!==String(modalNext)) sl.value=modalNext;
+  const el=document.getElementById('nextReadout'); if(el) el.innerHTML=nextReadoutHTML();
+}
+function nextSameAsNow(){ _nextTouched=false; modalNext=_modalNow(); _refreshNext(); _refreshSwing(); }
 function nextShiftHTML(){
-  const now = (modalMode==='express') ? (modalExpress!=null?modalExpress:0) : currentHrs();   // express/direct scores aren't in the tally — use the shown score, not 0
-  const nv = (modalNext!=null) ? modalNext : now;
-  return `<div class="grp"><h4>Next shift <span style="font-weight:400;color:var(--ink-soft)">· predicted</span><button class="qhelp" onclick="showHelp('nextshift')" title="What\u2019s this?">?</button></h4>`
-    +`<div class="hint" style="margin:0 0 7px;">How heavy will this patient be for the <b>oncoming</b> shift? Leave it if nothing changes; bump it if a procedure clears, an admit is coming, etc. The next assignment is built from this number.</div>`
-    +`<div class="exp"><input type="range" min="0" max="8" step="0.25" value="${nv}" oninput="setNext(this.value)" class="slider"><div class="expval">now ${acuFmt(now)} → next <span id="nextNum">${acuFmt(nv)}</span> <small>hrs</small></div></div></div>`;
+  const now=_modalNow();
+  if(!_nextTouched) modalNext=now;
+  const nv=(modalNext!=null)?modalNext:now;
+  return `<div class="grp"><h4>Next shift <span style="font-weight:400;color:var(--ink-soft)">\u00b7 predicted</span><button class="qhelp" onclick="showHelp('nextshift')" title="What\u2019s this?">?</button></h4>`
+    +`<div class="hint" style="margin:0 0 7px;">Will this patient be <b>lighter or heavier</b> for the crew coming on? Leave it alone if nothing changes \u2014 it follows the score you enter. Move it if a drip is coming off, a procedure clears, or an admit is expected.</div>`
+    +`<div class="exp"><input type="range" id="nextSlider" min="0" max="8" step="0.25" value="${nv}" oninput="setNext(this.value)" class="slider">`
+    +`<div id="nextReadout">${nextReadoutHTML()}</div></div></div>`;
 }
 function _refreshSwing(){ const w=document.getElementById('swingReasonWrap'); if(w) w.innerHTML=swingReasonHTML(); }
-function setNext(v){ modalNext=parseFloat(v); const el=document.getElementById('nextNum'); if(el) el.textContent=acuFmt(modalNext); _refreshSwing(); }
+function setNext(v){ modalNext=parseFloat(v); _nextTouched=true; _refreshNext(); _refreshSwing(); }
 function toggleQuick(key){ if((modalTally[key]||0)>0) delete modalTally[key]; else modalTally[key]=1; renderModalBody(); }
 function setExpress(v){ modalExpress=parseFloat(v); document.getElementById('expNum').textContent=acuFmt(modalExpress); recalc(); _refreshSwing(); }
 function cssid(k){return k.replace(/[^a-zA-Z0-9]/g,'_');}
 function bump(key,d){ modalTally[key]=Math.max(0,(modalTally[key]||0)+d); if(modalTally[key]===0) delete modalTally[key]; const sp=document.getElementById('c-'+cssid(key)); if(sp){sp.textContent=modalTally[key]||0; sp.parentElement.classList.toggle('active',(modalTally[key]||0)>0);} recalc(); _refreshSwing(); }
 function togFlag(f){ if(!chargeMode && !canScoreRoom(modalRoom))return; const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1); document.getElementById('ft-'+f).classList.toggle('on'); }
 function recalc(){
-  if(modalMode==='express'){ document.getElementById('mPts').textContent='—'; document.getElementById('mHrs').textContent=acuFmt(modalExpress!=null?modalExpress:0); return; }
+  if(modalMode==='express'){ document.getElementById('mPts').textContent='—'; document.getElementById('mHrs').textContent=acuFmt(modalExpress!=null?modalExpress:0); _refreshNext(); return; }
   let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0);
   document.getElementById('mPts').textContent=(Math.round(pts*100)/100); document.getElementById('mHrs').textContent=acuFmt(pts/DIVISOR);
+  _refreshNext();
 }
 function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoom]; let hrs;
   const _wasOcc=!!r.occupied;   // was this bed already filled? (a no → someone just arrived)
