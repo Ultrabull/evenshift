@@ -7046,7 +7046,10 @@ function renderSnapRow(snap,fname,i){
   const flagLine=flags.length?`<div class="hsection">Alerts</div><div style="font-size:11.5px;color:var(--bad);padding:4px 0">${flags.join('  ·  ')}</div>`:'';
   return `<div class="hrow"><div class="hrow-head" onclick="toggleHrow(${i})">
     <span class="hdate">${esc(snap.shiftDate||'')} ${esc(snap.shiftType||'')}</span>
-    <span class="hcharge">${snap.chargeName?`Assignment by <b>${esc(snap.chargeName)}</b>  · `:''}Census <b>${snap.census||0}</b>/${snap.totalBeds||0}</span>${stamp}
+    <span class="hcharge">${(()=>{ const prep=(snap.chargeName||'').trim(), onc=(snap.chargeOncoming||'').trim(); const bits=[];
+      if(prep) bits.push(`Prepared by <b>${esc(prep)}</b>`);
+      if(onc && onc!==prep) bits.push(`handed to <b>${esc(onc)}</b>`);
+      return bits.length?bits.join(' · ')+' · ':''; })()}Census <b>${snap.census||0}</b>/${snap.totalBeds||0}</span>${stamp}
   </div><div class="hrow-body" id="hbody-${i}">
     <div class="hsection">Nurses</div>${nurseRows}
     ${pctRows?`<div class="hsection">PCT zones</div>${pctRows}`:''}${flagLine}
@@ -7460,7 +7463,10 @@ function copyAssign(){ const t=assignText(); const m=document.getElementById('co
   if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>m.textContent='Copied — paste it into your unit chat.').catch(()=>m.textContent='Couldn\u2019t copy automatically — long-press to select.');
   else m.textContent='Copy not available here — use Print instead.'; }
 function getDisplayFlagCodes(){ return getActiveFlags().map(x=>x[0]).filter(c=>!ENGINE_FLAG_CODES.has(c)||c==='dnar'); }
-function clinicalGrid(){ const occ=occupied(); const codes=getDisplayFlagCodes();
+/* Every flag, not just the display-only ones. This listed getDisplayFlagCodes(), which strips the
+   engine flags — so isolation, 1:1, behavioral, confused, admit and discharge were missing from the
+   clinical reference and the printed handoff sheet, which are exactly the ones a charge reads out. */
+function clinicalGrid(){ const occ=occupied(); const codes=getActiveFlags().map(x=>x[0]);
   return codes.map(code=>{ const label=getFlagLabel(code)||code;
     const rms=occ.filter(r=>(r.flags||[]).includes(code)||(r.tags||[]).includes(code)).map(r=>r.id).sort((a,b)=>a-b);
     return rms.length?{label,rooms:rms}:null; }).filter(Boolean); }
