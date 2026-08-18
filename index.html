@@ -1353,6 +1353,7 @@
   </header>
   <div class="offlinebar" id="offlineBar" style="display:none;">⚠ <b>Offline</b> — changes are saved on this device only and won\u2019t sync until you reconnect. Tap ⋯ → Unit link &amp; QR to reconnect.</div>
   <div class="offlinebar" id="flipBar" style="display:none;"></div>
+  <div class="offlinebar handoffbar" id="handoffBar" style="display:none;"></div>
   <div class="nextbar chargeOnly" id="nextStepBar" style="display:none;"></div>
 
   <details class="help">
@@ -5772,6 +5773,43 @@ async function reconcileLocalAcuity(){
     if(newer){ renderAcuity(); if(assignVisible()) renderAssign(); pushAcuity(); }
   }catch(e){}
 }
+/* Ending the shift clears every assignment, so tapping it before handover leaves the staff on the
+   floor with no patients they can see or score. The room-level Undo button covers the rooms but
+   lives only in memory, and it does not put back the shift, the date or the checklist. Keep a full
+   snapshot on this device instead, offer it back plainly, and push the restore so the staff's
+   phones recover too. */
+const HANDOFF_KEY='evenshift_handoff_undo_v1';
+let _alreadyFiled='';   // (date|shift) already written to Manager reports — so an undo + re-end doesn't file it twice
+function _stashHandoffUndo(state, filedKey){
+  try{ localStorage.setItem(HANDOFF_KEY, JSON.stringify({at:Date.now(), unit:unitId, filedKey, state})); }catch(e){}
+}
+function _readHandoffUndo(){
+  try{ const j=JSON.parse(localStorage.getItem(HANDOFF_KEY)||'null');
+    if(!j||!j.state) return null;
+    if(j.unit!==unitId) return null;
+    if(Date.now()-(j.at||0) > 12*3600*1000) return null;   // a whole shift later it is no longer a mistake
+    return j;
+  }catch(e){ return null; }
+}
+function showHandoffBar(){
+  const j=_readHandoffUndo(); const b=document.getElementById('handoffBar'); if(!b) return;
+  if(!j || !chargeMode){ b.style.display='none'; return; }
+  const mins=Math.max(1,Math.round((Date.now()-j.at)/60000));
+  b.innerHTML=`🔄 <b>Shift handed off ${mins} min ago</b> — assignments were cleared, so staff can no longer see or score their patients. `
+    +`<button class="btn sm" onclick="undoHandoff()">Undo hand-off — put the board back</button> `
+    +`<button class="btn sm" onclick="dismissHandoff()">It was meant</button>`;
+  b.style.display='';
+}
+function undoHandoff(){
+  const j=_readHandoffUndo(); if(!j){ dismissHandoff(); return; }
+  applyState(j.state);
+  _alreadyFiled=j.filedKey||'';         // that shift is already in Manager reports; don't file it twice
+  try{ localStorage.removeItem(HANDOFF_KEY); }catch(e){}
+  cloudRerender(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta();
+  const b=document.getElementById('handoffBar'); if(b) b.style.display='none';
+  evToast('Board restored — staff can see their patients again');
+}
+function dismissHandoff(){ try{ localStorage.removeItem(HANDOFF_KEY); }catch(e){} const b=document.getElementById('handoffBar'); if(b) b.style.display='none'; }
 function showFlipBar(to,from){ const b=document.getElementById('flipBar'); if(!b) return;
   b.innerHTML=`⚠ <b>Another device or tab switched this board to ${esc(String(to).toUpperCase())}</b> — you were working the ${esc(String(from).toUpperCase())} board. `
     +`<button class="btn sm" onclick="undoShiftFlip()">Switch back to ${esc(String(from).toUpperCase())}</button> `
@@ -7281,9 +7319,12 @@ function buildReportHTML(ag,dateRange,n){
   </body></html>`;
 }
 function nextShift(){ if(!chargeMode)return;
-  if(!confirm('🔄 Start the next shift?\n\n✓ Tonight\u2019s board is SAVED to Manager reports first.\n✓ Each patient keeps their score, flags and notes.\n✗ Nurse assignments and locks are CLEARED so the next charge builds fresh.\n\nThis cannot be undone except with the Undo button. Continue?')) return;
+  if(!confirm('🔄 Start the next shift?\n\n✓ Tonight\u2019s board is SAVED to Manager reports first.\n✓ Each patient keeps their score, flags and notes.\n✗ Nurse assignments and locks are CLEARED \u2014 staff will no longer see or be able to score their patients until a new board is built.\n\nOnly do this AFTER report. If it turns out to be early, an Undo hand-off bar appears at the top. Continue?')) return;
+  const _preHandoff=stateObj();                      // full picture before anything changes
+  const _fileKey=shiftDate+'|'+shiftType;
   pushUndo();
-  pushHistory();  // saves this shift to the cloud (or a local file if offline)
+  if(_alreadyFiled!==_fileKey) pushHistory();   // saves this shift to the cloud (or a local file if offline)
+  _alreadyFiled=_fileKey;
   // Snapshot who had what THIS shift, so the next charge can keep returning staff's patients (no PHI — ids/rooms only)
   const _snap={
     shift: shiftType, date: shiftDate,
@@ -7318,6 +7359,7 @@ function nextShift(){ if(!chargeMode)return;
   balancePriority='hours';   // new shift starts by evening the hours; charge can switch to "keep rooms close" on the Build tab
   syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
+  _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar();
 }
 function clearFloor(){ if(!chargeMode)return;
   if(!confirm('⚠️ ERASE THE WHOLE FLOOR?\n\nThis deletes EVERY patient, acuity score, clinical flag, and assignment. It cannot be undone with the normal Undo and there is no way to get the scores back.\n\nThis is only for setting up a fresh unit — not for shift change. For shift change use “End shift & hand off” instead.\n\nTap OK only if you really want to wipe everything.')) return;
@@ -7616,7 +7658,7 @@ buildLegend();
     logo.addEventListener('touchstart',start,{passive:true}); logo.addEventListener('touchend',cancel); logo.addEventListener('touchmove',cancel);
     logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
   }
-  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); setTimeout(maybeShowIntro,400); })();
+  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); showHandoffBar(); setTimeout(maybeShowIntro,400); })();
 // Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
 document.addEventListener('click',function(e){
   document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
