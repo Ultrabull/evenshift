@@ -1077,6 +1077,8 @@
   .sitok{color:var(--ok-ink);font-weight:800;}
   .sitwarn{color:#C0271C;font-weight:700;font-size:11.5px;}
   .sitalert{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:700;margin:8px 0;}
+  .keepworth{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.5;margin:7px 0 0;}
+  .keepworth.thin{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
   .balcap{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:600;margin-bottom:7px;line-height:1.45;}
@@ -3124,6 +3126,25 @@ function retDefaultKeep(nid){
   return retNurseRooms(nid).slice().sort((a,b)=>sc(b)-sc(a)).slice(0,RET_KEEP_MAX);
 }
 function retRoomOptions(nid){ return (RET.manualN&&RET.manualN[nid]) ? occupied().map(r=>r.id).sort((a,b)=>a-b) : retNurseRooms(nid); }
+/* What this nurse's kept rooms come to, against the average shift on this board. */
+function keepWorthHTML(nid, kept){
+  if(!kept || !kept.length) return '';
+  const occ=occupied(); const crew=Math.max(1, nurses.length||rosterN.filter(n=>n.on!==false).length);
+  const keptHrs=kept.reduce((s,rn)=>{ const r=rooms[rn]; return s+((r&&r.occupied)?(dispAcu(r)||0):0); },0);
+  const r1=x=>Math.round(x*10)/10;   // a nurse reading this fast doesn't need two decimals
+  const avg=r1(occ.reduce((s,r)=>s+(dispAcu(r)||0),0)/crew);
+  const cap=FLOOR.ratio||4;
+  const full=kept.length>=cap;
+  const diff=r1(keptHrs-avg);
+  // Only call it light once the keep is big enough that the rest of the board can't absorb it.
+  const light = full && diff<=-1.0;
+  const shareEach = light ? r1(Math.abs(diff)/Math.max(1,crew-1)) : 0;
+  let verdict;
+  if(light) verdict=`That is <b>${acuFmt(Math.abs(diff))} hrs under</b> the average shift of ${acuFmt(avg)}, and ${kept.length} patients already fills them \u2014 nothing heavier can move across afterwards. The other ${crew-1} nurses pick up about ${acuFmt(shareEach)} hrs each. Keep one fewer if that isn\u2019t what you meant.`;
+  else if(full && diff>=1.0) verdict=`That is <b>${acuFmt(diff)} hrs over</b> the average shift of ${acuFmt(avg)}, and they are full at ${kept.length} \u2014 the board can\u2019t lighten them afterwards.`;
+  else verdict=`Average shift on this board is about ${acuFmt(avg)} hrs.`;
+  return `<div class="keepworth${light?' thin':''}">Keeping these ${kept.length} = <b>${acuFmt(keptHrs)} hrs</b>. ${verdict}</div>`;
+}
 function renderReturning(){
   const body=document.getElementById('retBody'); if(!body) return;
   retPrune();   // keep the footer count matching what's actually listed
@@ -3146,6 +3167,12 @@ function renderReturning(){
       const onCrew=!!nurses.find(n=>n.id===nid);
       h+=`<div class="retrow"><div class="retname"><label class="retchk"><input type="checkbox" ${on?'checked':''} onchange="togReturnNurse('${nid}')"> <b>${esc(nn.name)}</b></label>${manual?'<span class="rethint">added by hand</span>':''}${!onCrew&&!on?`<span class="rethint">not on this crew yet — checking adds them</span>`:''}${on?`<span class="rethint">${kept.length} of ${rms.length} kept${(RET.added&&RET.added[nid])?' · added to crew':''}</span>`:''}</div>`;
       if(on){
+        /* A keep is a negotiation, and nurses ask to hold their easiest patients. Put the number on
+           screen while the charge is agreeing to it: what these rooms are worth, what the shift
+           average will be, and whether the keep already fills them so nothing heavier can come
+           across later. Without this the cost only shows up after Make Assignment, by which time it
+           reads as the app failing to balance rather than as the keep everyone agreed to. */
+        h+=keepWorthHTML(nid, kept);
         h+=`<div class="retmini" style="margin-top:7px;">Tap the room numbers to choose which patients they keep — <b>blue = kept</b>:</div>`
           +`<div class="retchips">`+rms.map(rn=>{ const r=rooms[rn]; if(!r||!r.occupied) return ''; const k=kept.includes(rn); const dc=(r.flags||[]).includes('dc');
           return `<button class="chip retchip ${k?'on':''}" onclick="togKeepRoom('${nid}',${rn})" title="${k?'Kept — tap to release':'Tap to keep with this nurse'}">${rn}${dc?'<span class="mini" style="font-weight:700;">D/C</span>':''}<span class="ac p${acuClass(dispAcu(r))}">${acuFmt(dispAcu(r))}</span></button>`; }).join('')
@@ -4203,12 +4230,24 @@ function balanceReport(){
   if(gap < 2.0){ const m=topWarn+capNote; if(m){ banner.innerHTML=m; banner.style.display=''; } else { banner.innerHTML=''; banner.style.display='none'; } return; }
   const hiKept=hi.rs.filter(r=>r.lock===hi.n.id);
   const hiKeptHrs=hiKept.reduce((s,r)=>s+r.acuity,0);
+  const unitCap=FLOOR.ratio||4;
+  const isFull=x=>x.rs.length>=unitCap || !!(x.rcap && x.rs.length>=x.rcap.cap);
+  const loKept=lo.rs.filter(r=>r.lock===lo.n.id);
   let msg='';
-  if(hiKept.length && hiKeptHrs >= load(hi)*0.6){
+  // The lightest nurse kept her own easy patients and is now full. This is the common one on a real
+  // unit — a returning nurse asks to hold her four easiest, and the rest of the crew silently carries
+  // it. The old banner only ever explained a kept-HEAVY nurse, so this case looked like the board
+  // just failing to balance, and its "move a room to her" advice was impossible anyway: she is full.
+  if(loKept.length && isFull(lo) && loKeptExplains(lo, loKept)){
+    msg=`<b>${esc(lo.n.name)}</b> is the lightest (${acuFmt(load(lo))} hrs vs ${acuFmt(load(hi))} for ${esc(hi.n.name)}) because you kept rooms <b>${loKept.map(r=>r.id).join(', ')}</b> for them \u2014 and with ${lo.rs.length} patients they\u2019re full, so nothing heavier can move across. The other nurses are carrying the difference. Release a kept room if that isn\u2019t what you meant. <button class="balfix" onclick="releaseKept('${lo.n.id}')">Release ${esc(lo.n.name)}\u2019s kept rooms &amp; rebuild</button>`;
+  }
+  else if(hiKept.length && hiKeptHrs >= load(hi)*0.6){
     msg=`<b>${esc(hi.n.name)}</b> is the heaviest (${acuFmt(load(hi))} hrs vs ${acuFmt(load(lo))} for ${esc(lo.n.name)}) mostly because you kept rooms <b>${hiKept.map(r=>r.id).join(', ')}</b> for them. That\u2019s protected — left as you set it. Release one of those rooms if you\u2019d rather even it out.`;
   } else {
-    const loCap=lo.rcap;
-    const roomForOneMore = !loCap || lo.rs.length < loCap.cap;   // never advise a 4th patient onto a 1:3 nurse
+    // Never advise a patient onto a nurse who has no room for one — a 1:3 insulin nurse at 3, or
+    // anyone already at the unit ratio. Suggesting it was how the app talked charges into an
+    // over-ratio board while claiming to be evening the hours.
+    const roomForOneMore = !isFull(lo);
     const movable=roomForOneMore ? hi.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(lo.n.id)) : [];
     if(movable.length){
       const target=gap/2;
@@ -4216,11 +4255,53 @@ function balanceReport(){
       const room=movable[0];
       msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} ${acuFmt(load(hi))} vs ${esc(lo.n.name)} ${acuFmt(load(lo))}). To even it: move <b>Rm ${room.id}</b> (${acuFmt(room.acuity)} hrs) from ${esc(hi.n.name)} \u2192 ${esc(lo.n.name)}, or pull it. <button class="balfix" onclick="balanceMove(${room.id},'${lo.n.id}')">Move it for me</button>`;
     } else {
-      msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
+      // Nobody has room for another patient, but trading a heavy room for a light one keeps every
+      // count the same and still evens the hours — the move a charge would make by hand.
+      let bestSwap=null, bestGap=gap;
+      hi.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(lo.n.id)).forEach(a=>{
+        lo.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(hi.n.id)).forEach(b2=>{
+          if(a.acuity<=b2.acuity) return;
+          const g=Math.abs((load(hi)-a.acuity+b2.acuity)-(load(lo)-b2.acuity+a.acuity));
+          if(g<bestGap-1e-9 && eligible(lo.n,a) && eligible(hi.n,b2)){ bestGap=g; bestSwap=[a,b2]; }
+        }); });
+      if(bestSwap){
+        const [a,b2]=bestSwap;
+        msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} ${acuFmt(load(hi))} vs ${esc(lo.n.name)} ${acuFmt(load(lo))}). Both are full, so trade instead: swap <b>Rm ${a.id}</b> (${acuFmt(a.acuity)}) from ${esc(hi.n.name)} with <b>Rm ${b2.id}</b> (${acuFmt(b2.acuity)}) from ${esc(lo.n.name)} \u2014 same patient counts, ${acuFmt(gap-bestGap)} hrs closer. <button class="balfix" onclick="balanceSwap(${a.id},${b2.id})">Swap them for me</button>`;
+      } else {
+        msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted \u2014 can\u2019t auto-even it. Release a kept room, pull a patient, or float a nurse.`;
+      }
     }
   }
   banner.innerHTML = emptyWarn + sitWarn + capNote + `<span class="rose-icon">⚖️</span> ${msg}`;
   banner.style.display='';
+}
+/* Are the kept rooms actually what makes this nurse light, or would they be light anyway? Only
+   blame the keep when those rooms are the bulk of the load AND they're lighter than the board runs. */
+function loKeptExplains(lo, loKept){
+  if(loKept.length < Math.ceil(lo.rs.length/2)) return false;      // a stray kept room isn't the cause
+  const keptHrs=loKept.reduce((s,r)=>s+r.acuity,0);
+  const occ=occupied(); const perPt=occ.reduce((s,r)=>s+r.acuity,0)/Math.max(1,occ.length);
+  return (keptHrs/loKept.length) < perPt - 0.15;   // and the kept rooms are the easy ones
+}
+/* One tap out of a keep that turned out to cost too much: drop this nurse's locks and rebuild.
+   Continuity isn't lost — the engine still prefers to hand a nurse back her own cluster, it just
+   no longer does it at the expense of everyone else's hours. */
+function releaseKept(nid){ if(!chargeMode)return;
+  pushUndo();
+  occupied().forEach(r=>{ if(r.lock===nid) r.lock=null; });
+  if(RET && RET.nurses && RET.nurses[nid]) RET.nurses[nid]=[];
+  renderAssign(); scheduleSave();
+  generate();
+}
+/* Trade two rooms between nurses. Counts don't change, so this is the safe way to even hours when
+   everyone is already at their limit. Same ratio guard as balanceMove. */
+function balanceSwap(r1,r2){ if(!chargeMode)return;
+  const a=rooms[r1], b=rooms[r2]; if(!a||!b) return;
+  const before=ratioCapViol(); const wa=a.nurse, wb=b.nurse;
+  a.nurse=wb; b.nurse=wa; const after=ratioCapViol(); a.nurse=wa; b.nurse=wb;
+  if(after>before){ alert('Can\u2019t trade those two \u2014 it would push a nurse past a hard staffing ratio.'); return; }
+  pushUndo(); a.nurse=wb; b.nurse=wa;
+  renderAssign(); scheduleSave(); checkFlagViolations(); balanceReport();
 }
 function balanceMove(rn,nid){ if(!chargeMode)return;
   const r=rooms[rn]; if(!r) return;
