@@ -1114,6 +1114,8 @@
   .pnote{font-size:10.5px;color:var(--ink-soft);margin-top:9px;font-style:italic;}
   .logsum{font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;padding:6px 0;}
   .nxt{font-size:10px;opacity:.8;margin-left:2px;font-weight:700;}
+  .nextnote{background:var(--info-wash);border:1px solid var(--info-line2);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);margin:0 0 10px;}
+  .nextnote b{color:var(--teal-deep);}
   /* the big number on a room chip is now the PREDICTED next-shift score; .was is the small
      current-score reminder shown only when a prediction changed it */
   .was{display:block;font-size:8.5px;opacity:.75;font-weight:700;line-height:1.1;margin-top:1px;}
@@ -1915,7 +1917,7 @@
 <script>
 const TEMPLATES={
   "Med-Surg (10 Green)":{divisor:2,label:"nursing hours",sections:[
-    ["Assessment & Meds",[["Routine Meds / Assessment",1,true],["Q4 Assessment",0.5],["Q2 Assessment (COWS/CIWA/Neuro/Restraints)",1],["Strict I/O",1],["4+ PRN meds",1,true],["Sched meds Q1–2",1],["Q2 PRN Pain Meds",1,true],["BP meds / diuretics",1],["Crush meds",1]]],
+    ["Assessment & Meds",[["Routine Meds / Assessment",1,true],["Q4 Assessment (COWS/CIWA/Neuro/Restraints)",0.5],["Q2 Assessment",1],["Strict I/O",1],["4+ PRN meds",1,true],["Sched meds Q1–2",1],["Q2 PRN Pain Meds",1,true],["BP meds / diuretics",1],["Crush meds",1]]],
     ["Drips & Infusions",[["Heparin gtt",1,true],["Insulin gtt",2,true],["IVF / Bolus / Abx / Lytes / Albumin / Lasix gtt (ea)",0.5],["Blood / Platelets / IVIG",1],["PCA",1]]],
     ["Monitoring",[["Telemetry / Pulse Ox (ea)",0.5,true],["RRT",1],["MEWS 3+",0.5],["ACHS",1],["Q4–6H Glucose check",1,true],["Q1 Glucose check",2],["RN Lab collect",1]]],
     ["Respiratory",[["O2 2–4L",0.5,true],["O2 ≥5L / Trach",1]]],
@@ -1959,7 +1961,23 @@ const TEMPLATES={
 const cloneSecs=s=>JSON.parse(JSON.stringify(s));
 let RUBRIC_NAME="Med-Surg (10 Green)", DIVISOR=2, ACUITY_LABEL="nursing hours";
 let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
-const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin","Insulin drip"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley care","Foley catheter care"],["extcath","External cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","BS checks","Blood sugar checks"],["sleep","Sleep promo","Sleep promotion 11PM\u20136AM"],["chg","CHG bath","CHG bath (chlorhexidine)"],["sio","Strict I/O","Strict intake & output"],["dwt","Daily weights","Daily weights"],["feed","Feeder","Needs feeding assistance"],["sbrk","Sitter break","Cover 1:1 sitter break"],["snr","Sit near room","Sit near room \u2014 close observation"],["sara","Sara Steady","Sara Steady stand-assist transfer device"],["telebat","Tele battery","Telemetry battery change"],["q4v","Q4 vitals","Vitals every 4 hours"],["q8v","Q8 vitals","Vitals every 8 hours"]];
+/* A unit that has saved a rubric keeps its own copy, so label corrections shipped in the template
+   never reach them. Re-point the two assessment rows on load — only when the row still carries the
+   old wording and its points are untouched, so a unit that deliberately edited either one is left
+   exactly as it is. */
+function migrateRubricLabels(secs){
+  if(!Array.isArray(secs)) return false;
+  let changed=false;
+  secs.forEach(sec=>{ const items=sec&&sec[1]; if(!Array.isArray(items)) return;
+    items.forEach(it=>{
+      if(!Array.isArray(it)) return;
+      if(it[0]==='Q2 Assessment (COWS/CIWA/Neuro/Restraints)' && it[1]===1){ it[0]='Q2 Assessment'; changed=true; }
+      else if(it[0]==='Q4 Assessment' && it[1]===0.5){ it[0]='Q4 Assessment (COWS/CIWA/Neuro/Restraints)'; changed=true; }
+    });
+  });
+  return changed;
+}
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin drip","Insulin drip (gtt)"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley care","Foley catheter care"],["extcath","External cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","BS checks","Blood sugar checks"],["sleep","Sleep promo","Sleep promotion 11PM\u20136AM"],["chg","CHG bath","CHG bath (chlorhexidine)"],["sio","Strict I/O","Strict intake & output"],["dwt","Daily weights","Daily weights"],["feed","Feeder","Needs feeding assistance"],["sbrk","Sitter break","Cover 1:1 sitter break"],["snr","Sit near room","Sit near room \u2014 close observation"],["sara","Sara Steady","Sara Steady stand-assist transfer device"],["telebat","Tele battery","Telemetry battery change"],["q4v","Q4 vitals","Vitals every 4 hours"],["q8v","Q8 vitals","Vitals every 8 hours"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -2482,7 +2500,10 @@ function renderModalBody(){
   const seg = chargeMode
     ? `<div class="seg"><button class="${modalMode==='quick'?'on':''}" onclick="setMode('quick')">Quick</button><button class="${modalMode==='full'?'on':''}" onclick="setMode('full')">Full list</button><button class="${modalMode==='express'?'on':''}" onclick="setMode('express')">Express</button></div>`
     : '';   // staff score with the full tally only
-  let body=seg;
+  // Say plainly what this score is for — the assignment is built from the next-shift numbers, and
+  // people were scoring as if they were documenting the shift they're standing in.
+  const forNext=`<div class="nextnote">🔮 You're scoring for the <b>next shift</b> — their assignment is built from this. Set <b>Next shift</b> below if the load will change by then.</div>`;
+  let body=forNext+seg;
   if(modalMode==='quick'){
     body+=`<div class="hint" style="margin:2px 0 8px;">Tap what applies — baseline assessment is already counted.</div><div class="qgrid">`;
     COMMON.forEach(key=>{ const it=RUBRIC_FLAT.find(x=>x.key===key); const on=(modalTally[key]||0)>0;
@@ -5772,7 +5793,7 @@ function applyState(st){
   if(st.prevShift) PREV_SHIFT=st.prevShift;
   if(st.prevByShift) PREV_BY_SHIFT={Day:st.prevByShift.Day||null,Night:st.prevByShift.Night||null};
   else if(st.prevShift){ PREV_BY_SHIFT={Day:null,Night:null}; PREV_BY_SHIFT[(st.shiftType==='Night')?'Day':'Night']=st.prevShift; }   // legacy: the old single snapshot was the shift BEFORE the saved one
-  if(st.rubric && Array.isArray(st.rubric.sections) && st.rubric.sections.length){ RUBRIC=st.rubric.sections; DIVISOR=st.rubric.divisor||2; ACUITY_LABEL=st.rubric.label||'nursing hours'; RUBRIC_NAME=st.rubric.name||'Custom'; rebuildRubric(); }
+  if(st.rubric && Array.isArray(st.rubric.sections) && st.rubric.sections.length){ RUBRIC=st.rubric.sections; DIVISOR=st.rubric.divisor||2; ACUITY_LABEL=st.rubric.label||'nursing hours'; RUBRIC_NAME=st.rubric.name||'Custom'; if(migrateRubricLabels(RUBRIC)) scheduleSave(); rebuildRubric(); }
 }
 async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
