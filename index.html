@@ -813,7 +813,7 @@
   .postbanner .pb-time{font-size:11.5px;color:var(--ink-soft);font-weight:400;}
   #postBtn.posted{background:var(--ok-wash);border-color:var(--ok-ink);color:var(--ok-ink);}
   .offlinebar{background:var(--bad-wash2);border-bottom:1.5px solid var(--bad-line2);color:var(--bad-ink);font-size:12.5px;padding:8px 14px;line-height:1.4;}
-  .startbar{background:var(--info-wash);border-bottom-color:var(--info-line2);color:var(--info-ink);}
+  .buildbar{background:var(--info-wash);border-bottom-color:var(--info-line2);color:var(--info-ink);}
   .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .roomjump input{width:140px;height:34px;border:1px solid var(--line-strong);border-radius:9px;padding:0 11px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--field);}
   .roomjump span{font-size:12px;color:var(--ink-soft);}
@@ -1345,7 +1345,7 @@
           <div class="msep chargeOnly"></div>
           <div class="mrow chargeOnly"><span class="mlab">Date</span><input type="date" id="shiftDate" onchange="onShiftMeta()"></div>
           <div class="mrow chargeOnly"><span class="mlab">Shift</span><span class="seg sb-seg" style="margin:0;"><button id="shD" class="on" onclick="setShiftType('Day')">Day</button><button id="shN" onclick="setShiftType('Night')">Night</button></span></div>
-          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">📘 End shift — file report</button><button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');startNewBoard()">▶ Start the new shift’s board</button>
+          <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openLastShift()">📋 Last shift’s board</button>
         </div>
@@ -1355,7 +1355,7 @@
   <div class="offlinebar" id="offlineBar" style="display:none;">⚠ <b>Offline</b> — changes are saved on this device only and won\u2019t sync until you reconnect. Tap ⋯ → Unit link &amp; QR to reconnect.</div>
   <div class="offlinebar" id="flipBar" style="display:none;"></div>
   <div class="offlinebar handoffbar" id="handoffBar" style="display:none;"></div>
-  <div class="offlinebar startbar" id="startBoardBar" style="display:none;"></div>
+  <div class="offlinebar buildbar" id="buildingBar" style="display:none;"></div>
   <div class="nextbar chargeOnly" id="nextStepBar" style="display:none;"></div>
 
   <details class="help">
@@ -3007,7 +3007,7 @@ function acceptScoresCurrent(){ if(!chargeMode) return;
   renderNextStep(); renderAcuity(); scheduleSave(); if(cloudOn()) pushAcuity();
 }
 function renderNextStep(){
-  if(typeof showStartBoardBar==='function') showStartBoardBar();   // charge-only bar; keep it in step with lock/unlock and cloud pulls
+  if(typeof showBuildingBar==='function') showBuildingBar();   // charge-only bar; keep it in step with lock/unlock and cloud pulls
   const el=document.getElementById('nextStepBar'); if(!el) return;
   if(!chargeMode){ el.style.display='none'; return; }
   const s=chargeNextStep();
@@ -3781,7 +3781,7 @@ function togglePosted(){ if(!chargeMode)return;
   } else {
     boardPosted=false;   // un-posting back to draft
   }
-  lastUpdatedAt=Date.now(); renderAssign(); scheduleSave(); showStartBoardBar();
+  lastUpdatedAt=Date.now(); renderAssign(); scheduleSave(); showBuildingBar();
   if(cloudOn() && boardPosted) pushMeta();   // don't wait on the debounce for the one push that matters
 }
 /* True right after End Shift: a previous crew is on record but no room has a nurse yet. Used to
@@ -5657,8 +5657,7 @@ function renderSupport(){
     if(chargeMode && assigned){
       const afterTiles=`<div class="cardsec">After it\u2019s final</div><div class="btilegrid">`+
         `<button class="btile" onclick="goShare()"><span class="btemoji">📤</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`+
-        `<button class="btile" onclick="nextShift()"><span class="btemoji">📘</span><span class="btlabel">End Shift \u2014 File Report</span><span class="btsub">save it; board stays up</span></button>`+
-        `<button class="btile" onclick="startNewBoard()"><span class="btemoji">▶</span><span class="btlabel">Start The New Board</span><span class="btsub">clears it for the next crew</span></button>`+
+        `<button class="btile" onclick="nextShift()"><span class="btemoji">🔄</span><span class="btlabel">End Shift &amp; Hand Off</span><span class="btsub">staff keep theirs till you post</span></button>`+
         `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">📋</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`+
       `</div>`;
       pf.innerHTML = (boardPosted
@@ -5815,10 +5814,6 @@ async function reconcileLocalAcuity(){
    phones recover too. */
 const HANDOFF_KEY='evenshift_handoff_undo_v1';
 let _alreadyFiled='';   // (date|shift) already written to Manager reports — so an undo + re-end doesn't file it twice
-/* Set to (date|shift) when report has been given and filed but the new crew's board hasn't been
-   started yet. In that window the OLD board stays live on purpose — staff keep seeing and scoring
-   their patients — and the charge gets a bar offering the one destructive step. */
-let HANDOFF_FILED='';
 /* ── Building the new board without taking the old one away ────────────────────────
    Assignments travel to the other phones inside the `meta` blob; patient scores travel
    separately in `acuity`. So while the new shift's board is being built we simply stop sending
@@ -5885,7 +5880,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,handoffFiled:HANDOFF_FILED,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -5934,7 +5929,6 @@ function applyState(st){
   if(st.hucPin) hucPin=st.hucPin;
   if(st.mgrPin) mgrPin=st.mgrPin;
   if(st.adminPin) adminPin=st.adminPin;
-  HANDOFF_FILED=st.handoffFiled||'';
   if(st.prevShift) PREV_SHIFT=st.prevShift;
   if(st.prevByShift) PREV_BY_SHIFT={Day:st.prevByShift.Day||null,Night:st.prevByShift.Night||null};
   else if(st.prevShift){ PREV_BY_SHIFT={Day:null,Night:null}; PREV_BY_SHIFT[(st.shiftType==='Night')?'Day':'Night']=st.prevShift; }   // legacy: the old single snapshot was the shift BEFORE the saved one
@@ -7386,16 +7380,14 @@ function buildReportHTML(ag,dateRange,n){
   <\/script>
   </body></html>`;
 }
-/* ── Shift change, in two safe steps ────────────────────────────────────────────────
-   These used to be one button, and that was the bug: tapping "End shift" filed the report AND
-   wiped every assignment in the same instant. Report is given before the new charge has picked a
-   crew, so there was always a stretch — sometimes minutes, sometimes an hour — where the board was
-   blank: staff could not see their patients and nobody could score anything.
-
-   Now the destructive half waits. End Shift only closes the books (files the manager report and
-   remembers the shift is over). The board stays exactly as it is. The new charge clears it when
-   they are actually ready to build, with startNewBoard(). Either step files the report if the
-   other one hasn't, so skipping a tap never costs the manager a record. */
+/* ── Shift change ───────────────────────────────────────────────────────────────────
+   One tap, and it is safe because of where the board goes rather than when it is cleared.
+   Clearing here only touches THIS device: while the new board is being built the charge stops
+   sending assignments out (see draftingBoard), so every nurse's phone stays on the board that was
+   last posted — same patients, still scoring — until Post swaps everyone over at once.
+   This briefly lived as two buttons, End-shift then Start-the-board. Once the draft stopped
+   reaching staff there was nothing left for the second tap to protect, and a busy charge should
+   not have to think about the difference. */
 function _shiftKey(){ return shiftDate+'|'+shiftType; }
 function _fileShiftReport(){          // → true if this call is what wrote the row
   const k=_shiftKey();
@@ -7404,28 +7396,13 @@ function _fileShiftReport(){          // → true if this call is what wrote the
   _alreadyFiled=k;
   return true;
 }
-/* Step 1 — after report. Safe: nothing on the board moves. */
 function nextShift(){ if(!chargeMode)return;
-  const k=_shiftKey();
-  if(HANDOFF_FILED===k){
-    if(!confirm('This shift is already saved to Manager reports.\n\nThe board stays up for staff until you start the new shift\u2019s board. Save it again anyway?')) return;
-  } else if(!confirm('\ud83d\udcd8 End this shift?\n\n\u2713 Tonight\u2019s board is SAVED to Manager reports.\n\u2713 Nothing on the board changes \u2014 staff keep seeing and scoring their patients.\n\nWhen the next charge is ready to build, they tap \u25b6 Start the new board. Continue?')) return;
-  pushUndo();
-  _fileShiftReport();
-  HANDOFF_FILED=k;
-  renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
-  if(cloudOn()) pushMeta();
-  showStartBoardBar();
-  evToast('Saved to Manager reports \u2014 the board stays up for staff');
-}
-/* Step 2 — the new charge is ready to build. This is the destructive one. */
-function startNewBoard(){ if(!chargeMode)return;
   const to = shiftType==='Day' ? 'Night' : 'Day';
-  if(!confirm('\u25b6 Start the '+to+' board?\n\n\u2713 Each patient keeps their score, flags and notes.\n\u2713 The shift that just ran is saved to Manager reports.\n\u2717 Nurse assignments and locks are CLEARED so you can build fresh \u2014 staff will not see their patients again until you post the new board.\n\nDo this when you are ready to build, not before. An Undo bar appears at the top if it was too early. Continue?')) return;
+  if(!confirm('\ud83d\udd04 End shift and hand off?\n\n\u2713 This shift is SAVED to Manager reports.\n\u2713 Each patient keeps their score, flags and notes.\n\u2713 Staff keep seeing the board you posted \u2014 they do NOT lose their patients while you build.\n\nYou will build the '+to+' crew\u2019s board next. Tap \ud83d\udccc Post when it is ready and everyone swaps over at once. Continue?')) return;
   const _preHandoff=stateObj();                      // full picture before anything changes
   const _fileKey=_shiftKey();
   pushUndo();
-  _fileShiftReport();   // covers a charge who skipped End Shift and came straight here
+  _fileShiftReport();
   // Snapshot who had what THIS shift, so the next charge can keep returning staff's patients (no PHI — ids/rooms only)
   const _snap={
     shift: shiftType, date: shiftDate,
@@ -7458,28 +7435,17 @@ function startNewBoard(){ if(!chargeMode)return;
   // named — an empty "prepared by" is honest, a wrong one quietly corrupts the manager's record.
   chargeName=(chargeOncoming||'').trim(); chargeOncoming='';
   balancePriority='hours';   // new shift starts by evening the hours; charge can switch to "keep rooms close" on the Build tab
-  HANDOFF_FILED='';          // the old shift is closed out; nothing pending
-  setDrafting(true);         // staff stay on the posted board until this one is posted
+  setDrafting(true);         // from here until Post, staff phones stay on the board they already have
   syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
-  if(cloudOn()) pushMeta();
-  _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showStartBoardBar();
+  _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showBuildingBar();
 }
-/* The blue bar that carries step 2. Only the charge sees it, and only while a filed shift is
-   waiting for its replacement board. */
-function showStartBoardBar(){
-  const b=document.getElementById('startBoardBar'); if(!b) return;
-  if(!chargeMode){ b.style.display='none'; return; }
-  if(draftingBoard()){
-    // The charge must never be left guessing whether staff can see this yet.
-    b.innerHTML=`\u270e <b>Building the ${esc(shiftType)} board \u2014 staff can\u2019t see it yet.</b> They\u2019re still on the board you posted last: same patients, still scoring. `
-      +`Tap <b>\ud83d\udccc Post</b> and everyone swaps over at once.`;
-    b.style.display=''; return;
-  }
-  if(HANDOFF_FILED!==_shiftKey()){ b.style.display='none'; return; }
-  const to = shiftType==='Day' ? 'Night' : 'Day';
-  b.innerHTML=`\u2705 <b>Report filed \u2014 ${esc(shiftType)} shift is saved to Manager reports.</b> The board is still up so staff can see and score their patients. `
-    +`<button class="btn sm" onclick="startNewBoard()">\u25b6 Start the ${to} board</button>`;
+/* The charge must never be left guessing whether staff can see this yet. */
+function showBuildingBar(){
+  const b=document.getElementById('buildingBar'); if(!b) return;
+  if(!chargeMode || !draftingBoard()){ b.style.display='none'; return; }
+  b.innerHTML=`\u270e <b>Building the ${esc(shiftType)} board \u2014 staff can\u2019t see it yet.</b> They\u2019re still on the board you posted last: same patients, still scoring. `
+    +`Tap <b>\ud83d\udccc Post</b> and everyone swaps over at once.`;
   b.style.display='';
 }
 function clearFloor(){ if(!chargeMode)return;
@@ -7783,7 +7749,7 @@ buildLegend();
     logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
   }
   if(draftingBoard()) await loadState();   // cloud meta is deliberately ignored while building — the draft lives here
-  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else if(!draftingBoard()) await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); showHandoffBar(); showStartBoardBar(); setTimeout(maybeShowIntro,400); })();
+  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else if(!draftingBoard()) await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); showHandoffBar(); showBuildingBar(); setTimeout(maybeShowIntro,400); })();
 // Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
 document.addEventListener('click',function(e){
   document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
