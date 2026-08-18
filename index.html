@@ -3769,6 +3769,12 @@ function togglePosted(){ if(!chargeMode)return;
   }
   lastUpdatedAt=Date.now(); renderAssign(); scheduleSave();
 }
+/* True right after End Shift: a previous crew is on record but no room has a nurse yet. Used to
+   explain to staff why their patients vanished, rather than leaving them with a generic draft note. */
+function _justHandedOff(){
+  const hadCrew=!!(PREV_SHIFT && (PREV_SHIFT.nurses||[]).length);
+  return hadCrew && !occupied().some(r=>r.nurse);
+}
 function updatePostUI(){
   const btn=document.getElementById('postBtn');
   if(btn){ btn.textContent=boardPosted?'📌 Posted ✓':'📌 Post'; btn.classList.toggle('posted',boardPosted); }
@@ -3779,6 +3785,11 @@ function updatePostUI(){
         const chargeLine = chargeOncoming ? ` <span class="pb-charge">· Charge: <b>${esc(chargeOncoming)}</b></span>` : '';
         ban.innerHTML=`<span class="pb-ico">✅</span> <b>This assignment is final.</b>${chargeLine}${lastUpdatedAt?` <span class="pb-time">Posted ${fmtAgo(lastUpdatedAt)}${lastUpdatedBy?' by '+esc(lastUpdatedBy):''}</span>`:''}`;
         ban.className='postbanner final'; ban.style.display='';
+      } else if(_justHandedOff()){
+        // Their patients disappeared because the shift was handed over, not because something broke.
+        // Say so plainly — the generic "still building" note left people thinking the app had lost them.
+        ban.innerHTML=`<span class="pb-ico">🔄</span> <b>Shift handed off to the next crew.</b> The new board is being built — your patients will appear here once the charge posts it.`;
+        ban.className='postbanner draft'; ban.style.display='';
       } else {
         ban.innerHTML=`<span class="pb-ico">✏️</span> <b>The charge is still building this assignment.</b> Check back shortly — it isn\u2019t final yet.`;
         ban.className='postbanner draft'; ban.style.display='';
