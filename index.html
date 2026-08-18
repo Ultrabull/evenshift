@@ -812,6 +812,7 @@
   .postbanner .pb-ico{margin-right:5px;}
   .postbanner .pb-time{font-size:11.5px;color:var(--ink-soft);font-weight:400;}
   #postBtn.posted{background:var(--ok-wash);border-color:var(--ok-ink);color:var(--ok-ink);}
+  .capflag{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:7px;padding:1px 6px;font-size:10.5px;font-weight:700;white-space:nowrap;}
   .offlinebar{background:var(--bad-wash2);border-bottom:1.5px solid var(--bad-line2);color:var(--bad-ink);font-size:12.5px;padding:8px 14px;line-height:1.4;}
   .buildbar{background:var(--info-wash);border-bottom-color:var(--info-line2);color:var(--info-ink);}
   .roomjump{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
@@ -1077,6 +1078,8 @@
   .sitwarn{color:#C0271C;font-weight:700;font-size:11.5px;}
   .sitalert{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:700;margin:8px 0;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
+  /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
+  .balcap{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:600;margin-bottom:7px;line-height:1.45;}
   .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:4px 0 12px;}
   .dcard{border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--surface);}
   .dcard.ok{border-color:var(--ok-line);background:var(--ok-wash2);} .dcard.warn{border-color:var(--warn-line3);background:var(--sitneed-wash);} .dcard.bad{border-color:var(--bad-line);background:var(--bad-wash);}
@@ -2840,7 +2843,7 @@ function renderAssign(){
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
-      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}</span></div>
+      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}${(()=>{ const rc=nurseRatioCap(n.id); return rc?` · <span class="capflag" title="${esc(rc.label)} limits this nurse to ${rc.cap} patients, so their hours sit below the others on purpose">max ${rc.cap} \u00b7 ${esc(rc.label)}</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
@@ -3479,6 +3482,23 @@ function eligible(n,r){
   if(n.level==='Orienting'){ if(r.acuity>=5) return false; if(r.flags.includes('beh')) return false; }
   if(n.level==='Float'){ if(r.acuity>=5) return false; if(r.flags.includes('beh')||r.flags.includes('sit')) return false; }
   return true;
+}
+/* The tightest ratio-cap flag a nurse is holding, or null. A nurse on insulin drip 1:3 can only
+   take 3 patients, so they WILL carry fewer hours than someone holding 5 — no assignment can even
+   that out. Everything that talks about balance needs to know this, or it ends up blaming the
+   charge for arithmetic. */
+function nurseRatioCap(nid){
+  const rc=getActiveFlags().filter(x=>flagRule(x[0]).mode==='ratiocap');
+  if(!rc.length) return null;
+  const rs=occupied().filter(r=>r.nurse===nid); if(!rs.length) return null;
+  let best=null;
+  rs.forEach(r=>rc.forEach(([code,label])=>{
+    if((r.flags||[]).includes(code)||(r.tags||[]).includes(code)){
+      const cap=Math.max(1, flagRule(code).ratio||(FLOOR.ratio||4));
+      if(!best || cap<best.cap) best={code, label, cap};
+    } }));
+  if(best) best.atCap = rs.length>=best.cap;
+  return best;
 }
 /* Total over-cap patients across the live board for ratio-cap flags (e.g. insulin drip 1:3).
    Used to keep the hour-tidy passes from pushing a nurse past a hard staffing ratio. */
@@ -4163,19 +4183,33 @@ function balanceReport(){
   let emptyWarn=(emptyNs.length && boardBuilt) ? `<div class="balsit">👤 <b>${emptyNs.map(n=>esc(n.name)).join(', ')}</b> ${emptyNs.length>1?'have':'has'} no patients yet — tap <b>Make Assignment</b> to include ${emptyNs.length>1?'them':'them'}, or drag rooms onto their card. <button class="balfix" onclick="generate()">Make Assignment</button></div>` : '';
   const topWarn=emptyWarn+sitWarn;
   const withRooms=nurses.map(n=>({n, rs:occupied().filter(r=>r.nurse===n.id)})).filter(x=>x.rs.length);
-  if(withRooms.length<2){ if(topWarn){ banner.innerHTML=topWarn; banner.style.display=''; } else banner.style.display='none'; return; }
+  if(withRooms.length<2){ if(topWarn){ banner.innerHTML=topWarn; banner.style.display=''; } else { banner.innerHTML=''; banner.style.display='none'; } return; }
   const load=x=>x.rs.reduce((s,r)=>s+r.acuity,0);
-  const sorted=withRooms.slice().sort((a,b)=>load(b)-load(a));
+  // A nurse sitting at a ratio cap (insulin drip 1:3 and the like) cannot be handed another patient,
+  // so their lower hours are the rule working, not the board being lopsided. Judge the spread among
+  // the nurses who are actually free to take more, and say plainly why the capped one sits below it.
+  // Before this the banner nagged about a gap that is mandatory, and offered a one-tap "fix" that put
+  // a fourth patient on a 1:3 nurse — the app breaking the very ratio it had just enforced.
+  withRooms.forEach(x=>{ x.rcap=nurseRatioCap(x.n.id); x.pinned=!!(x.rcap&&x.rcap.atCap); });
+  const capped=withRooms.filter(x=>x.pinned);
+  const capNote = capped.length
+    ? `<div class="balcap">\u2696\ufe0f ${capped.map(x=>`<b>${esc(x.n.name)}</b> ${acuFmt(load(x))} hrs`).join(', ')} \u2014 lower on purpose: at the <b>${esc(capped[0].rcap.label)}</b> limit of ${capped[0].rcap.cap} patient${capped[0].rcap.cap>1?'s':''}. Nothing more can go to ${capped.length>1?'them':'them'} without breaking that ratio.</div>`
+    : '';
+  const free=withRooms.filter(x=>!x.pinned);
+  const pool=(free.length>=2)?free:withRooms;
+  const sorted=pool.slice().sort((a,b)=>load(b)-load(a));
   const hi=sorted[0], lo=sorted[sorted.length-1];
   const gap=load(hi)-load(lo);
-  if(gap < 2.0){ if(topWarn){ banner.innerHTML=topWarn; banner.style.display=''; } else banner.style.display='none'; return; }
+  if(gap < 2.0){ const m=topWarn+capNote; if(m){ banner.innerHTML=m; banner.style.display=''; } else { banner.innerHTML=''; banner.style.display='none'; } return; }
   const hiKept=hi.rs.filter(r=>r.lock===hi.n.id);
   const hiKeptHrs=hiKept.reduce((s,r)=>s+r.acuity,0);
   let msg='';
   if(hiKept.length && hiKeptHrs >= load(hi)*0.6){
     msg=`<b>${esc(hi.n.name)}</b> is the heaviest (${acuFmt(load(hi))} hrs vs ${acuFmt(load(lo))} for ${esc(lo.n.name)}) mostly because you kept rooms <b>${hiKept.map(r=>r.id).join(', ')}</b> for them. That\u2019s protected — left as you set it. Release one of those rooms if you\u2019d rather even it out.`;
   } else {
-    const movable=hi.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(lo.n.id));
+    const loCap=lo.rcap;
+    const roomForOneMore = !loCap || lo.rs.length < loCap.cap;   // never advise a 4th patient onto a 1:3 nurse
+    const movable=roomForOneMore ? hi.rs.filter(r=>!r.lock && !(r.avoid||[]).includes(lo.n.id)) : [];
     if(movable.length){
       const target=gap/2;
       movable.sort((a,b)=>Math.abs(a.acuity-target)-Math.abs(b.acuity-target));
@@ -4185,10 +4219,20 @@ function balanceReport(){
       msg=`Board is uneven by <b>${acuFmt(gap)} hrs</b> (${esc(hi.n.name)} vs ${esc(lo.n.name)}) and every heavy room is kept or restricted — can\u2019t auto-even it. Pull a patient or float a nurse if needed.`;
     }
   }
-  banner.innerHTML = emptyWarn + sitWarn + `<span class="rose-icon">⚖️</span> ${msg}`;
+  banner.innerHTML = emptyWarn + sitWarn + capNote + `<span class="rose-icon">⚖️</span> ${msg}`;
   banner.style.display='';
 }
-function balanceMove(rn,nid){ if(!chargeMode)return; pushUndo(); const r=rooms[rn]; if(r){ r.nurse=nid; if(r.lock&&r.lock!==nid)r.lock=null; } renderAssign(); scheduleSave(); checkFlagViolations(); balanceReport(); }
+function balanceMove(rn,nid){ if(!chargeMode)return;
+  const r=rooms[rn]; if(!r) return;
+  // Last line of defence: whatever suggested this, moving a room must not push a nurse past a hard
+  // staffing ratio. Evening the hours is never worth breaching an insulin/trach-style limit.
+  const before=ratioCapViol(); const was=r.nurse;
+  r.nurse=nid; const after=ratioCapViol(); r.nurse=was;
+  if(after>before){ const rc=nurseRatioCap(nid);
+    alert('Can\u2019t move it there \u2014 that nurse is at the '+((rc&&rc.label)||'ratio')+' limit of '+((rc&&rc.cap)||FLOOR.ratio||4)+' patients.\n\nThe hours stay uneven because the ratio comes first.');
+    return; }
+  pushUndo(); r.nurse=nid; if(r.lock&&r.lock!==nid)r.lock=null;
+  renderAssign(); scheduleSave(); checkFlagViolations(); balanceReport(); }
 /* After generate: detect cap/spread rule violations and tell the charge */
 function checkFlagViolations(){
   const occ=occupied(); const msgs=[];
