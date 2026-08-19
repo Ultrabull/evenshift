@@ -2725,15 +2725,26 @@ function closeModal(){ document.getElementById('scrim').classList.remove('on'); 
 
 function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
 /* has this room's score been touched SINCE the last shift handoff? (carried-over numbers don't count) */
+/* Freshness is measured against SHIFT_START. If that baseline is missing, or so old it cannot be
+   this shift, we know nothing about what has been scored TODAY — and the old code answered that by
+   counting any room ever edited, which on a board in use is all of them. That is how the tile came
+   to announce "everyone scored" with eight ticks after a single charge tap. No baseline now means
+   nothing is claimed. */
+const SHIFT_BASE_MAX = 16*3600*1000;   // longest believable shift + overrun
+function shiftBaseline(){
+  if(!SHIFT_START) return 0;
+  return (Date.now()-SHIFT_START > SHIFT_BASE_MAX) ? 0 : SHIFT_START;
+}
 function roomUpdatedThisShift(r){ if(!(r.acuity>0)) return false;
-  if(SHIFT_START) return (r.editedAt||0)>=SHIFT_START;
-  return !!r.editedAt;   // board has never handed off since this feature: only rooms with a recorded edit count
+  const base=shiftBaseline(); if(!base) return false;
+  return (r.editedAt||0)>=base;
 }
 /* The charge looked at a carried-over number and said it still stands. Counts as current for the
    workflow, but is never reported as the nurse having scored. */
 function roomAcceptedThisShift(r){ if(!(r.acuity>0)) return false;
   if(!r.acceptedAt) return false;
-  return SHIFT_START ? r.acceptedAt>=SHIFT_START : true;
+  const base=shiftBaseline(); if(!base) return false;
+  return r.acceptedAt>=base;
 }
 function roomCurrentThisShift(r){ return roomUpdatedThisShift(r)||roomAcceptedThisShift(r); }
 function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw=rs.reduce((s,r)=>s+r.acuity,0); const nx=rs.reduce((s,r)=>s+((r.nextAcuity!=null)?r.nextAcuity:r.acuity),0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,next:nx,adj:raw/cap}; }
@@ -2969,6 +2980,13 @@ function updateScoreProgress(){
   if(!chargeMode || viewAs!=='charge'){ el.style.display='none'; return; }
   const occ=occupied(); const total=occ.length;
   if(!total){ el.style.display='none'; return; }
+  // Say plainly when there is nothing to measure against, instead of guessing and getting it wrong.
+  if(!shiftBaseline()){
+    el.innerHTML=`<div class="sp-head">\ud83e\ude7a Next-shift scoring \u2014 no start time for this shift yet</div>`
+      +`<div class="sp-chips"><span class="spchip spc-acc">Nothing counts as scored until the shift is started. Use \u22ef \u2192 End shift &amp; hand off at handover, or start it here.</span>`
+      +`<button class="balfix" onclick="startScoringCycle(true)">Start scoring for this shift</button></div>`;
+    el.className='scoreprog chargeOnly'; el.style.display=''; return;
+  }
   const fresh=occ.filter(roomCurrentThisShift).length;
   const stale=total-fresh;
   const unscored=occ.filter(r=>!(r.acuity>0)).length;
@@ -6223,11 +6241,29 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b13';
+const APP_BUILD='2026-08-19 \u00b7 b14';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
-function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
-function setShiftType(t){ shiftType=t; syncWorking(); applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
+function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
+function setShiftType(t){
+  // Changing the shift by hand puts a different crew on a different board. Last shift's scores are
+  // no longer "updated this shift", so the scoring cycle restarts here too — without this, a charge
+  // who flipped Day/Night instead of ending the shift kept an ancient baseline and every room read
+  // as freshly scored.
+  if(t!==shiftType) startScoringCycle(false);
+  shiftType=t; syncWorking(); applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
+}
+function onShiftDateChanged(prev){ if(prev && prev!==shiftDate) startScoringCycle(false); }
+/* Begin a fresh scoring cycle: from now on only rooms actually touched count as updated. */
+function startScoringCycle(announce){
+  SHIFT_START=Date.now();
+  rosterN.forEach(n=>{ n.scoredDone=false; });
+  occupied().forEach(r=>{ r.acceptedAt=null; r.acceptedBy=null; });
+  SCORES_OK=false;
+  renderAcuity(); if(assignVisible()) renderAssign(); renderNextStep(); scheduleSave();
+  if(cloudOn()&&chargeMode){ pushMeta(); pushAcuity(); }
+  if(announce) evToast('Scoring restarted \u2014 rooms count once they\u2019re checked this shift');
+}
 /* ═══════════════════════════════════════════════════════════
    FLAG EDITOR — per-unit clinical flag customization
    ═══════════════════════════════════════════════════════════ */
