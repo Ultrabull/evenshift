@@ -1085,6 +1085,8 @@
   .carriedtag{font-size:10px;font-weight:700;color:var(--warn-ink);margin-top:2px;letter-spacing:.01em;}
   .spchip.spc-acc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
   .scoreprog.okacc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
+  .cardtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
+  .cardtools .cthint{font-size:10.5px;color:var(--ink-soft);}
   .tallynote{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin:0 0 8px;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
@@ -2125,6 +2127,12 @@ let rosterN=[], rosterP=[], rosterS=[], rosterH=[];   // the master unit roster 
 function syncWorking(){                       // pull today's working set out of the master roster — only THIS shift's crew
   const onShift = x => x.on!==false && ((x.shift||'Day')===shiftType || x.holdover===true);   // holdover = staying past their usual Day/Night tag
   nurses  = rosterN.filter(onShift);
+  // Card order is set when the board is built and then left alone. It used to be recomputed from
+  // the lowest room number on every render, so moving a single room re-sorted the whole board: the
+  // card you were working on jumped somewhere else, and because the RN slot and Vocera numbering
+  // are taken from this order, five nurses were handed different phone numbers by one drag.
+  nurses.sort((a,b)=>{ const ao=(a.ord==null?9e9:a.ord), bo=(b.ord==null?9e9:b.ord);
+    return ao-bo || String(a.name||'').localeCompare(String(b.name||'')); });
   pcts    = rosterP.filter(onShift);
   sitters = rosterS.filter(onShift);
   hucs    = rosterH.filter(onShift);
@@ -2856,8 +2864,6 @@ function renderAssign(){
   const selfRN = !chargeMode && lockedRole()==='rn';
   // Board order: nurses appear by the LOWEST room number they hold (RN with 33 first, then 34, 36…); unassigned nurses last.
   // Sorting the working array keeps the card order, the RN slot number, and the Vocera device numbering all in step.
-  const _minRoom=nid=>{ let m=Infinity; occupied().forEach(r=>{ if(r.nurse===nid && r.id<m) m=r.id; }); return m; };
-  nurses.sort((a,b)=> (_minRoom(a.id)-_minRoom(b.id)) || String(a.name||'').localeCompare(String(b.name||'')));
   const shown = viewAs==='charge' ? nurses : nurses.filter(n=>n.id===viewAs);
   const anyAssignedNow=occupied().some(r=>r.nurse);
   if(chargeMode && viewAs==='charge' && !anyAssignedNow){
@@ -2871,11 +2877,13 @@ function renderAssign(){
     const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
     const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=acuFmt(occupied().reduce((s,r)=>s+r.acuity,0));
   } else {
+  const tidyBar = (chargeMode && viewAs==='charge' && cardsOutOfRoomOrder())
+    ? `<div class="cardtools"><button class="linkx" onclick="sortCardsByRoom()">\u2195 Put the cards back in room order</button><span class="cthint">cards stay put while you move rooms</span></div>` : '';
   const soloStaff = (selfRN && shown.length===1);
   const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
   const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
   const pulse = soloStaff && shown[0] ? staffPulseCard(shown[0].name) : '';
-  document.getElementById('nurses').innerHTML=welcome+shown.map(n=>{
+  document.getElementById('nurses').innerHTML=tidyBar+welcome+shown.map(n=>{
     const L=nurseLoad(n.id); const pct=Math.min(100,((L.next||L.hrs)/top)*100);
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id);
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
@@ -4208,6 +4216,7 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
   // Hours are boss: if kept/locked rooms left the spread above target, chase 0.5 with swaps AND moves
   // (tightenHours respects locks, won't-take, orientee/float rules; relaxes geography only if it must).
   if(!swapIds && maxSpread()>TARGET_SPREAD+1e-9) tightenHours();   // never reshuffle an accepted total swap — its groups hand over verbatim
+  orderNursesByRoom();   // fix the card order for this board; manual moves from here on leave it alone
   selectedRoom=null;
   balanceReport();   // runs while acuity = predicted, so the banner reflects the next-shift load
   _restoreAcu();     // put the live "now" scores back; assignment (r.nurse) stays
@@ -4475,6 +4484,20 @@ function tightenHours(){
     if(maxSpread()<=TARGET_SPREAD) break;
   }
 }
+/* Order the cards by the lowest room each nurse holds. Called when a board is built, and offered
+   to the charge as a tidy-up after manual moves — never fired by a move itself. */
+function orderNursesByRoom(){
+  const minRoom=nid=>{ let m=Infinity; occupied().forEach(r=>{ if(r.nurse===nid && r.id<m) m=r.id; }); return m; };
+  const sorted=nurses.slice().sort((a,b)=> (minRoom(a.id)-minRoom(b.id)) || String(a.name||'').localeCompare(String(b.name||'')));
+  sorted.forEach((n,i)=>{ n.ord=i; });   // same objects as rosterN, so this persists
+  syncWorking();
+}
+function cardsOutOfRoomOrder(){
+  const minRoom=nid=>{ let m=Infinity; occupied().forEach(r=>{ if(r.nurse===nid && r.id<m) m=r.id; }); return m; };
+  for(let i=1;i<nurses.length;i++){ if(minRoom(nurses[i-1].id)>minRoom(nurses[i].id)) return true; }
+  return false;
+}
+function sortCardsByRoom(){ if(!chargeMode)return; orderNursesByRoom(); renderAssign(); scheduleSave(); }
 function keepGroup(nid){ if(!chargeMode)return; pushUndo();
   const rs=occupied().filter(r=>r.nurse===nid);
   const all=rs.length>0 && rs.every(r=>r.lock===nid);
@@ -6130,7 +6153,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -6149,7 +6172,7 @@ function applyState(st){
       r.scoredBy=null; r.editedBy=null; r.editedAt=null; r.acceptedBy=null; r.acceptedAt=null; });
   }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
-  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
+  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),ord:(n.ord==null?null:n.ord),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
   else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true,shift:'Day'}));
@@ -6200,7 +6223,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b12';
+const APP_BUILD='2026-08-19 \u00b7 b13';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
