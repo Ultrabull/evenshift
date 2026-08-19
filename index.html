@@ -5862,14 +5862,26 @@ function acuityObj(){
 }
 function applyCloudRow(row){
   if(!row) return;
-  // A staff phone pushing a score sends the whole row back, old `meta` and all. Applying that
-  // mid-build would wipe the draft, so while building we take scores only.
-  if(row.meta && !draftingBoard()){
-    // Another device/tab changing the board's shift under a working charge is always surprising —
-    // apply it (the board is shared), but say so loudly and offer a one-tap switch-back.
-    const inc=row.meta.shiftType;
-    if(chargeMode && inc && inc!==shiftType && (Date.now()-_bootTs)>15000){ _flipSnap=stateObj(); showFlipBar(inc, shiftType); }
-    applyState(row.meta);                                              // charge-owned: roster, rubric, floor, assignments, shift, pin
+  // A staff phone pushing a score sends the whole row back, meta and all. Applying that on top of
+  // edits this device hasn't pushed yet would lose them, so hold off while a push is outstanding.
+  if(row.meta && !_cloudDirty.meta && !_metaPushPending){
+    const draft = row.meta._draft || null;
+    const posted = _stripDraft(row.meta);
+    if(draft){
+      // A build is in progress somewhere on the unit. Charges work on it; everyone else stays on
+      // the posted board. Either way this phone now holds both, so it can switch between them.
+      setDrafting(true); _stashPostedBoard(posted);
+      try{ localStorage.setItem(DRAFTSTATE_KEY, JSON.stringify(draft)); }catch(e){}
+      applyState(chargeMode ? draft : posted);
+      _shownBoard = chargeMode ? 'draft' : 'posted';
+    } else {
+      // Another device/tab changing the board's shift under a working charge is always surprising —
+      // apply it (the board is shared), but say so loudly and offer a one-tap switch-back.
+      const inc=row.meta.shiftType;
+      if(chargeMode && inc && inc!==shiftType && (Date.now()-_bootTs)>15000){ _flipSnap=stateObj(); showFlipBar(inc, shiftType); }
+      setDrafting(false);
+      applyState(posted);                                              // charge-owned: roster, rubric, floor, assignments, shift, pin
+    }
   }
   if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
 }
@@ -5889,6 +5901,7 @@ function cloudSubscribe(){
    device already (scheduleSave() ran before either of these was called) — this is purely about
    getting it to the SHARED board so the next person to open the app sees it too. */
 let _cloudDirty={acuity:false, meta:false};
+let _metaPushPending=false;   // an edit is queued or in flight — don't let an echoed row overwrite it
 let _cloudRetryTimer={acuity:null, meta:null};
 let _cloudRetryDelay={acuity:4000, meta:4000};
 function _cloudRetryReset(kind){ _cloudRetryDelay[kind]=4000; clearTimeout(_cloudRetryTimer[kind]); _cloudRetryTimer[kind]=null; }
@@ -5897,11 +5910,24 @@ function _cloudRetrySchedule(kind, fn){
   _cloudRetryTimer[kind]=setTimeout(fn, _cloudRetryDelay[kind]);
   _cloudRetryDelay[kind]=Math.min(_cloudRetryDelay[kind]*1.6, 30000);   // back off, but never give up
 }
+/* While a board is being built, `meta` carries BOTH: the posted board at the top level, which is
+   what every staff phone renders, and the work in progress under `_draft`, which only a charge
+   picks up. One row, so it does not matter which phone tapped End Shift or which charge takes over
+   — an oncoming charge on their own phone opens straight into the draft, and the staff board still
+   does not move until Post. Keeping the draft on the building device was the earlier mistake: the
+   next charge's phone knew nothing about it and its first push wiped the board for everyone. */
+function _stripDraft(m){ if(!m) return m; const o={}; for(const k in m){ if(k!=='_draft'&&k!=='_draftAt'&&k!=='_draftBy') o[k]=m[k]; } return o; }
+function _currentDraftState(){ return (_shownBoard==='posted') ? (_readStash(DRAFTSTATE_KEY)||stateObj()) : stateObj(); }
+function _metaPayload(){
+  if(!draftingBoard()) return stateObj();
+  const posted=_readStash(POSTED_KEY);
+  if(!posted) return stateObj();                 // no posted board on record — nothing to protect
+  return Object.assign(_stripDraft(posted), {_draft:_currentDraftState(), _draftAt:Date.now(), _draftBy:clientId});
+}
 async function pushMeta(){
   if(!cloudOn())return;
-  if(draftingBoard()){ _cloudDirty.meta=true; setSaved('\u270e Draft \u2014 staff still see the posted board'); return; }   // flushed by Post
-  try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:stateObj(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error;
-    _cloudDirty.meta=false; _cloudRetryReset('meta'); setSaved('☁ Saved');
+  try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:_metaPayload(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error;
+    _cloudDirty.meta=false; _metaPushPending=false; _cloudRetryReset('meta'); setSaved(draftingBoard()?'\u270e Draft saved \u2014 staff still see the posted board':'☁ Saved');
   }catch(e){ _cloudDirty.meta=true; setSaved('⚠ Saved on this device — syncing…'); _cloudRetrySchedule('meta',pushMeta); }
 }
 async function pushAcuity(){
@@ -6044,9 +6070,21 @@ function stateObj(){
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
-function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
+function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
 function applyState(st){
   if(st.floor && st.floor.halls){ FLOOR=st.floor; applyFloor(); updateUnitTag(); }
+  /* stateObj only serialises rooms that hold someone, so a bed emptied on one phone is simply
+     absent from the payload — and every other phone kept its old patient there. A tablet opening
+     the app for the first time kept its whole demo board for the same reason. Clear anything the
+     incoming board doesn't mention before applying it. */
+  if(st.rooms){
+    const keep=new Set(Object.keys(st.rooms).map(Number));
+    Object.values(rooms).forEach(r=>{ if(keep.has(r.id)) return;
+      if(!(r.occupied||r.nurse||r.lock)) return;
+      r.occupied=false; r.nurse=null; r.lock=null; r.acuity=null; r.nextAcuity=null; r.prevAcuity=null;
+      r.tally={}; r.flags=[]; r.tags=[]; r.avoid=[]; r.note=''; r.isoType=''; r.dcTime=''; r.admTime='';
+      r.scoredBy=null; r.editedBy=null; r.editedAt=null; });
+  }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
   if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
@@ -6099,7 +6137,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-18 \u00b7 b7';
+const APP_BUILD='2026-08-18 \u00b7 b8';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
