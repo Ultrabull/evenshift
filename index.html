@@ -1080,6 +1080,9 @@
   .keepworth{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.5;margin:7px 0 0;}
   .keepworth.thin{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
   .tallynote.carried{background:var(--ok-wash2);border-color:var(--ok-line);color:var(--ok-ink);}
+  .crmark{margin-left:3px;font-size:10px;opacity:.75;}
+  .chip.rntap.carried{border-style:dashed;}
+  .carriedtag{font-size:10px;font-weight:700;color:var(--warn-ink);margin-top:2px;letter-spacing:.01em;}
   .tallynote{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin:0 0 8px;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
@@ -2414,7 +2417,8 @@ function rcardScoredBody(r){
   const dv=dispAcu(r), cls=acuClass(dv);
   const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
   const wasLine = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<div class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)} hrs</div>` : '';
-  return `<div class="acu">${acuFmt(dv)} <small>hrs</small></div>${wasLine}<span class="pill p${cls}">${acuLabel(dv)}</span>${flags?`<div class="flags">${flags}</div>`:''}`;
+  const carried = (r.acuity>0 && !roomUpdatedThisShift(r)) ? `<div class="carriedtag" title="Carried over from the last shift">\u21a9 last shift \u00b7 tap to confirm</div>` : '';
+  return `<div class="acu">${acuFmt(dv)} <small>hrs</small></div>${wasLine}<span class="pill p${cls}">${acuLabel(dv)}</span>${carried}${flags?`<div class="flags">${flags}</div>`:''}`;
 }
 function renderAcuity(){
   updateRubricTag();
@@ -2475,7 +2479,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   if(chargeMode && r.editedBy && r.editedBy!=='Charge'){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · last edit by '+r.editedBy+(r.editedAt?' ('+_qhTime(r.editedAt)+')':''); }
   if(chargeMode && r.flagsEditedAt){ const el=document.getElementById('mRoom'); if(el) el.textContent += ' · flags by '+((r.flagsEditedBy||'?').split(' ')[0])+' ('+_qhTime(r.flagsEditedAt)+')'; }
   renderModalBody(); document.getElementById('scrim').classList.add('on');
-  const sa=document.getElementById('saveAttrib'); if(sa){ if(!chargeMode && _quickViewerName()){ sa.style.display=''; const who=(r.editedBy||_quickViewerName()||'').split(' ')[0]; sa.textContent = (r.editedAt ? ('Updated by '+who+' · '+_qhTime(r.editedAt)) : '') + (r.flagsEditedAt ? ((r.editedAt?' · ':'')+'Flags: '+((r.flagsEditedBy||'?').split(' ')[0])+' '+_qhTime(r.flagsEditedAt)) : ''); } else sa.style.display='none'; }
+  const sa=document.getElementById('saveAttrib'); if(sa){ if(!chargeMode && _quickViewerName()){ sa.style.display=''; const who=(r.editedBy||_quickViewerName()||'').split(' ')[0]; sa.textContent = (r.editedAt ? (((SHIFT_START && r.editedAt<=SHIFT_START)?'Last shift by ':'Updated by ')+who+' · '+_qhTime(r.editedAt)) : '') + (r.flagsEditedAt ? ((r.editedAt?' · ':'')+'Flags: '+((r.flagsEditedBy||'?').split(' ')[0])+' '+_qhTime(r.flagsEditedAt)) : ''); } else sa.style.display='none'; }
 }
 function currentHrs(){ let p=0; for(const k in modalTally) p+=(modalTally[k]||0)*(POINTS[k]||0); return Math.round(p/DIVISOR*4)/4; }
 function setMode(m){
@@ -2727,10 +2731,15 @@ function rnChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(miniFlag).join(' ');
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
   const scored=r.acuity>0;
+  // A score carried over from last shift is not this nurse's score. Everything on the staff side
+  // keyed off acuity>0, so after a handoff every room looked done, nobody was prompted, and "I'm
+  // done" could be tapped without opening a single room — while the charge's own tile correctly
+  // read 0/4. Same freshness rule on both sides now.
+  const carried = scored && !roomUpdatedThisShift(r);
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
   const dv=dispAcu(r);
   const wasTag = (scored && r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)}</span>` : '';
-  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}" onclick="openModal(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(dv):'0'}">${scored?acuFmt(dv):'tap'}${wasTag}</span></span>`;
+  return `<span class="chip rntap ${dcAdm}${rose?' rose':''}${carried?' carried':''}" onclick="openModal(${r.id})" title="${carried?'From last shift \u2014 tap to confirm or change':''}"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(dv):'0'}">${scored?acuFmt(dv):'tap'}${wasTag}</span>${carried?'<span class="crmark">\u21a9</span>':''}</span>`;
 }
 function roomChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm'].includes(f)).map(miniFlag).join(' ');
@@ -2879,8 +2888,8 @@ function renderAssign(){
       <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}${(()=>{ const rc=nurseRatioCap(n.id); return rc?` · <span class="capflag" title="${esc(rc.label)} limits this nurse to ${rc.cap} patients, so their hours sit below the others on purpose">max ${rc.cap} \u00b7 ${esc(rc.label)}</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
-      ${selfRN?(()=>{ const unscored=rs.filter(r=>!(r.acuity>0)).length; const done=n.scoredDone&&unscored===0;
-        return `<button class="donebtn ${done?'done':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${done?'✓ You\u2019re done — scores sent':(unscored>0?`Score your ${unscored} remaining, then tap “I\u2019m done”`:'✓ Tap when all your patients are scored')}</button>`; })():''}
+      ${selfRN?(()=>{ const pend=rs.filter(r=>!roomUpdatedThisShift(r)).length; const done=n.scoredDone&&pend===0;
+        return `<button class="donebtn ${done?'done':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${done?'✓ You\u2019re done — scores sent':(pend>0?`${pend} still to check, then tap “I\u2019m done”`:'✓ Tap when all your patients are scored')}</button>`; })():''}
       <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
   }).join('')+pulse;
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
@@ -6166,7 +6175,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b10';
+const APP_BUILD='2026-08-19 \u00b7 b11';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
