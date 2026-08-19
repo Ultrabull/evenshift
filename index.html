@@ -1079,6 +1079,7 @@
   .sitalert{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:700;margin:8px 0;}
   .keepworth{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.5;margin:7px 0 0;}
   .keepworth.thin{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
+  .tallynote{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin:0 0 8px;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
   .balcap{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:600;margin-bottom:7px;line-height:1.45;}
@@ -2538,6 +2539,7 @@ function renderModalBody(){
       body+=`<button class="qchip ${on?'on':''}" onclick="toggleQuick('${key}')">${it.lab.replace(/ \(ea\)/,'')} <span>${it.pts}</span></button>`; });
     body+=`</div><div style="margin-top:9px;"><button class="linkbtn" onclick="setMode('full')">＋ More interventions (full list)</button></div>`;
   } else if(modalMode==='full'){
+    body+=tallyMismatchHTML();   // the ticks survived an Express override — explain the difference
     RUBRIC.forEach(([grp,items])=>{ body+=`<div class="grp"><h4>${grp}</h4>`;
       items.forEach(([lab,pts],i)=>{ const key=grp+'|'+i; const c=modalTally[key]||0;
         body+=`<div class="item"><div class="lab">${lab} <span class="pts">(${pts})</span></div><div class="stp ${c>0?'active':''}"><button onclick="bump('${key}',-1)">−</button><span id="c-${cssid(key)}">${c}</span><button onclick="bump('${key}',1)">+</button></div></div>`; });
@@ -2584,10 +2586,10 @@ function nextReadoutHTML(){
   const now=_modalNow(); const nv=(modalNext!=null)?modalNext:now;
   const d=Math.round((nv-now)*100)/100;
   let cls,txt;
-  if(Math.abs(d)<0.01){ cls='same'; txt='Same as the score you\u2019re entering \u2014 nothing changes for them'; }
-  else if(d>0){ cls='up'; txt=`<b>${acuFmt(d)} hrs heavier</b> than the ${acuFmt(now)} you\u2019re entering`; }
-  else { cls='down'; txt=`<b>${acuFmt(Math.abs(d))} hrs lighter</b> than the ${acuFmt(now)} you\u2019re entering`; }
-  return `<div class="nextbig">${acuFmt(nv)}<small>hrs for the oncoming shift</small></div>`
+  if(Math.abs(d)<0.01){ cls='same'; txt='Same as your score \u2014 nothing changes'; }
+  else if(d>0){ cls='up'; txt=`<b>${acuFmt(d)} hrs heavier</b> than your score of ${acuFmt(now)}`; }
+  else { cls='down'; txt=`<b>${acuFmt(Math.abs(d))} hrs lighter</b> than your score of ${acuFmt(now)}`; }
+  return `<div class="nextbig">${acuFmt(nv)}<small>hrs for the next shift</small></div>`
     +`<div class="nextdelta ${cls}">${cls==='same'?'\u2713':(cls==='up'?'\u2191':'\u2193')} ${txt}</div>`
     +(cls==='same'?'':`<button type="button" class="nextsame" onclick="nextSameAsNow()">\u21ba Same as now</button>`);
 }
@@ -2597,12 +2599,24 @@ function _refreshNext(){
   const el=document.getElementById('nextReadout'); if(el) el.innerHTML=nextReadoutHTML();
 }
 function nextSameAsNow(){ _nextTouched=false; modalNext=_modalNow(); _refreshNext(); _refreshSwing(); }
+/* The itemised list totals this many hours — may differ from the score if someone set the number
+   directly in Express. */
+function tallyHrs(t){ let pts=0; for(const k in (t||{})) pts+=(t[k]||0)*(POINTS[k]||0); return pts/DIVISOR; }
+function tallyMismatchHTML(){
+  const r=rooms[modalRoom]; if(!r) return '';
+  if(!modalTally || !Object.keys(modalTally).length) return '';
+  if(r.acuity==null) return '';
+  const th=tallyHrs(modalTally);
+  if(Math.abs(th-r.acuity)<0.01) return '';
+  const who=(r.editedBy&&r.editedBy!=='Staff')?esc(r.editedBy):'someone';
+  return `<div class="tallynote">\u2139\ufe0f This list adds up to <b>${acuFmt(th)} hrs</b>, but the score is set to <b>${acuFmt(r.acuity)}</b> \u2014 ${who} typed the number in directly. Your ticks are still here. Save from this list to go back to ${acuFmt(th)}.</div>`;
+}
 function nextShiftHTML(){
   const now=_modalNow();
   if(!_nextTouched) modalNext=now;
   const nv=(modalNext!=null)?modalNext:now;
   return `<div class="grp"><h4>Next shift <span style="font-weight:400;color:var(--ink-soft)">\u00b7 predicted</span><button class="qhelp" onclick="showHelp('nextshift')" title="What\u2019s this?">?</button></h4>`
-    +`<div class="hint" style="margin:0 0 7px;">Will this patient be <b>lighter or heavier</b> for the crew coming on? Leave it alone if nothing changes \u2014 it follows the score you enter. Move it if a drip is coming off, a procedure clears, or an admit is expected.</div>`
+    +`<div class="hint" style="margin:0 0 7px;"><b>Only move this if you think the next shift will be different.</b> Slide <b>right</b> if this patient will feel heavier than the score you just entered, <b>left</b> if lighter. Nothing changing? Leave it \u2014 it already matches your score.</div>`
     +`<div class="exp"><input type="range" id="nextSlider" min="0" max="8" step="0.25" value="${nv}" oninput="setNext(this.value)" class="slider">`
     +`<div id="nextReadout">${nextReadoutHTML()}</div></div></div>`;
 }
@@ -2622,7 +2636,11 @@ function recalc(){
 function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoom]; let hrs;
   const _wasOcc=!!r.occupied;   // was this bed already filled? (a no → someone just arrived)
   if(modalMode==='express'){ hrs=modalExpress!=null?modalExpress:0;
-    if(!(_prevNow!=null && Math.abs(hrs-_prevNow)<1e-9)) r.tally={};   // number changed → the old itemization no longer matches; untouched → keep what staff tallied
+    // Express sets the number directly. It used to wipe r.tally when the number moved, on the
+    // grounds that the itemisation no longer matched — but the charge opens rooms in Express by
+    // default, so one charge tap silently destroyed the full list a nurse had worked through, while
+    // the number stayed right. That is what "my scores are gone but the acuity is correct" was.
+    // The list is kept; where it no longer totals the score, the modal says so.
   }
   else { let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0); hrs=pts/DIVISOR; r.tally=modalTally; }
   // Big acuity swing must have a reason (Other counts).
@@ -6137,7 +6155,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-18 \u00b7 b8';
+const APP_BUILD='2026-08-19 \u00b7 b9';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
