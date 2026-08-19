@@ -1087,6 +1087,7 @@
   .scoreprog.okacc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
   .cardtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
   .cardtools .cthint{font-size:10.5px;color:var(--ink-soft);}
+  .donebtn.said{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
   .tallynote{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin:0 0 8px;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
@@ -2917,7 +2918,13 @@ function renderAssign(){
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const pend=rs.filter(r=>!roomCurrentThisShift(r)).length; const done=n.scoredDone&&pend===0;
-        return `<button class="donebtn ${done?'done':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${done?'✓ You\u2019re done — scores sent':(pend>0?`${pend} still to check, then tap “I\u2019m done”`:'✓ Tap when all your patients are scored')}</button>`; })():''}
+        // Tapping while rooms are still unchecked used to change nothing on screen, so it read as a
+        // dead button. The claim is recorded and shown back either way.
+        const said=n.scoredDone&&pend>0;
+        const lab = done ? '✓ You\u2019re done — scores sent'
+                  : said ? `✓ You said done — ${pend} not checked yet (tap to undo)`
+                  : (pend>0 ? `${pend} still to check, then tap “I\u2019m done”` : '✓ Tap when all your patients are scored');
+        return `<button class="donebtn ${done?'done':''}${said?' said':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${lab}</button>`; })():''}
       <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
   }).join('')+pulse;
   const pool=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
@@ -4016,6 +4023,8 @@ function celebrate(fromEl){
 function markScoredDone(nid){
   const n=rosterN.find(x=>x.id===nid)||nurses.find(x=>x.id===nid); if(!n) return;
   n.scoredDone=!n.scoredDone;
+  n.doneAt = n.scoredDone ? Date.now() : 0;
+  if(cloudOn()) pushAcuity();   // staff never push meta, so this is the only way it reaches the charge
   if(n.scoredDone){
     const btn=document.querySelector(`.donebtn[onclick*="${nid}"]`);
     if(btn) btn.classList.add('pop');
@@ -5202,7 +5211,7 @@ function loadRoster(){
 }
 function saveStaff(){
   syncStaffDOM();
-  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
+  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0}));
   if(cleanN.length<1){ alert('Add at least one nurse.'); return; }
   if(!cleanN.some(n=>n.on!==false)){ alert('Mark at least one nurse “On” for today.'); return; }
   rosterN=cleanN;
@@ -5959,8 +5968,14 @@ async function cloudInit(){
     return true;
   }catch(e){ cloudReady=false; return false; }
 }
+/* "I'm done" is set by a nurse, and staff devices never push meta — only the charge does — so the
+   flag lived and died on her own phone and the charge's board never heard about it. It rides with
+   the scores instead, under a key the per-room loop skips. Timestamped so a flag from an earlier
+   shift can't come back after the cycle restarts. */
 function acuityObj(){
   const a={};
+  const d={}; rosterN.forEach(n=>{ if(n.scoredDone && n.doneAt) d[n.id]=n.doneAt; });
+  if(Object.keys(d).length) a._done=d;
   Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
@@ -5985,6 +6000,13 @@ function applyCloudRow(row){
       if(chargeMode && inc && inc!==shiftType && (Date.now()-_bootTs)>15000){ _flipSnap=stateObj(); showFlipBar(inc, shiftType); }
       setDrafting(false);
       applyState(posted);                                              // charge-owned: roster, rubric, floor, assignments, shift, pin
+    }
+  }
+  if(row.acuity && row.acuity._done){
+    const base=shiftBaseline();
+    for(const nid in row.acuity._done){ const ts=row.acuity._done[nid];
+      const n=rosterN.find(x=>x.id===nid); if(!n) continue;
+      if(base && ts>=base){ n.scoredDone=true; n.doneAt=ts; }
     }
   }
   if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; r.acceptedBy=a.acceptedBy||null; r.acceptedAt=a.acceptedAt||null; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
@@ -6171,7 +6193,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -6190,7 +6212,7 @@ function applyState(st){
       r.scoredBy=null; r.editedBy=null; r.editedAt=null; r.acceptedBy=null; r.acceptedAt=null; });
   }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
-  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),ord:(n.ord==null?null:n.ord),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
+  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),ord:(n.ord==null?null:n.ord),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
   else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true,shift:'Day'}));
@@ -6241,7 +6263,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b14';
+const APP_BUILD='2026-08-19 \u00b7 b15';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -6257,7 +6279,7 @@ function onShiftDateChanged(prev){ if(prev && prev!==shiftDate) startScoringCycl
 /* Begin a fresh scoring cycle: from now on only rooms actually touched count as updated. */
 function startScoringCycle(announce){
   SHIFT_START=Date.now();
-  rosterN.forEach(n=>{ n.scoredDone=false; });
+  rosterN.forEach(n=>{ n.scoredDone=false; n.doneAt=0; });
   occupied().forEach(r=>{ r.acceptedAt=null; r.acceptedBy=null; });
   SCORES_OK=false;
   renderAcuity(); if(assignVisible()) renderAssign(); renderNextStep(); scheduleSave();
@@ -7741,7 +7763,7 @@ function nextShift(){ if(!chargeMode)return;
     r.nextAcuity=r.acuity;                                        // fresh prediction defaults to the new now
     r.nurse=null; r.lock=null;
     r.capCarried = rcCodes.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)); });
-  rosterN.forEach(n=>{ n.scoredDone=false; n.breakSlot=''; n.breakApproved=false; });  // reset scoring-done + breaks for the new shift
+  rosterN.forEach(n=>{ n.scoredDone=false; n.doneAt=0; n.breakSlot=''; n.breakApproved=false; });  // reset scoring-done + breaks for the new shift
   [rosterN,rosterP,rosterS,rosterH].forEach(arr=>arr.forEach(x=>{ if(x.holdover){ x.holdover=false; x.on=false; } }));  // holdovers were ad-hoc for the ending shift — they go home
   DC_BARRIERS={}; HUDDLE_NOTE='';   // huddle is per-shift; bed-capability (BED_CAP) is permanent
   STAFFREQ_F={}; _rnReqAdj=null; _pctReqAdj=null; _hucReqAdj=null;
