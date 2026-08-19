@@ -1208,6 +1208,7 @@
   .mitem:hover{background:var(--teal-wash);color:var(--teal-deep);}
   .mitem.danger{color:var(--bad);}
   .mitem.danger:hover{background:#FCEBEC;color:var(--bad);}
+  .mver{font-size:10.5px;color:var(--ink-soft);text-align:center;padding:6px 0 2px;letter-spacing:.03em;}
   .msep{height:1px;background:var(--line);margin:5px 4px;}
   .mlab2{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:6px 4px 7px;}
   .moderow{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:11px;margin:0 4px 9px;}
@@ -1353,6 +1354,7 @@
           <button class="mitem chargeOnly" onclick="this.closest('.menu').removeAttribute('open');nextShift()">🔄 End shift &amp; hand off</button>
           <div class="mdiv"></div>
           <button class="mitem" onclick="this.closest('.menu').removeAttribute('open');openLastShift()">📋 Last shift’s board</button>
+          <div class="mver" id="buildStamp"></div>
         </div>
       </details>
     </div>
@@ -4492,9 +4494,11 @@ function lockIcon(open){
     +(open?'<path d="M7 11V7a5 5 0 0 1 9.9-1"/>':'<path d="M7 11V7a5 5 0 0 1 10 0v4"/>')+'</svg>';
 }
 function applyAccessUI(){
+  syncDraftView();   // while building, the staff view on THIS phone is the posted board, not the draft
   if(chargeMode && (viewAs===''||(viewAs!=='charge'&&!nurses.find(n=>n.id===viewAs)))) viewAs='charge';   // charge sees full board
   if(!chargeMode && viewAs==='charge') viewAs='';                                                         // hide full board from nurses
   document.body.classList.toggle('locked', !chargeMode);
+  showHandoffBar(); showBuildingBar();   // both are charge-only; re-evaluate on every lock/unlock
   document.querySelectorAll('.chargeOnly').forEach(el=>{ el.style.display=''; });   // let CSS (body.locked) govern visibility
   const lb=document.getElementById('lockBtn'); if(lb){
     lb.innerHTML = lockIcon(chargeMode) + '<span>' + (chargeMode?'Unlocked':'Charge console') + '</span>';
@@ -5962,6 +5966,38 @@ function setDrafting(on){
   _draftFlag=!!on;
   try{ on ? localStorage.setItem(DRAFT_KEY, JSON.stringify({unit:unitId, at:Date.now()}))
           : localStorage.removeItem(DRAFT_KEY); }catch(e){}
+  if(!on){ _shownBoard='draft'; try{ localStorage.removeItem(POSTED_KEY); localStorage.removeItem(DRAFTSTATE_KEY); }catch(e){} }
+}
+/* ── The building phone is somebody's phone too ────────────────────────────────────
+   Holding the draft back from the cloud keeps every OTHER phone on the posted board, but the
+   charge's own device still had the cleared board in memory. Charges are usually nurses on that
+   same board, so locking the console to check the staff view showed their patients gone — and
+   after the crew swap their name wasn't even in the list to tap. That is what "it still
+   disappears" was: real, and only on the phone doing the building.
+   Both boards are kept on this device and swapped as the console is locked and unlocked, so no
+   view has to be reconstructed — the staff view is the genuine posted board, drawn from the state
+   that produced it. */
+const POSTED_KEY='evenshift_posted_board_v1';     // the board staff are still on
+const DRAFTSTATE_KEY='evenshift_draft_board_v1';  // the charge's work in progress
+let _shownBoard='draft';
+function _stashPostedBoard(st){ try{ localStorage.setItem(POSTED_KEY, JSON.stringify(st)); }catch(e){} }
+function _readStash(k){ try{ const j=JSON.parse(localStorage.getItem(k)||'null'); return (j&&j.rooms)?j:null; }catch(e){ return null; } }
+function syncDraftView(){
+  if(!draftingBoard()){ _shownBoard='draft'; return false; }
+  const want = chargeMode ? 'draft' : 'posted';
+  if(want===_shownBoard) return false;
+  if(want==='posted'){
+    const posted=_readStash(POSTED_KEY); if(!posted) return false;   // nothing to fall back to — leave the draft up
+    try{ localStorage.setItem(DRAFTSTATE_KEY, JSON.stringify(stateObj())); }catch(e){}
+    applyState(posted);
+  } else {
+    const draft=_readStash(DRAFTSTATE_KEY); if(!draft) return false;
+    applyState(draft);
+  }
+  _shownBoard=want;
+  applyShiftUI(); syncWorking(); refreshViewOptions(); updateScoreTab();
+  renderAcuity(); renderAssign();
+  return true;
 }
 function _stashHandoffUndo(state, filedKey){
   try{ localStorage.setItem(HANDOFF_KEY, JSON.stringify({at:Date.now(), unit:unitId, filedKey, state})); }catch(e){}
@@ -6063,6 +6099,8 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
+const APP_BUILD='2026-08-18 \u00b7 b7';
+function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
 function setShiftType(t){ shiftType=t; syncWorking(); applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
@@ -7563,6 +7601,7 @@ function nextShift(){ if(!chargeMode)return;
   setDrafting(true);         // from here until Post, staff phones stay on the board they already have
   syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
+  _stashPostedBoard(_preHandoff);   // what staff are still looking at, for this device's own staff view
   _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showBuildingBar();
 }
 /* The charge must never be left guessing whether staff can see this yet. */
@@ -7874,7 +7913,7 @@ buildLegend();
     logo.addEventListener('mousedown',start); logo.addEventListener('mouseup',cancel); logo.addEventListener('mouseleave',cancel);
   }
   if(draftingBoard()) await loadState();   // cloud meta is deliberately ignored while building — the draft lives here
-  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else if(!draftingBoard()) await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); showHandoffBar(); showBuildingBar(); setTimeout(maybeShowIntro,400); })();
+  let cloud=false; try{ cloud=await cloudInit(); }catch(e){} if(cloud){ await reconcileLocalAcuity(); } else if(!draftingBoard()) await loadState(); chargeMode=!chargePin; if(chargeMode && !SHIFT_START){ SHIFT_START=Date.now(); scheduleSave(); } updateUnitTag(); applyShiftUI(); refreshViewOptions(); applyAccessUI(); if(chargeMode) jumpToNextStep(); applyGate(); stampBuild(); showHandoffBar(); showBuildingBar(); setTimeout(maybeShowIntro,400); })();
 // Tap anywhere outside the ⋯ menu (or the More ▾ tools) closes it.
 document.addEventListener('click',function(e){
   document.querySelectorAll('details.menu[open], details.tools[open]').forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute('open'); });
