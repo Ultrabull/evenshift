@@ -5299,8 +5299,14 @@ function buildTotalSwapG(occ, freeNurses){
 }
 /* One entry per OUTGOING nurse whose patients are still on the floor and assigned:
    {id, name, to:[{id, name, n} ...]} — `to` lists the oncoming nurses taking their rooms. */
+/* True when PREV_SHIFT is a snapshot of the shift we are still on — a board rebuilt without a
+   handoff. Nothing has been handed over, so there is no report to give. */
+function prevIsSameShift(){
+  return !!(PREV_SHIFT && PREV_SHIFT.shift===shiftType && PREV_SHIFT.date===shiftDate);
+}
 function handoffMap(){
   if(!PREV_SHIFT || !(PREV_SHIFT.nurses||[]).length) return [];
+  if(prevIsSameShift()) return [];
   return PREV_SHIFT.nurses.map(rec=>{
     const tally={};   // oncoming nurse id → how many of this outgoing nurse's rooms they took
     (rec.rooms||[]).forEach(rn=>{ const r=rooms[rn]; if(r&&r.occupied&&r.nurse) tally[r.nurse]=(tally[r.nurse]||0)+1; });
@@ -5310,13 +5316,14 @@ function handoffMap(){
   }).filter(x=>x.to.length);
 }
 /* inverse read: which outgoing nurses this oncoming nurse takes report FROM (not herself).
-   An "outgoing" nurse who is still on the working crew now (holdover, or a stale/same-shift
-   PREV_SHIFT snapshot) isn't handing off — skip them, so the board never shows a shift
-   taking report from itself. */
+   This used to skip every outgoing nurse who is also on today's crew, to stop a board taking
+   report from itself. That threw away the real ones: a nurse who stays on still hands over the
+   rooms she did NOT keep, and hers are often the rooms that moved. On a four-room card with four
+   different outgoing nurses it reported two. The self-reference is what needed guarding, so guard
+   exactly that — the nurse herself, and a snapshot of the shift we are still on. */
 function reportSources(nid){
-  const here=new Set(nurses.map(x=>x.id));
   const out=[];
-  handoffMap().forEach(h=>{ if(h.id===nid || here.has(h.id)) return; const t=h.to.find(x=>x.id===nid); if(t) out.push({name:h.name,n:t.n}); });
+  handoffMap().forEach(h=>{ if(h.id===nid) return; const t=h.to.find(x=>x.id===nid); if(t) out.push({name:h.name,n:t.n}); });
   return out.sort((a,b)=>b.n-a.n);
 }
 
@@ -6263,7 +6270,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b15';
+const APP_BUILD='2026-08-19 \u00b7 b16';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
