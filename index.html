@@ -1083,6 +1083,8 @@
   .crmark{margin-left:3px;font-size:10px;opacity:.75;}
   .chip.rntap.carried{border-style:dashed;}
   .carriedtag{font-size:10px;font-weight:700;color:var(--warn-ink);margin-top:2px;letter-spacing:.01em;}
+  .spchip.spc-acc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
+  .scoreprog.okacc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
   .tallynote{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin:0 0 8px;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
@@ -2417,7 +2419,7 @@ function rcardScoredBody(r){
   const dv=dispAcu(r), cls=acuClass(dv);
   const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
   const wasLine = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<div class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)} hrs</div>` : '';
-  const carried = (r.acuity>0 && !roomUpdatedThisShift(r)) ? `<div class="carriedtag" title="Carried over from the last shift">\u21a9 last shift \u00b7 tap to confirm</div>` : '';
+  const carried = (r.acuity>0 && !roomCurrentThisShift(r)) ? `<div class="carriedtag" title="Carried over from the last shift">\u21a9 last shift \u00b7 tap to confirm</div>` : '';
   return `<div class="acu">${acuFmt(dv)} <small>hrs</small></div>${wasLine}<span class="pill p${cls}">${acuLabel(dv)}</span>${carried}${flags?`<div class="flags">${flags}</div>`:''}`;
 }
 function renderAcuity(){
@@ -2719,6 +2721,13 @@ function roomUpdatedThisShift(r){ if(!(r.acuity>0)) return false;
   if(SHIFT_START) return (r.editedAt||0)>=SHIFT_START;
   return !!r.editedAt;   // board has never handed off since this feature: only rooms with a recorded edit count
 }
+/* The charge looked at a carried-over number and said it still stands. Counts as current for the
+   workflow, but is never reported as the nurse having scored. */
+function roomAcceptedThisShift(r){ if(!(r.acuity>0)) return false;
+  if(!r.acceptedAt) return false;
+  return SHIFT_START ? r.acceptedAt>=SHIFT_START : true;
+}
+function roomCurrentThisShift(r){ return roomUpdatedThisShift(r)||roomAcceptedThisShift(r); }
 function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw=rs.reduce((s,r)=>s+r.acuity,0); const nx=rs.reduce((s,r)=>s+((r.nextAcuity!=null)?r.nextAcuity:r.acuity),0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,next:nx,adj:raw/cap}; }
 function maxAdj(){return Math.max(10,...nurses.map(n=>{const L=nurseLoad(n.id);return L.next||L.hrs;}));}
 function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===nid).map(r=>hallOf(r.id)))]; return hs; }
@@ -2735,7 +2744,7 @@ function rnChip(r){
   // keyed off acuity>0, so after a handoff every room looked done, nobody was prompted, and "I'm
   // done" could be tapped without opening a single room — while the charge's own tile correctly
   // read 0/4. Same freshness rule on both sides now.
-  const carried = scored && !roomUpdatedThisShift(r);
+  const carried = scored && !roomCurrentThisShift(r);
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
   const dv=dispAcu(r);
   const wasTag = (scored && r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)}</span>` : '';
@@ -2888,7 +2897,7 @@ function renderAssign(){
       <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}${(()=>{ const rc=nurseRatioCap(n.id); return rc?` · <span class="capflag" title="${esc(rc.label)} limits this nurse to ${rc.cap} patients, so their hours sit below the others on purpose">max ${rc.cap} \u00b7 ${esc(rc.label)}</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
-      ${selfRN?(()=>{ const pend=rs.filter(r=>!roomUpdatedThisShift(r)).length; const done=n.scoredDone&&pend===0;
+      ${selfRN?(()=>{ const pend=rs.filter(r=>!roomCurrentThisShift(r)).length; const done=n.scoredDone&&pend===0;
         return `<button class="donebtn ${done?'done':''}" onclick="event.stopPropagation(); markScoredDone('${n.id}')">${done?'✓ You\u2019re done — scores sent':(pend>0?`${pend} still to check, then tap “I\u2019m done”`:'✓ Tap when all your patients are scored')}</button>`; })():''}
       <div class="chips">${ rs.length? rs.map(selfRN?rnChip:roomChip).join('') : '<span class="empty2">Tap a room, then tap here</span>' }</div></div>`;
   }).join('')+pulse;
@@ -2952,7 +2961,7 @@ function updateScoreProgress(){
   if(!chargeMode || viewAs!=='charge'){ el.style.display='none'; return; }
   const occ=occupied(); const total=occ.length;
   if(!total){ el.style.display='none'; return; }
-  const fresh=occ.filter(roomUpdatedThisShift).length;
+  const fresh=occ.filter(roomCurrentThisShift).length;
   const stale=total-fresh;
   const unscored=occ.filter(r=>!(r.acuity>0)).length;
   const assignedNurses=nurses.filter(n=>occ.some(r=>r.nurse===n.id));
@@ -2963,17 +2972,21 @@ function updateScoreProgress(){
     const rows=assignedNurses.map(n=>{
       const rs=occ.filter(r=>r.nurse===n.id);
       const scored=rs.filter(roomUpdatedThisShift).length;
-      const missed=rs.filter(r=>!roomUpdatedThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
-      return {name:(n.name||'').split(' ')[0], scored, total:rs.length, all:scored===rs.length, said:!!n.scoredDone, missed};
+      const acc=rs.filter(r=>!roomUpdatedThisShift(r)&&roomAcceptedThisShift(r)).length;
+      const missed=rs.filter(r=>!roomCurrentThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
+      return {name:(n.name||'').split(' ')[0], scored, acc, total:rs.length, all:scored===rs.length,
+              covered:scored+acc===rs.length, said:!!n.scoredDone, missed};
     }).sort((a,b)=> (a.all?1:0)-(b.all?1:0) || a.name.localeCompare(b.name));   // pending first
-    const pending=rows.filter(r=>!r.all);
+    const pending=rows.filter(r=>!r.covered);
     // Rooms nobody on the crew owns were invisible here, yet the all-clear line counted them as
     // done — so a stale unassigned room could hide behind a green tick.
-    const looseMissed=occ.filter(r=>!assignedNurses.some(n=>n.id===r.nurse) && !roomUpdatedThisShift(r))
+    const looseMissed=occ.filter(r=>!assignedNurses.some(n=>n.id===r.nurse) && !roomCurrentThisShift(r))
       .map(r=>r.id).sort((a,b)=>a-b);
     const chips=rows.map(r=> r.all
       ? `<span class="spchip spc-done">✓ ${esc(r.name)}</span>`
-      : `<span class="spchip ${r.scored>0?'spc-part':'spc-none'}">${esc(r.name)} <b>${r.scored}/${r.total}</b>${r.missed.length?` · Rm ${roomList(r.missed)}`:''}${r.said?' · said done':''}</span>`).join('')
+      : (r.covered
+        ? `<span class="spchip spc-acc" title="Not scored by this nurse — the charge accepted the carried-over numbers">${esc(r.name)} <b>${r.scored}/${r.total}</b> · ${r.acc} accepted</span>`
+        : `<span class="spchip ${r.scored>0?'spc-part':'spc-none'}">${esc(r.name)} <b>${r.scored}/${r.total}</b>${r.missed.length?` · Rm ${roomList(r.missed)}`:''}${r.said?' · said done':''}${r.acc?` · ${r.acc} accepted`:''}</span>`)).join('')
       + (looseMissed.length?`<span class="spchip spc-none">No nurse yet · Rm ${roomList(looseMissed)}</span>`:'');
     let head;
     if(pending.length||looseMissed.length){
@@ -2982,10 +2995,15 @@ function updateScoreProgress(){
       if(looseMissed.length) bits.push(`<b>${looseMissed.length}</b> room${looseMissed.length>1?'s':''} with no nurse yet`);
       head=`🩺 Next-shift scoring — ${bits.join(' · ')}${unscored?` · ${unscored} unscored`:''}`;
     } else {
-      head=`✓ Everyone scored for next shift — all ${total} rooms updated this shift`;
+      const accTotal=occ.filter(r=>!roomUpdatedThisShift(r)&&roomAcceptedThisShift(r)).length;
+      const scoredTotal=total-accTotal;
+      const accBy=(occ.find(r=>roomAcceptedThisShift(r))||{}).acceptedBy;
+      head = accTotal
+        ? `✓ Scores current — <b>${scoredTotal}</b> room${scoredTotal===1?'':'s'} scored by staff · <b>${accTotal}</b> accepted by ${esc(accBy||'charge')}`
+        : `✓ Everyone scored for next shift — all ${total} rooms updated this shift`;
     }
     el.innerHTML=`<div class="sp-head">${head}</div><div class="sp-chips">${chips}</div>`;
-    el.className='scoreprog chargeOnly'+((pending.length||looseMissed.length)?'':' ok'); el.style.display='';
+    el.className='scoreprog chargeOnly'+((pending.length||looseMissed.length)?'':(occ.some(r=>!roomUpdatedThisShift(r)&&roomAcceptedThisShift(r))?' okacc':' ok')); el.style.display='';
     return;
   }
   // No assignment loaded — can't attribute to a nurse, so show which ROOMS still need scoring.
@@ -2993,7 +3011,7 @@ function updateScoreProgress(){
     ? `\uD83E\uDE7A Next-shift scoring: <b>${fresh} of ${total}</b> rooms updated \u00b7 \u26a0 <b>${stale}</b> still pending${unscored?` (${unscored} unscored)`:''}`
     : `\u2713 All ${total} rooms updated this shift \u2014 scored for the next shift`;
   if(stale>0){
-    const nums=occ.filter(r=>!roomUpdatedThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
+    const nums=occ.filter(r=>!roomCurrentThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
     const chips=nums.map(rn=>`<span class="spchip spc-none">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
     el.innerHTML=`<div class="sp-head">${head}</div><div class="sp-chips">${chips}</div>`;
   } else {
@@ -3023,11 +3041,11 @@ function chargeNextStep(){
   // 1 · are the scores in? (staff score their own patients; charge chases the stragglers)
   if(total===0)      return {label:'Step 1 · Enter your patients’ scores', hint:'tap a room and mark what the patient needs', act:"show('acuity')", view:'acuity'};
   if(scored<total)   return {label:'Step 1 · Waiting on scores — '+(total-scored)+' room'+((total-scored)>1?'s':'')+' unscored', hint:'staff score their own patients · tap Go to see what’s missing', act:"show('acuity')", view:'acuity'};
-  const freshN=occ.filter(roomUpdatedThisShift).length;
+  const freshN=occ.filter(roomCurrentThisShift).length;
   if(freshN<total)   return {label:'Step 1 · Waiting on scores — '+(total-freshN)+' room'+((total-freshN)>1?'s':'')+' not updated this shift', hint:'staff re-score for the oncoming shift — or accept the current numbers', act:"show('acuity')", actLabel:'View', act2:"acceptScoresCurrent()", act2Label:'✓ Numbers are current', view:'acuity'};
   // 2 · charge verifies & adjusts, then confirms — stale (carried-over) numbers are called out
   if(!SCORES_OK){
-    const stale=occ.filter(r=>!roomUpdatedThisShift(r)).length;
+    const stale=occ.filter(r=>!roomCurrentThisShift(r)).length;
     return {label:'Step 2 · Review the scores'+(stale?' — '+stale+' not updated this shift':''),
       hint:(stale?'those rooms still show last shift’s numbers — check the list on the Score page':'tap any room to tweak — then confirm they look right'),
       act:"show('acuity')", actLabel:'Review', act2:"markScoresOK()", act2Label:'✓ Scores OK', view:'acuity'};
@@ -3047,8 +3065,15 @@ function chargeNextStep(){
 function markScoresOK(){ if(!chargeMode) return; SCORES_OK=true; renderNextStep(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta(); }
 /* Charge accepts the carried-over numbers as still correct — stamps them current so Step 1 clears. */
 function acceptScoresCurrent(){ if(!chargeMode) return;
-  const now=Date.now();
-  occupied().forEach(r=>{ if(r.acuity>0 && !roomUpdatedThisShift(r)) r.editedAt=now; });
+  const n=occupied().filter(r=>r.acuity>0 && !roomUpdatedThisShift(r)).length;
+  if(!n) return;
+  if(!confirm('\u2713 Accept the carried-over numbers for '+n+' room'+(n>1?'s':'')+'?\n\nThis records that YOU checked them and they still look right. It does not mark the nurses as having scored \u2014 the board will show these as accepted by charge.')) return;
+  const now=Date.now(); const who=chargeName||'Charge';
+  // This used to write r.editedAt, which made every carried room look like the nurse had just
+  // scored it: the tile read "Everyone scored for next shift" with all eight names ticked after a
+  // single charge tap. An acceptance is recorded as an acceptance now, so the board can say who
+  // actually scored and who was signed off.
+  occupied().forEach(r=>{ if(r.acuity>0 && !roomUpdatedThisShift(r)){ r.acceptedAt=now; r.acceptedBy=who; } });
   renderNextStep(); renderAcuity(); scheduleSave(); if(cloudOn()) pushAcuity();
 }
 function renderNextStep(){
@@ -5895,7 +5920,7 @@ async function cloudInit(){
 }
 function acuityObj(){
   const a={};
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
@@ -5921,7 +5946,7 @@ function applyCloudRow(row){
       applyState(posted);                                              // charge-owned: roster, rubric, floor, assignments, shift, pin
     }
   }
-  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
+  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; r.acceptedBy=a.acceptedBy||null; r.acceptedAt=a.acceptedAt||null; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
 function cloudRerender(){ applyShiftUI(); refreshViewOptions(); updateUnitTag(); updateRubricTag(); updateScoreTab(); renderAcuity(); renderAssign(); applyGate(); }
@@ -6104,7 +6129,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
@@ -6121,7 +6146,7 @@ function applyState(st){
       if(!(r.occupied||r.nurse||r.lock)) return;
       r.occupied=false; r.nurse=null; r.lock=null; r.acuity=null; r.nextAcuity=null; r.prevAcuity=null;
       r.tally={}; r.flags=[]; r.tags=[]; r.avoid=[]; r.note=''; r.isoType=''; r.dcTime=''; r.admTime='';
-      r.scoredBy=null; r.editedBy=null; r.editedAt=null; });
+      r.scoredBy=null; r.editedBy=null; r.editedAt=null; r.acceptedBy=null; r.acceptedAt=null; });
   }
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
   if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone}));
@@ -6175,7 +6200,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b11';
+const APP_BUILD='2026-08-19 \u00b7 b12';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
