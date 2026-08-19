@@ -1079,6 +1079,7 @@
   .sitalert{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:9px;padding:8px 11px;font-size:12.5px;font-weight:700;margin:8px 0;}
   .keepworth{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.5;margin:7px 0 0;}
   .keepworth.thin{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
+  .tallynote.carried{background:var(--ok-wash2);border-color:var(--ok-line);color:var(--ok-ink);}
   .tallynote{background:var(--info-wash);border:1px solid var(--info-line2);color:var(--info-ink);border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin:0 0 8px;}
   .balsit{background:var(--bad-wash2);border:1px solid var(--bad-line);color:var(--bad-ink);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:700;margin-bottom:7px;}
   /* A rule doing its job is not an alarm — the cap note explains, it does not warn. */
@@ -2608,8 +2609,18 @@ function tallyMismatchHTML(){
   if(r.acuity==null) return '';
   const th=tallyHrs(modalTally);
   if(Math.abs(th-r.acuity)<0.01) return '';
-  const who=(r.editedBy&&r.editedBy!=='Staff')?esc(r.editedBy):'someone';
-  return `<div class="tallynote">\u2139\ufe0f This list adds up to <b>${acuFmt(th)} hrs</b>, but the score is set to <b>${acuFmt(r.acuity)}</b> \u2014 ${who} typed the number in directly. Your ticks are still here. Save from this list to go back to ${acuFmt(th)}.</div>`;
+  const who=(r.editedBy&&r.editedBy!=='Staff')?esc(r.editedBy):'';
+  /* Two very different reasons the list can disagree with the score, and calling one the other is
+     worse than saying nothing. If the list was last touched before this shift began, it is simply
+     last shift's work carried over and the score is this shift's starting point, because they
+     predicted a change on the way out. Nobody overrode anything. */
+  // <= not <: End Shift stamps SHIFT_START after promoting, so a score saved in the same
+  // millisecond is still the outgoing shift's work.
+  if(r.editedAt && SHIFT_START && r.editedAt <= SHIFT_START){
+    const dir = r.acuity>th ? 'heavier' : 'lighter';
+    return `<div class="tallynote carried">\u21a9 <b>Last shift\u2019s list is already filled in below</b> \u2014 it adds up to ${acuFmt(th)} hrs. Your shift starts at <b>${acuFmt(r.acuity)}</b> because ${who||'they'} expected this patient to be ${dir}. Change only what\u2019s different, then save.</div>`;
+  }
+  return `<div class="tallynote">\u2139\ufe0f This list adds up to <b>${acuFmt(th)} hrs</b>, but the score is set to <b>${acuFmt(r.acuity)}</b> \u2014 ${who?who+' typed':'someone typed'} the number in directly. Your ticks are still here. Save from this list to go back to ${acuFmt(th)}.</div>`;
 }
 function nextShiftHTML(){
   const now=_modalNow();
@@ -6155,7 +6166,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b9';
+const APP_BUILD='2026-08-19 \u00b7 b10';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ shiftDate=document.getElementById('shiftDate').value; scheduleSave(); }
