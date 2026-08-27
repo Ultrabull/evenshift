@@ -2731,10 +2731,14 @@ function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
    counting any room ever edited, which on a board in use is all of them. That is how the tile came
    to announce "everyone scored" with eight ticks after a single charge tap. No baseline now means
    nothing is claimed. */
-const SHIFT_BASE_MAX = 16*3600*1000;   // longest believable shift + overrun
+/* The scoring cycle's start time. Reset only by an explicit action — End shift & hand off, the
+   charge flipping Day/Night or changing the date, or the manual "Start scoring for this shift" —
+   never by a clock. A timer used to expire this after 16 hours, so a charge who ended their shift
+   at 9pm and was still on at 2am found the whole board suddenly reading as unscored, mid-shift.
+   How long ago SHIFT_START was set says nothing about whether it's still the same shift — only
+   those actions do. */
 function shiftBaseline(){
-  if(!SHIFT_START) return 0;
-  return (Date.now()-SHIFT_START > SHIFT_BASE_MAX) ? 0 : SHIFT_START;
+  return SHIFT_START || 0;
 }
 function roomUpdatedThisShift(r){ if(!(r.acuity>0)) return false;
   const base=shiftBaseline(); if(!base) return false;
@@ -6016,7 +6020,23 @@ function applyCloudRow(row){
       if(base && ts>=base){ n.scoredDone=true; n.doneAt=ts; }
     }
   }
-  if(row.acuity) for(const id in row.acuity){ const r=rooms[+id]; if(r){ const a=row.acuity[id]; r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note=''; if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt; r.acceptedBy=a.acceptedBy||null; r.acceptedAt=a.acceptedAt||null; if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt; if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt; } }   // acuity always wins; note field removed (HIPAA)
+  // The acuity column is a full replacement of every room's score, not a diff — a device carrying
+  // a stale local copy that pushes for some unrelated reason would otherwise overwrite a newer
+  // score entered elsewhere with its own out-of-date one. Let the newer edit win, same rule as the
+  // boot-time reconcile already uses; acceptance is gated on its own timestamp since a charge can
+  // accept an old score after a newer edit has already arrived.
+  if(row.acuity) for(const id in row.acuity){
+    if(id==='_done') continue;
+    const r=rooms[+id]; if(!r) continue;
+    const a=row.acuity[id];
+    if((a.editedAt||0) >= (r.editedAt||0)){
+      r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note='';
+      if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt;
+      if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt;
+      if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt;
+    }
+    if((a.acceptedAt||0) >= (r.acceptedAt||0)){ r.acceptedBy=a.acceptedBy||null; r.acceptedAt=a.acceptedAt||null; }
+  }   // note field removed (HIPAA)
 }
 async function cloudPull(){ const { data } = await sb.from('boards').select('meta,acuity').eq('unit',unitId).maybeSingle(); if(data) applyCloudRow(data); }
 function cloudRerender(){ applyShiftUI(); refreshViewOptions(); updateUnitTag(); updateRubricTag(); updateScoreTab(); renderAcuity(); renderAssign(); applyGate(); }
@@ -6210,15 +6230,38 @@ function applyState(st){
      absent from the payload — and every other phone kept its old patient there. A tablet opening
      the app for the first time kept its whole demo board for the same reason. Clear anything the
      incoming board doesn't mention before applying it. */
+  // A meta snapshot is a moment in time (its own savedAt). Two places below compare a room's own
+  // editedAt against that moment: a room this device scored AFTER the snapshot was taken knows
+  // something the snapshot doesn't, so the snapshot must not be allowed to erase or rewind it. This
+  // is what let a stale draft/posted swap — or a slow cross-device push — drag a nurse's just-saved
+  // score back to whatever it read a few minutes earlier.
+  const snapTime = st.savedAt||0;
   if(st.rooms){
     const keep=new Set(Object.keys(st.rooms).map(Number));
     Object.values(rooms).forEach(r=>{ if(keep.has(r.id)) return;
       if(!(r.occupied||r.nurse||r.lock)) return;
+      if(r.editedAt && r.editedAt>snapTime) return;   // scored here after this snapshot existed — not this snapshot's to discharge
       r.occupied=false; r.nurse=null; r.lock=null; r.acuity=null; r.nextAcuity=null; r.prevAcuity=null;
       r.tally={}; r.flags=[]; r.tags=[]; r.avoid=[]; r.note=''; r.isoType=''; r.dcTime=''; r.admTime='';
       r.scoredBy=null; r.editedBy=null; r.editedAt=null; r.acceptedBy=null; r.acceptedAt=null; });
   }
-  if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{ const r=rooms[+id]; if(r){ Object.assign(r,d); r.note=''; r.prevAcuity=d.prevAcuity||null; r.scoredBy=d.scoredBy||null; r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; } });   // r.note='' purges any note saved by an older version (HIPAA)
+  // Assignment (who has the room) always applies — meta is its only source of truth. The score and
+  // everything scored alongside it only applies when this snapshot is at least as new as what the
+  // room already carries.
+  if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{
+    const r=rooms[+id]; if(!r) return;
+    r.nurse=(d.nurse!=null)?d.nurse:null; r.lock=(d.lock!=null)?d.lock:null; r.avoid=d.avoid||[];
+    if(r.editedAt && r.editedAt>snapTime) return;
+    r.acuity=d.acuity; r.nextAcuity=(d.nextAcuity!=null)?d.nextAcuity:null; r.prevAcuity=d.prevAcuity||null;
+    r.tally=d.tally; r.flags=d.flags; r.tags=d.tags; r.occupied=d.occupied;
+    r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; r.capCarried=!!d.capCarried;
+    r.acuityReason=d.acuityReason||''; r.acuityReasonOther=d.acuityReasonOther||'';
+    r.scoredBy=d.scoredBy||null; r.editedBy=d.editedBy||null; r.editedAt=d.editedAt||null;
+    r.acceptedBy=d.acceptedBy||null; r.acceptedAt=d.acceptedAt||null;
+    r.pctFlags=d.pctFlags||null; r.pctEditedBy=d.pctEditedBy||null; r.pctEditedAt=d.pctEditedAt||null;
+    r.flagsEditedBy=d.flagsEditedBy||null; r.flagsEditedAt=d.flagsEditedAt||null;
+    r.note='';   // purges any note saved by an older version (HIPAA)
+  });
   if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),ord:(n.ord==null?null:n.ord),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
@@ -6270,7 +6313,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b16';
+const APP_BUILD='2026-08-19 \u00b7 b17';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
