@@ -5997,6 +5997,7 @@ function applyCloudRow(row){
   if(row.meta && !_cloudDirty.meta && !_metaPushPending){
     const draft = row.meta._draft || null;
     const posted = _stripDraft(row.meta);
+    _lastPostedMeta = posted;
     if(draft){
       // A build is in progress somewhere on the unit. Charges work on it; everyone else stays on
       // the posted board. Either way this phone now holds both, so it can switch between them.
@@ -6073,13 +6074,20 @@ function _stripDraft(m){ if(!m) return m; const o={}; for(const k in m){ if(k!==
 function _currentDraftState(){ return (_shownBoard==='posted') ? (_readStash(DRAFTSTATE_KEY)||stateObj()) : stateObj(); }
 function _metaPayload(){
   if(!draftingBoard()) return stateObj();
-  const posted=_readStash(POSTED_KEY);
-  if(!posted) return stateObj();                 // no posted board on record — nothing to protect
+  // The posted board this draft is hiding behind: this device's stash, or the last one the cloud
+  // handed us. Falling back to stateObj() here was the leak — mid-build, stateObj() IS the draft,
+  // so a lost stash quietly promoted an unfinished board to live. If neither is on record we push
+  // nothing at all: the cloud already holds the right posted board, and leaving it untouched is
+  // always safer than overwriting it with work in progress.
+  const posted=_readStash(POSTED_KEY) || _lastPostedMeta;
+  if(!posted) return null;
   return Object.assign(_stripDraft(posted), {_draft:_currentDraftState(), _draftAt:Date.now(), _draftBy:clientId});
 }
 async function pushMeta(){
   if(!cloudOn())return;
-  try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:_metaPayload(), by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error;
+  const payload=_metaPayload();
+  if(!payload){ _cloudDirty.meta=true; setSaved('\u270e Draft \u2014 kept on this device'); return; }   // never overwrite the posted board with a draft
+  try{ const {error}=await sb.from('boards').upsert({unit:unitId, meta:payload, by:clientId, updated_at:new Date().toISOString()},{onConflict:'unit'}); if(error) throw error;
     _cloudDirty.meta=false; _metaPushPending=false; _cloudRetryReset('meta'); setSaved(draftingBoard()?'\u270e Draft saved \u2014 staff still see the posted board':'☁ Saved');
   }catch(e){ _cloudDirty.meta=true; setSaved('⚠ Saved on this device — syncing…'); _cloudRetrySchedule('meta',pushMeta); }
 }
@@ -6133,10 +6141,19 @@ let _alreadyFiled='';   // (date|shift) already written to Manager reports — s
    so a forgotten draft can't freeze the unit's board for good. */
 const DRAFT_KEY='evenshift_drafting_v1';
 let _draftFlag=null;
+/* Whether a build is in progress belongs to the unit's board, not to a stopwatch on one phone.
+   This used to switch itself off 12 hours after End Shift. A draft left overnight — a demo board,
+   or a charge who ended the shift and got pulled away — silently lost its protection, and the very
+   next save published the half-built board to every staff phone as though it were live: an
+   assignment on screen under "the charge is still building this assignment", which is exactly the
+   state it can't be in. The cloud row settles this instead (applyCloudRow sets it from whether the
+   board carries a draft); the local flag is only this device's copy of that answer. Post and Undo
+   clear it. A flag that stays on too long stalls one charge's own sync; a flag that clears itself
+   dumps an unfinished board on the whole floor. */
 function draftingBoard(){
   if(_draftFlag===null){
     try{ const j=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');
-      _draftFlag = !!(j && j.unit===unitId && Date.now()-(j.at||0) < 12*3600*1000);
+      _draftFlag = !!(j && j.unit===unitId);
     }catch(e){ _draftFlag=false; }
   }
   return _draftFlag;
@@ -6157,6 +6174,7 @@ function setDrafting(on){
    view has to be reconstructed — the staff view is the genuine posted board, drawn from the state
    that produced it. */
 const POSTED_KEY='evenshift_posted_board_v1';     // the board staff are still on
+let _lastPostedMeta=null;                         // last posted board seen from the cloud, for when the stash is gone
 const DRAFTSTATE_KEY='evenshift_draft_board_v1';  // the charge's work in progress
 let _shownBoard='draft';
 function _stashPostedBoard(st){ try{ localStorage.setItem(POSTED_KEY, JSON.stringify(st)); }catch(e){} }
@@ -6313,7 +6331,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-19 \u00b7 b17';
+const APP_BUILD='2026-08-30 \u00b7 b18';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
