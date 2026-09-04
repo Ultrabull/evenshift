@@ -122,6 +122,7 @@
   .unitbtns{margin-left:auto;display:flex;gap:5px;}
   .btn.sm{padding:5px 10px;font-size:12px;}
   .btn.sm.danger{color:#B03A3A;}
+  .btn.danger{color:#B03A3A;border-color:#E4BDB3;}
   .dcadmLegend{font-size:12px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
   .dcadot{display:inline-block;width:11px;height:11px;border-radius:3px;}
   .dcadot.dcd{background:#9BD3AC;}
@@ -157,6 +158,14 @@
   .qhedit{padding:5px 12px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;}
   .qhacklist{font-size:11px;color:#8A6A12;}
   .qhacklist.none{color:#A98A48;font-style:italic;}
+  .qhitem{padding:12px 0;border-top:1px dashed var(--warn-line2);}
+  .qhitem:first-child{border-top:none;padding-top:2px;}
+  .qhitem.qhnew{position:relative;}
+  .qhmeta{margin-top:6px;font-size:10.5px;color:#A98A48;}
+  .qhkeep{font-weight:600;}
+  .qhdel{color:#B4432E;border-color:#E4BDB3;}
+  .qhaddin{margin-top:12px;margin-bottom:2px;padding:9px;font-size:12.5px;}
+  .qhkeepq{margin-top:12px;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
   .rcard .rno{font-family:var(--display);font-weight:700;font-size:15px;}
   .rcard .acu{font-family:var(--display);font-weight:700;font-size:22px;line-height:1;margin-top:6px;}
   .rcard .acu small{font-size:11px;font-weight:600;color:var(--ink-soft);}
@@ -1087,6 +1096,25 @@
   .scoreprog.okacc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
   .rcard.t-adm{background:var(--info-wash);border-color:var(--info-line2);}
   .rcard.t-dc{background:var(--ok-wash2);border-color:var(--ok-line);}
+  .noteta{width:100%;box-sizing:border-box;font-size:13.5px;line-height:1.45;padding:8px 10px;border:1.5px solid var(--line-strong);
+    border-radius:10px;background:var(--field);color:var(--ink);resize:vertical;font-family:inherit;}
+  .notemeta{font-size:10.5px;color:var(--ink-soft);margin-top:3px;}
+  .cnotewrap{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);}
+  .cnotehd{font-size:11.5px;font-weight:800;color:var(--info-ink);margin-bottom:5px;}
+  .cnotehd span{display:block;font-weight:600;font-size:10.5px;color:var(--ink-soft);}
+  .sheetbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;}
+  .sheetnote{font-size:10.5px;color:var(--ink-soft);}
+  .shgrp{margin-bottom:12px;} .shgrp h4{margin:0 0 5px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .shrow{display:flex;gap:9px;padding:6px 0;border-top:1px solid var(--line);}
+  .shrm{font-weight:800;min-width:34px;}
+  .shupd{font-size:13px;line-height:1.45;} .shupd.none{color:var(--ink-soft);font-style:italic;}
+  .shfl{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
+  .shby{font-size:10px;color:var(--ink-soft);margin-top:2px;}
+  .shtbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .shtbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);border-bottom:1.5px solid var(--line-strong);padding:5px 4px;}
+  .shtbl td{padding:5px 4px;border-bottom:1px solid var(--line);}
+  .shtbl .shmv{font-weight:800;color:var(--warn-ink);}
+  .shtbl .shtot td{font-weight:800;border-top:1.5px solid var(--line-strong);border-bottom:none;}
   .expbox{display:flex;align-items:baseline;gap:8px;margin-top:8px;}
   .expbox input{font-size:30px;font-weight:800;width:130px;padding:8px 10px;border:1.5px solid var(--line-strong);border-radius:12px;background:var(--field);color:var(--ink);text-align:center;}
   .ftog.offduty{opacity:.75;}
@@ -1784,12 +1812,13 @@
 
 <div class="scrim" id="quickScrim" onclick="if(event.target===this)closeQuickEdit()">
   <div class="modal" style="max-width:460px;">
-    <div class="mhead"><span class="rt">📣 Quick hits — unit handoff</span><button class="btn" onclick="closeQuickEdit()">Close</button></div>
+    <div class="mhead"><span class="rt" id="qhHead">📣 New announcement</span><button class="btn" onclick="closeQuickEdit()">Close</button></div>
     <div class="mbody">
       <p class="covnote">General shift communication for the next charge and staff — falls, manager concerns, reminders, equipment. No patient names — room numbers only.</p>
-      <textarea id="quickText" class="hudnote" style="min-height:120px;" placeholder="e.g. 2 falls overnight (Rm 41, 58). Manager wants hourly rounding documented. Glucometer #3 out for repair."></textarea>
-      <div class="hudactions"><button class="btn primary" onclick="saveQuickHits()">Post to unit</button><button class="btn" onclick="clearQuickHits()">Clear</button></div>
-      <div id="quickMsg" class="hint" style="margin-top:8px;"></div>
+      <textarea id="quickText" class="hudnote" maxlength="300" style="min-height:120px;" placeholder="e.g. 2 falls overnight (Rm 41, 58). Manager wants hourly rounding documented. Glucometer #3 out for repair."></textarea>
+      <div class="qhkeepq">How long should this stay on the board?</div>
+      <div class="hudactions"><button class="btn" id="qhWeekBtn" onclick="saveQuickHits('week')">Keep 1 week</button><button class="btn primary" id="qhKeepBtn" onclick="saveQuickHits('forever')">Keep until deleted</button><button class="btn danger" id="qhDelBtn" style="display:none;" onclick="deleteQuickHit(_qhEditId)">Delete</button></div>
+      <div id="quickMsg" class="hint" style="margin-top:8px;">“Keep 1 week” takes itself down seven days from now. “Keep until deleted” stays up until a charge deletes it.</div>
     </div>
   </div>
 </div>
@@ -2253,7 +2282,7 @@ function defaultRoster(){
 }
 defaultRoster();
 
-let selectedRoom=null, modalRoom=null, modalTally={}, modalFlags=[], modalMode='quick', modalExpress=null, dragId=null, modalPin='', modalAvoid=[], modalNext=null, modalReason='', modalReasonOther='', _prevNow=null;
+let selectedRoom=null, modalRoom=null, modalTally={}, modalFlags=[], modalMode='quick', modalExpress=null, dragId=null, modalPin='', modalAvoid=[], modalNext=null, modalReason='', modalReasonOther='', _prevNow=null, modalUpdate='', modalCnote='';
 let _nextTouched=false;   // did someone deliberately predict a different next-shift load, or is it just following the score?
 const ACUITY_SWING=1.5;  // hrs change that requires a reason (now-vs-prev OR now-vs-next)
 const SWING_REASONS=['Procedure / surgery','Off a drip','Stabilized','Decompensating','New admit workup','Discharge pending','Code / Rapid response','Off isolation','Sitter added / removed','Other'];
@@ -2523,6 +2552,7 @@ function openModal(rn){ if(!canScoreRoom(rn))return;
   modalRoom=rn; const r=rooms[rn];
   modalTally=JSON.parse(JSON.stringify(r.tally||{})); modalFlags=[...(r.flags||[])]; modalExpress=null;
   modalPin=r.lock||''; modalAvoid=[...(r.avoid||[])];
+  modalUpdate=r.update||''; modalCnote=r.cnote||'';
   modalNext = (r.nextAcuity!=null) ? r.nextAcuity : (r.acuity!=null ? r.acuity : null);
   _nextTouched = (r.nextAcuity!=null && r.acuity!=null && Math.abs(r.nextAcuity-r.acuity)>=0.25);
   _prevNow = (r.acuity!=null) ? r.acuity : null;   // the score before this edit, for swing detection
@@ -2619,6 +2649,7 @@ function renderModalBody(){
       +`<div class="expbox"><input type="number" id="expNum" inputmode="decimal" min="0" max="12" step="0.25" value="${val}" oninput="setExpress(this.value)" onfocus="this.select()"> <small>hrs</small></div></div>`;
   }
   body+=flagsNoteHTML();
+  body+=updateNoteHTML();
   body+=nextShiftHTML();
   body+=`<div id="swingReasonWrap">${swingReasonHTML()}</div>`;
   body+= chargeMode ? nurseConstraintHTML() : '';
@@ -2691,6 +2722,42 @@ function tallyMismatchHTML(){
   }
   return `<div class="tallynote">\u2139\ufe0f This list adds up to <b>${acuFmt(th)} hrs</b>, but the score is set to <b>${acuFmt(r.acuity)}</b> \u2014 ${who?who+' typed':'someone typed'} the number in directly. Your ticks are still here. Save from this list to go back to ${acuFmt(th)}.</div>`;
 }
+/* ── Two notes per room, deliberately different ──────────────────────────────────────
+   The shift update is the nurse's, and it is what the charge reads instead of opening a chart —
+   and what the report-out sheet is built from. The charge note is the charge's own running list
+   for a room (TV privileges back Friday, chair pad, boundaries agreed) and rides with the bed
+   until it is emptied, so it stops living on a sticky note.
+
+   Both are free text, which is where identifiers get typed if nothing says otherwise. Neither is
+   a place for a name, an MRN or a date of birth: the label says so, the placeholder shows the
+   shape of a good entry, and the length cap keeps it to a line rather than a narrative. The room
+   number is the identifier this app uses, and that is the one it keeps. */
+const UPDATE_MAX=200, CNOTE_MAX=200;
+function updateNoteHTML(){
+  const r=rooms[modalRoom]; if(!r) return '';
+  const upd=esc(r.update||''), who=r.updateBy?esc(r.updateBy):'', when=r.updateAt?_qhTime(r.updateAt):'';
+  let h=`<div class="grp"><h4>Shift update <span style="font-weight:400;color:var(--ink-soft)">\u00b7 everyone sees this</span></h4>`
+   +`<div class="hint" style="margin:0 0 6px;">What the next nurse needs to know about this room. <b>No names, MRNs or dates of birth.</b></div>`
+   +`<textarea id="updBox" class="noteta" maxlength="${UPDATE_MAX}" rows="2" placeholder="e.g. tolerating diet, drain out, family updated" oninput="setUpdate(this.value)">${upd}</textarea>`
+   +`<div class="notemeta"><span id="updCount">${(r.update||'').length}/${UPDATE_MAX}</span>${who?` \u00b7 last by ${who}${when?' '+when:''}`:''}</div>`;
+  if(chargeMode){
+    const cn=esc(r.cnote||'');
+    h+=`<div class="cnotewrap"><div class="cnotehd">\ud83d\udd12 Charge note <span>only the charge console shows this \u00b7 stays with the bed until it\u2019s emptied</span></div>`
+      +`<textarea id="cnoteBox" class="noteta" maxlength="${CNOTE_MAX}" rows="2" placeholder="e.g. TV privileges back Fri, chair pad, boundaries agreed" oninput="setCnote(this.value)">${cn}</textarea>`
+      +`<div class="notemeta"><span id="cnoteCount">${(r.cnote||'').length}/${CNOTE_MAX}</span></div></div>`;
+  }
+  return h+`</div>`;
+}
+function setUpdate(v){
+  const r=rooms[modalRoom]; if(!r) return;
+  modalUpdate=String(v).slice(0,UPDATE_MAX);
+  const c=document.getElementById('updCount'); if(c) c.textContent=modalUpdate.length+'/'+UPDATE_MAX;
+}
+function setCnote(v){
+  if(!chargeMode) return;
+  modalCnote=String(v).slice(0,CNOTE_MAX);
+  const c=document.getElementById('cnoteCount'); if(c) c.textContent=modalCnote.length+'/'+CNOTE_MAX;
+}
 function nextShiftHTML(){
   const now=_modalNow();
   if(!_nextTouched) modalNext=now;
@@ -2741,6 +2808,10 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   if(!r.flags.includes('dc')) r.dcTime='';
   const am=document.getElementById('admTimeIn'); r.admTime=am?am.value.trim():'';
   if(!r.flags.includes('adm')) r.admTime='';
+  // The update is the nurse's, so anyone who can score the room can write it. The charge note is
+  // charge-only, so a staff save must never blank it.
+  if((r.update||'')!==modalUpdate){ r.update=modalUpdate; r.updateBy=(chargeMode?'Charge':(_quickViewerName()||'Staff')); r.updateAt=Date.now(); }
+  if(chargeMode) r.cnote=modalCnote;
   r.avoid=modalAvoid.slice(); r.lock=modalPin||null; if(modalPin){ r.nurse=modalPin; r.avoid=r.avoid.filter(x=>x!==modalPin); }
   r.capCarried=false;  // re-scoring this room acknowledges the ratio-cap reminder
   // Record who last touched this room and when — so the charge can spot a wrong/impersonated edit.
@@ -2780,6 +2851,9 @@ function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom
   // wipe the rest of the outgoing patient's data so the next admit starts clean
   r.tags=[];r.avoid=[];r.nextAcuity=null;r.prevAcuity=null;r.isoType='';r.dcTime='';r.admTime='';
   r.acuityReason='';r.acuityReasonOther='';r.capCarried=false;r.pctFlags=[];r.editedBy=null;r.editedAt=null;r.pctEditedBy=null;r.pctEditedAt=null;r.flagsEditedBy=null;r.flagsEditedAt=null;
+  // Both notes belong to the patient who was in the bed, so emptying it clears them. The charge
+  // note is explicitly "stays until discharge" — this is that discharge.
+  r.update='';r.updateBy=null;r.updateAt=null;r.cnote='';r.acceptedBy=null;r.acceptedAt=null;
   closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
@@ -3441,52 +3515,134 @@ function applyReturning(){
   scheduleSave(); if(assignVisible()) renderAssign();
 }
 function goShare(){ if(typeof openShare==='function') openShare(); else show('assign'); }
-// ── Quick Hits: shift handoff communication (charge → next charge + staff). No PHI. ──
-let QUICK_HITS={ text:'', at:0, by:'' };
-let QUICK_ACKS={};   // { name: timestamp } for the CURRENT message; resets when text is replaced
-function openQuickEdit(){ if(!chargeMode) return; const t=document.getElementById('quickText'); if(t) t.value=QUICK_HITS.text||''; const m=document.getElementById('quickMsg'); if(m) m.textContent=''; document.getElementById('quickScrim').classList.add('on'); }
-function closeQuickEdit(){ const s=document.getElementById('quickScrim'); if(s) s.classList.remove('on'); }
-function saveQuickHits(){
-  const v=(document.getElementById('quickText').value||'').trim();
-  const changed = v!==QUICK_HITS.text;
-  // Quick hits are a living list — charge keeps some, removes some, adds some.
-  // We KEEP acknowledgments; if the text changed, QUICK_HITS.at advances so prior
-  // acks read as "earlier version" and staff are prompted to re-acknowledge.
-  QUICK_HITS={ text:v, at: changed?Date.now():(QUICK_HITS.at||Date.now()), by: changed?(chargeName||'Charge'):QUICK_HITS.by };
+// ── Announcements ("quick hits"): unit-wide notes from charge to the next charge + staff. No PHI.
+//    A list, not a single message. Each one is either kept for a week (it drops off by itself) or
+//    kept until someone deletes it — that choice is made when it is posted.
+const QH_WEEK = 7*24*3600*1000;
+const QH_MAX  = 300;
+let QUICK_HITS=[];   // [{id,text,at,by,keep:'week'|'forever'}] — newest first when rendered
+let QUICK_ACKS={};   // { announcementId: { name: timestamp } }
+let _qhEditId=null;
+function _qhId(){ return 'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+// Boards saved before announcements became a list carry a single {text,at,by} blob and a flat
+// {name:ts} ack map. Fold those into the list shape so nothing posted last shift disappears.
+function normalizeQuickHits(){
+  let changed=false;
+  if(!Array.isArray(QUICK_HITS)){
+    const old=QUICK_HITS||{}; const flat=(QUICK_ACKS&&typeof QUICK_ACKS==='object')?QUICK_ACKS:{};
+    QUICK_HITS=[];
+    if(old.text && String(old.text).trim()){
+      const id=_qhId();
+      QUICK_HITS.push({id, text:String(old.text).slice(0,QH_MAX), at:old.at||Date.now(), by:old.by||'', keep:'forever'});
+      const isFlat=Object.keys(flat).length && Object.values(flat).every(v=>typeof v==='number');
+      QUICK_ACKS = isFlat ? {[id]:flat} : {};
+    } else QUICK_ACKS={};
+    changed=true;
+  }
+  if(!QUICK_ACKS || typeof QUICK_ACKS!=='object' || Array.isArray(QUICK_ACKS)) QUICK_ACKS={};
+  return changed;
+}
+// Anything past its keep-by date is dropped here rather than on a timer, so it goes away on the
+// day it should whether or not anyone had the app open. No save is forced — the charge's next
+// save writes the shortened list, and until then every device hides it on its own.
+function pruneQuickHits(){
+  let changed=normalizeQuickHits(); const now=Date.now();
+  const live=QUICK_HITS.filter(q=> q && q.text && (q.keep!=='week' || (now-(q.at||now))<QH_WEEK));
+  if(live.length!==QUICK_HITS.length){
+    const ids=new Set(live.map(q=>q.id));
+    Object.keys(QUICK_ACKS).forEach(k=>{ if(!ids.has(k)) delete QUICK_ACKS[k]; });
+    QUICK_HITS=live; changed=true;
+  }
+  return changed;
+}
+function _qhAcked(q,name){ const a=QUICK_ACKS[q.id]||{}; return !!(a[name] && a[name] >= (q.at||0)); }
+function _qhKeepLabel(q){
+  if(q.keep!=='week') return 'stays up until deleted';
+  const until=(q.at||Date.now())+QH_WEEK;
+  try{ return 'comes down '+new Date(until).toLocaleDateString([], {month:'short',day:'numeric'}); }catch(e){ return 'comes down in a week'; }
+}
+function openQuickEdit(id){
+  if(!chargeMode) return;
+  pruneQuickHits();
+  _qhEditId = id || null;
+  const q = _qhEditId ? QUICK_HITS.find(x=>x.id===_qhEditId) : null;
+  if(_qhEditId && !q){ _qhEditId=null; }
+  const t=document.getElementById('quickText'); if(t) t.value=q?q.text:'';
+  const h=document.getElementById('qhHead'); if(h) h.textContent = q?'\ud83d\udce3 Edit announcement':'\ud83d\udce3 New announcement';
+  const d=document.getElementById('qhDelBtn'); if(d) d.style.display = q?'':'none';
+  const w=document.getElementById('qhWeekBtn'); if(w) w.classList.toggle('primary', !!q && q.keep==='week');
+  const k=document.getElementById('qhKeepBtn'); if(k) k.classList.toggle('primary', !q || q.keep!=='week');
+  const m=document.getElementById('quickMsg'); if(m) m.textContent='';
+  document.getElementById('quickScrim').classList.add('on');
+}
+function closeQuickEdit(){ _qhEditId=null; const s=document.getElementById('quickScrim'); if(s) s.classList.remove('on'); }
+function saveQuickHits(keep){
+  const box=document.getElementById('quickText'); const v=((box&&box.value)||'').trim().slice(0,QH_MAX);
+  const m=document.getElementById('quickMsg');
+  if(!v){ if(m) m.textContent='Type the announcement first.'; return; }
+  pruneQuickHits();
+  const k = keep==='week' ? 'week' : 'forever';
+  const q = _qhEditId ? QUICK_HITS.find(x=>x.id===_qhEditId) : null;
+  if(q){
+    // Editing the words makes it a new message to read — the clock restarts and staff are asked
+    // to acknowledge again. Only changing how long it stays up leaves acknowledgments alone.
+    if(q.text!==v){ q.at=Date.now(); q.by=chargeName||'Charge'; }
+    q.text=v; q.keep=k;
+  } else {
+    QUICK_HITS.push({ id:_qhId(), text:v, at:Date.now(), by:chargeName||'Charge', keep:k });
+  }
   scheduleSave(); renderQuickHits(); closeQuickEdit();
 }
-function clearQuickHits(){ QUICK_HITS={ text:'', at:0, by:'' }; QUICK_ACKS={}; scheduleSave(); renderQuickHits(); closeQuickEdit(); }
-function ackQuickHits(name){ if(!name) return; QUICK_ACKS[name]=Date.now(); scheduleSave(); renderQuickHits(); }
+function deleteQuickHit(id){
+  if(!chargeMode || !id) return;
+  normalizeQuickHits();
+  QUICK_HITS=QUICK_HITS.filter(q=>q.id!==id); delete QUICK_ACKS[id];
+  scheduleSave(); renderQuickHits(); closeQuickEdit();
+}
+function clearQuickHits(){ if(!chargeMode) return; QUICK_HITS=[]; QUICK_ACKS={}; scheduleSave(); renderQuickHits(); closeQuickEdit(); }
+function ackQuickHits(id){
+  const name=_quickViewerName(); if(!name || !id) return;
+  if(!QUICK_ACKS[id]) QUICK_ACKS[id]={};
+  QUICK_ACKS[id][name]=Date.now();
+  scheduleSave(); pushAcuity(); renderQuickHits();
+}
 function _qhTime(ts){ try{ return new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
 function renderQuickHits(){
   const el=document.getElementById('quickHits'); if(!el) return;
-  const has=QUICK_HITS.text && QUICK_HITS.text.trim();
-  if(!has){
-    el.innerHTML = chargeMode ? `<button class="qhadd" onclick="openQuickEdit()">📣 Add quick hits for the unit</button>` : '';
+  pruneQuickHits();
+  const list=QUICK_HITS.slice().sort((a,b)=>(b.at||0)-(a.at||0));
+  if(!list.length){
+    el.innerHTML = chargeMode ? `<button class="qhadd" onclick="openQuickEdit()">\ud83d\udce3 Add an announcement for the unit</button>` : '';
     return;
   }
-  const stamp = `Updated ${_qhTime(QUICK_HITS.at)}${QUICK_HITS.by?' · '+esc(QUICK_HITS.by):''}`;
-  // unacknowledged badge for staff who haven't acked the current version
-  const viewerName = _quickViewerName();
-  const needsAck = !chargeMode && viewerName && !(QUICK_ACKS[viewerName] && QUICK_ACKS[viewerName]>=(QUICK_HITS.at||0));
-  let inner=`<div class="qhbody">${esc(QUICK_HITS.text).replace(/\n/g,'<br>')}</div>`;
-  if(!chargeMode && viewerName){
-    const ackTs = QUICK_ACKS[viewerName];
-    const current = ackTs && ackTs >= (QUICK_HITS.at||0);
-    if(current){ inner+=`<div class="qhackd">✓ You acknowledged this ${_qhTime(ackTs)}</div>`; }
-    else {
-      if(ackTs) inner+=`<div class="qhstale">↻ Updated since you last read it — please re-acknowledge.</div>`;
-      inner+=`<button class="qhackbtn" onclick="event.stopPropagation(); ackQuickHits(_quickViewerName())">✓ Acknowledge</button>`;
+  const viewerName=_quickViewerName();
+  const unread = (!chargeMode && viewerName) ? list.filter(q=>!_qhAcked(q,viewerName)).length : 0;
+  let items='';
+  list.forEach(q=>{
+    const acks=QUICK_ACKS[q.id]||{};
+    let foot='';
+    if(!chargeMode && viewerName){
+      const ts=acks[viewerName];
+      if(ts && ts>=(q.at||0)) foot=`<div class="qhackd">\u2713 You acknowledged this ${_qhTime(ts)}</div>`;
+      else {
+        if(ts) foot+=`<div class="qhstale">\u21bb Reworded since you last read it — please re-acknowledge.</div>`;
+        foot+=`<button class="qhackbtn" onclick="event.stopPropagation(); ackQuickHits('${q.id}')">\u2713 Acknowledge</button>`;
+      }
     }
-  }
-  if(chargeMode){
-    const names=Object.keys(QUICK_ACKS);
-    inner+=`<div class="qhackrow"><button class="qhedit" onclick="openQuickEdit()">Edit</button>`;
-    if(names.length){ const parts=names.map(n=>{ const cur=QUICK_ACKS[n]>=(QUICK_HITS.at||0); return `${esc(n)} (${_qhTime(QUICK_ACKS[n])}${cur?'':' · earlier'})`; }); inner+=`<span class="qhacklist">Acknowledged: ${parts.join(' · ')}</span>`; }
-    else inner+=`<span class="qhacklist none">No acknowledgments yet</span>`;
-    inner+=`</div>`;
-  }
-  el.innerHTML=`<details class="qhcard"${needsAck?' open':''}><summary class="qhsum"><span class="qhttl">📣 Quick hits${needsAck?' <span class="qhdot">●</span>':''}</span><span class="qhstamp">${stamp}</span></summary><div class="qhinner">${inner}</div></details>`;
+    if(chargeMode){
+      const names=Object.keys(acks);
+      foot=`<div class="qhackrow"><button class="qhedit" onclick="openQuickEdit('${q.id}')">Edit</button><button class="qhedit qhdel" onclick="deleteQuickHit('${q.id}')">Delete</button>`;
+      if(names.length){ const parts=names.map(n=>{ const cur=acks[n]>=(q.at||0); return `${esc(n)} (${_qhTime(acks[n])}${cur?'':' · earlier'})`; }); foot+=`<span class="qhacklist">Acknowledged: ${parts.join(' · ')}</span>`; }
+      else foot+=`<span class="qhacklist none">No acknowledgments yet</span>`;
+      foot+=`</div>`;
+    }
+    const unreadOne = (!chargeMode && viewerName && !_qhAcked(q,viewerName));
+    items+=`<div class="qhitem${unreadOne?' qhnew':''}"><div class="qhbody">${esc(q.text).replace(/\n/g,'<br>')}</div>`
+         + `<div class="qhmeta">${_qhTime(q.at)}${q.by?' · '+esc(q.by):''} · <span class="qhkeep">${esc(_qhKeepLabel(q))}</span></div>${foot}</div>`;
+  });
+  if(chargeMode) items+=`<button class="qhadd qhaddin" onclick="openQuickEdit()">+ Add another announcement</button>`;
+  const stamp = list.length===1 ? `1 announcement` : `${list.length} announcements`;
+  el.innerHTML=`<details class="qhcard"${unread?' open':''}><summary class="qhsum"><span class="qhttl">\ud83d\udce3 Announcements${unread?` <span class="qhdot">\u25cf</span>`:''}</span><span class="qhstamp">${stamp}</span></summary><div class="qhinner">${items}</div></details>`;
 }
 // Name of the person whose card is being viewed (for acknowledgment)
 function _quickViewerName(){
@@ -5813,6 +5969,68 @@ function movePctRoom(pid){ if(!chargeMode||selectedPctRoom==null)return; setPctR
 function showBoardCard(k){ boardCard=(boardCard===k)?'':k; const sp=document.getElementById('cardStack'); if(sp) sp.dataset.userPicked='1'; renderAssign(); }
 let staffBoardOpen=false;
 function toggleStaffBoard(){ staffBoardOpen=!staffBoardOpen; renderAssign(); }
+/* ── Two read-only sheets, both built from what is already on the board ──────────────
+   The report-out sheet is what a charge reads from at handover instead of retyping every update
+   into Epic. The acuity record is the ANM's: room, what it scored now, what it is predicted to be
+   next shift, and the reason given for any swing.
+
+   Both carry room numbers and nursing content only — no names, no MRNs, no dates of birth — and
+   both say so on the page, because a printed sheet outlives the screen it came from. */
+function _sheetShell(title, inner, printFn){
+  const t=document.getElementById('helpTitle'), b=document.getElementById('helpBody');
+  if(t) t.textContent=title;
+  if(b) b.innerHTML=`<div class="sheetbar"><button class="btn sm" onclick="${printFn}()">\ud83d\udda8 Print / Save PDF</button>`
+    +`<span class="sheetnote">Room numbers only \u2014 no patient identifiers</span></div>`+inner;
+  document.getElementById('helpScrim').classList.add('on');
+}
+function reportSheetHTML(){
+  const occ=occupied().slice().sort((a,b)=>a.id-b.id);
+  const withUpd=occ.filter(r=>(r.update||'').trim());
+  if(!occ.length) return '<div class="hint">No patients on the board yet.</div>';
+  const byNurse={};
+  occ.forEach(r=>{ const n=nurses.find(x=>x.id===r.nurse); const k=n?n.name:'Not assigned';
+    (byNurse[k]||(byNurse[k]=[])).push(r); });
+  let h=`<div class="hint" style="margin:0 0 10px;">${withUpd.length} of ${occ.length} room${occ.length===1?'':'s'} have an update.</div>`;
+  Object.keys(byNurse).sort().forEach(name=>{
+    h+=`<div class="shgrp"><h4>${esc(name)}</h4>`;
+    byNurse[name].forEach(r=>{
+      const u=(r.update||'').trim();
+      const fl=(r.flags||[]).map(getFlagLabel).slice(0,4).join(' \u00b7 ');
+      h+=`<div class="shrow"><div class="shrm">${r.id}</div><div class="shbody">`
+        +`<div class="shupd${u?'':' none'}">${u?esc(u):'\u2014 no update'}</div>`
+        +`${fl?`<div class="shfl">${esc(fl)}</div>`:''}`
+        +`${r.updateBy?`<div class="shby">${esc(r.updateBy)}${r.updateAt?' \u00b7 '+_qhTime(r.updateAt):''}</div>`:''}`
+        +`</div></div>`; });
+    h+=`</div>`; });
+  return h;
+}
+function openReportSheet(){ _sheetShell('\ud83d\udde3 Report sheet \u2014 '+shiftType+' '+shiftDate, reportSheetHTML(), 'printReportSheet'); }
+function acuitySheetHTML(){
+  const occ=occupied().slice().sort((a,b)=>a.id-b.id);
+  if(!occ.length) return '<div class="hint">No patients on the board yet.</div>';
+  let h=`<table class="shtbl"><tr><th>Rm</th><th>Nurse</th><th>Now</th><th>Next</th><th>Reason for the change</th></tr>`;
+  occ.forEach(r=>{
+    const n=nurses.find(x=>x.id===r.nurse);
+    const nx=(r.nextAcuity!=null)?r.nextAcuity:r.acuity;
+    const moved=(r.acuity!=null&&nx!=null&&Math.abs(nx-r.acuity)>=0.25);
+    const reason=r.acuityReason==='Other'?(r.acuityReasonOther||'Other'):(r.acuityReason||'');
+    h+=`<tr><td><b>${r.id}</b></td><td>${n?esc(n.name):'\u2014'}</td>`
+      +`<td>${r.acuity!=null?acuFmt(r.acuity):'\u2014'}</td>`
+      +`<td class="${moved?'shmv':''}">${nx!=null?acuFmt(nx):'\u2014'}</td>`
+      +`<td>${esc(reason)||(moved?'\u2014':'')}</td></tr>`; });
+  const tot=occ.reduce((s,r)=>s+(r.acuity||0),0), totN=occ.reduce((s,r)=>s+((r.nextAcuity!=null?r.nextAcuity:r.acuity)||0),0);
+  h+=`<tr class="shtot"><td colspan="2">Total \u00b7 ${occ.length} patients</td><td>${acuFmt(tot)}</td><td>${acuFmt(totN)}</td><td></td></tr></table>`;
+  return h;
+}
+function openAcuitySheet(){ _sheetShell('\ud83d\udcca Acuity record \u2014 '+shiftType+' '+shiftDate, acuitySheetHTML(), 'printAcuitySheet'); }
+function _printSheet(title, inner){
+  const pa=document.getElementById('printArea'); if(!pa) return;
+  pa.innerHTML=`<div class="prhead"><b>${esc(FLOOR.unit||'Unit')}</b> \u00b7 ${esc(title)} \u00b7 ${esc(shiftType)} ${esc(shiftDate)}`
+    +`<div class="pr-foot" style="margin-top:2px;">Room numbers only \u2014 no patient identifiers</div></div>`+inner;
+  try{ window.print(); }catch(e){ openInTab(pa.innerHTML); }
+}
+function printReportSheet(){ _printSheet('Report sheet', reportSheetHTML()); }
+function printAcuitySheet(){ _printSheet('Acuity record', acuitySheetHTML()); }
 function openFinalSheet(){
   const t=document.getElementById('helpTitle'), b=document.getElementById('helpBody');
   if(t) t.textContent='📋 Final assignment — '+shiftType+' '+shiftDate;
@@ -5958,7 +6176,8 @@ function renderSupport(){
   if(!chargeMode){
     // Staff: their own card shows first (above, via CSS order); the full board sits below, collapsible.
     if(boardPosted){
-      h+=`<button class="finalsheetbtn" onclick="openFinalSheet()">📋 View final assignment sheet</button>`;
+      h+=`<button class="finalsheetbtn" onclick="openFinalSheet()">📋 View final assignment sheet</button>`
+       +`<button class="finalsheetbtn" onclick="openReportSheet()">🗣 Report sheet — every room's update</button>`;
     }
     h+=`<button class="boardtoggle" onclick="toggleStaffBoard()">${staffBoardOpen?'▾':'▸'} See the whole board</button>`;
     if(staffBoardOpen){
@@ -5991,6 +6210,8 @@ function renderSupport(){
     if(chargeMode && assigned){
       const afterTiles=`<div class="cardsec">After it\u2019s final</div><div class="btilegrid">`+
         `<button class="btile" onclick="goShare()"><span class="btemoji">📤</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`+
+        `<button class="btile" onclick="openReportSheet()"><span class="btemoji">🗣</span><span class="btlabel">Report Sheet</span><span class="btsub">every room's update</span></button>`+
+        `<button class="btile" onclick="openAcuitySheet()"><span class="btemoji">📊</span><span class="btlabel">Acuity Record</span><span class="btsub">now, next & reason</span></button>`+
         `<button class="btile" onclick="nextShift()"><span class="btemoji">🔄</span><span class="btlabel">End Shift &amp; Hand Off</span><span class="btsub">staff keep theirs till you post</span></button>`+
         `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">📋</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`+
       `</div>`;
@@ -6068,7 +6289,10 @@ function acuityObj(){
   const a={};
   const d={}; rosterN.forEach(n=>{ if(n.scoredDone && n.doneAt) d[n.id]=n.doneAt; });
   if(Object.keys(d).length) a._done=d;
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
+  // Acknowledgments are tapped by staff, and staff phones only ever push the acuity column —
+  // sending them here is the only way they reach the charge's board.
+  if(QUICK_ACKS && Object.keys(QUICK_ACKS).length) a._acks=JSON.parse(JSON.stringify(QUICK_ACKS));
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
@@ -6095,6 +6319,16 @@ function applyCloudRow(row){
       applyState(posted);                                              // charge-owned: roster, rubric, floor, assignments, shift, pin
     }
   }
+  if(row.acuity && row.acuity._acks && typeof row.acuity._acks==='object'){
+    // Two phones can acknowledge at the same time, so merge rather than replace: every name we
+    // already hold stays, and the later of the two timestamps wins.
+    normalizeQuickHits();
+    for(const qid in row.acuity._acks){
+      const inc=row.acuity._acks[qid]; if(!inc || typeof inc!=='object') continue;
+      if(!QUICK_ACKS[qid]) QUICK_ACKS[qid]={};
+      for(const nm in inc){ if((inc[nm]||0) > (QUICK_ACKS[qid][nm]||0)) QUICK_ACKS[qid][nm]=inc[nm]; }
+    }
+  }
   if(row.acuity && row.acuity._done){
     const base=shiftBaseline();
     for(const nid in row.acuity._done){ const ts=row.acuity._done[nid];
@@ -6114,6 +6348,7 @@ function applyCloudRow(row){
     if((a.editedAt||0) >= (r.editedAt||0)){
       r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note='';
       if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt;
+      if(a.update!==undefined){ r.update=a.update||''; r.updateBy=a.updateBy||null; r.updateAt=a.updateAt||null; }
       if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt;
       if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt;
     }
@@ -6318,7 +6553,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
@@ -6342,7 +6577,8 @@ function applyState(st){
       if(r.editedAt && r.editedAt>snapTime) return;   // scored here after this snapshot existed — not this snapshot's to discharge
       r.occupied=false; r.nurse=null; r.lock=null; r.acuity=null; r.nextAcuity=null; r.prevAcuity=null;
       r.tally={}; r.flags=[]; r.tags=[]; r.avoid=[]; r.note=''; r.isoType=''; r.dcTime=''; r.admTime='';
-      r.scoredBy=null; r.editedBy=null; r.editedAt=null; r.acceptedBy=null; r.acceptedAt=null; });
+      r.scoredBy=null; r.editedBy=null; r.editedAt=null; r.acceptedBy=null; r.acceptedAt=null;
+      r.update=''; r.updateBy=null; r.updateAt=null; r.cnote=''; });
   }
   // Assignment (who has the room) always applies — meta is its only source of truth. The score and
   // everything scored alongside it only applies when this snapshot is at least as new as what the
@@ -6357,6 +6593,7 @@ function applyState(st){
     r.acuityReason=d.acuityReason||''; r.acuityReasonOther=d.acuityReasonOther||'';
     r.scoredBy=d.scoredBy||null; r.editedBy=d.editedBy||null; r.editedAt=d.editedAt||null;
     r.acceptedBy=d.acceptedBy||null; r.acceptedAt=d.acceptedAt||null;
+    r.update=d.update||''; r.updateBy=d.updateBy||null; r.updateAt=d.updateAt||null; r.cnote=d.cnote||'';
     r.pctFlags=d.pctFlags||null; r.pctEditedBy=d.pctEditedBy||null; r.pctEditedAt=d.pctEditedAt||null;
     r.flagsEditedBy=d.flagsEditedBy||null; r.flagsEditedAt=d.flagsEditedAt||null;
     r.note='';   // purges any note saved by an older version (HIPAA)
@@ -6398,6 +6635,7 @@ function applyState(st){
   if(Array.isArray(st.huddleHistory)) HUDDLE_HISTORY=st.huddleHistory;
   if(st.quickHits && typeof st.quickHits==='object') QUICK_HITS=st.quickHits;
   if(st.quickAcks && typeof st.quickAcks==='object') QUICK_ACKS=st.quickAcks;
+  pruneQuickHits();
   if(typeof st.surveyOn==='boolean') SURVEY_ON=st.surveyOn;
   if(Array.isArray(st.surveyResponses)) SURVEY_RESPONSES=st.surveyResponses;
   if(typeof st.pctMode==='boolean') PCT_MODE=st.pctMode;
@@ -6417,7 +6655,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b20';
+const APP_BUILD='2026-09-04 \u00b7 b21';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
