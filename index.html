@@ -2758,7 +2758,8 @@ function nextReadoutHTML(){
 }
 function _refreshNext(){
   if(!_nextTouched) modalNext=_modalNow();
-  const sl=document.getElementById('nextSlider'); if(sl && String(sl.value)!==String(modalNext)) sl.value=modalNext;
+  const sl=document.getElementById('nextNum');
+  if(sl && document.activeElement!==sl && String(sl.value)!==String(modalNext)) sl.value=modalNext;   // don't fight the person typing
   const el=document.getElementById('nextReadout'); if(el) el.innerHTML=nextReadoutHTML();
 }
 function nextSameAsNow(){ _nextTouched=false; modalNext=_modalNow(); _refreshNext(); _refreshSwing(); }
@@ -2825,12 +2826,16 @@ function nextShiftHTML(){
   if(!_nextTouched) modalNext=now;
   const nv=(modalNext!=null)?modalNext:now;
   return `<div class="grp"><h4>Next shift <span style="font-weight:400;color:var(--ink-soft)">\u00b7 predicted</span><button class="qhelp" onclick="showHelp('nextshift')" title="What\u2019s this?">?</button></h4>`
-    +`<div class="hint" style="margin:0 0 7px;"><b>Only move this if you think the next shift will be different.</b> Slide <b>right</b> if this patient will feel heavier than the score you just entered, <b>left</b> if lighter. Nothing changing? Leave it \u2014 it already matches your score.</div>`
-    +`<div class="exp"><input type="range" id="nextSlider" min="0" max="8" step="0.25" value="${nv}" oninput="setNext(this.value)" class="slider">`
+    +`<div class="hint" style="margin:0 0 7px;"><b>Only change this if you think the next shift will be different.</b> Type a <b>higher</b> number if this patient will feel heavier than the score you just entered, <b>lower</b> if lighter. Nothing changing? Leave it \u2014 it already matches your score.</div>`
+    +`<div class="exp"><div class="expbox"><input type="number" id="nextNum" inputmode="decimal" min="0" max="12" step="0.25" value="${nv}" oninput="setNext(this.value)" onfocus="this.select()"> <small>hrs</small></div>`
     +`<div id="nextReadout">${nextReadoutHTML()}</div></div></div>`;
 }
 function _refreshSwing(){ const w=document.getElementById('swingReasonWrap'); if(w) w.innerHTML=swingReasonHTML(); }
-function setNext(v){ modalNext=parseFloat(v); _nextTouched=true; _refreshNext(); _refreshSwing(); }
+function setNext(v){
+  const n=parseFloat(v);
+  if(!isFinite(n)) return;                       // mid-typing (empty, or just "."), leave it alone
+  modalNext=Math.min(12,Math.max(0,n)); _nextTouched=true; _refreshNext(); _refreshSwing();
+}
 function toggleQuick(key){ if((modalTally[key]||0)>0) delete modalTally[key]; else modalTally[key]=1; renderModalBody(); }
 function setExpress(v){
   const n=parseFloat(v);
@@ -6753,7 +6758,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b28';
+const APP_BUILD='2026-09-04 \u00b7 b29';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
