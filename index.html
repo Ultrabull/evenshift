@@ -3643,7 +3643,7 @@ function _qhTime(ts){ try{ return new Date(ts).toLocaleString([], {month:'short'
 function renderQuickHits(){
   const el=document.getElementById('quickHits'); if(!el) return;
   pruneQuickHits();
-  const list=QUICK_HITS.slice().sort((a,b)=>(b.at||0)-(a.at||0));
+  const list=QUICK_HITS.map((q,i)=>({q,i})).sort((a,b)=>((b.q.at||0)-(a.q.at||0)) || (b.i-a.i)).map(x=>x.q);
   if(!list.length){
     el.innerHTML = chargeMode ? `<button class="qhadd" onclick="openQuickEdit()">\ud83d\udce3 Add an announcement for the unit</button>` : '';
     return;
