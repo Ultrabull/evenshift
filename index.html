@@ -1132,6 +1132,7 @@
   .hcov.warn{color:var(--ink-soft);}   /* the colours already say it spans halls — no need to shout in red */
   .loadrow.noBar{justify-content:flex-start;}
   .cardtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
+  .cardtools.clinbal{margin:-2px 0 14px;}
   .nsel{width:100%;padding:11px 12px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--field);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;}
   .avchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .avchip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px 6px 11px;background:var(--bad-wash);border:1.5px solid var(--bad-line);border-radius:9px;font-size:13px;font-weight:700;color:var(--bad);}
@@ -6168,10 +6169,7 @@ function renderSupport(){
   let clinInner = cg.length
     ? '<div class="clingrid">'+cg.map(x=>`<div class="clinrow"><span class="clinlab">${esc(x.label)}</span><span class="clinrooms">${x.rooms.join(', ')}</span></div>`).join('')+'</div>'
     : '<div class="covsub">No clinical flags on the board.</div>';
-  // Re-balance sits here rather than above the cards: this is the panel the charge is already reading
-  // when she decides the split came out wrong, and up top it kept getting tapped by accident.
-  if(chargeMode && viewAs==='charge' && occupied().some(r=>r.nurse))
-    clinInner += `<div class="cardtools clinbal"><button class="btn sm" onclick="rebalanceNurses()">\u2696\ufe0f Re-balance</button><span class="cthint">re-runs the build on the scores as they stand now</span></div>`;
+
 
   // Pending admissions (the pool)
   const pend=occupied().filter(r=>!r.nurse).sort((a,b)=>posOf(a.id)-posOf(b.id));
@@ -6235,6 +6233,11 @@ function renderSupport(){
   }
   h='<div class="cardsec">Staff assignment</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
   h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+'</div>';
+  // Re-balance sits under the Clinical row rather than on top of the nurse cards, where it kept
+  // getting tapped by accident. It stays on the board itself, not inside a tile that has to be
+  // opened first — a button you have to go looking for is a button nobody uses.
+  if(occupied().some(r=>r.nurse))
+    h+=`<div class="cardtools clinbal"><button class="btn sm" onclick="rebalanceNurses()">\u2696\ufe0f Re-balance</button><span class="cthint">re-runs the build on the scores as they stand now</span></div>`;
   const sel=allDefs.find(d=>d[0]===boardCard);
   const ex=document.getElementById('staffExtras');
   if(ex) ex.innerHTML=staffInner;   // nurses → PCT → sitter → HUC always flows in order
@@ -6696,7 +6699,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b22';
+const APP_BUILD='2026-09-04 \u00b7 b23';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
