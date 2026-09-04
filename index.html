@@ -1091,6 +1091,12 @@
   .expbox input{font-size:30px;font-weight:800;width:130px;padding:8px 10px;border:1.5px solid var(--line-strong);border-radius:12px;background:var(--field);color:var(--ink);text-align:center;}
   .ftog.offduty{opacity:.75;}
   .offtag{font-size:9px;font-weight:800;margin-left:4px;padding:1px 4px;border-radius:5px;background:var(--track);color:var(--ink-soft);}
+  .hallchip{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;margin:0 4px 0 0;border-radius:999px;
+    color:#fff;background:var(--hc);letter-spacing:.01em;}
+  .hallchip.none{background:var(--track);color:var(--ink-soft);}
+  .hcov{display:flex;flex-wrap:wrap;align-items:center;gap:2px;}
+  .hcov.warn{color:var(--ink-soft);}   /* the colours already say it spans halls — no need to shout in red */
+  .loadrow.noBar{justify-content:flex-start;}
   .cardtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
   .cardtools .cthint{font-size:10.5px;color:var(--ink-soft);}
   .donebtn.said{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
@@ -1997,6 +2003,29 @@ let RUBRIC=cloneSecs(TEMPLATES[RUBRIC_NAME].sections);
    never reach them. Re-point the two assessment rows on load — only when the row still carries the
    old wording and its points are untouched, so a unit that deliberately edited either one is left
    exactly as it is. */
+/* A unit that has opened the flag editor keeps its own labels, so corrections shipped here never
+   reach it — 10 Green's battery flag still read "Battery Change 7A/7P" long after the default
+   changed. Re-point the renamed ones once, and only when the unit's own label still matches the
+   wording being corrected, so a unit that deliberately chose something else is left alone. Hiding
+   the retired battery flag is additive: it stays hidden, and anything already tagged with it keeps
+   the tag until the room is re-scored. */
+const FLAG_LABEL_FIXES={
+  sleep:{from:['Sleep promo'],                       label:'DND 11p\u20136a',    full:'Do not disturb 11PM\u20136AM \u2014 no routine vitals'},
+  bs:   {from:['BS checks','Blood sugar checks'],    label:'ACHS',           full:'ACHS \u2014 blood sugar before meals & at bedtime'},
+  oos:  {from:['Maintenance'],                       label:'Out of service', full:'Room out of service \u2014 closed, not a patient need'}
+};
+function migrateFlagConfig(){
+  let changed=false;
+  const cfg=UNIT_FLAG_CONFIG; if(!cfg) return false;
+  cfg.renames=cfg.renames||{}; cfg.hidden=cfg.hidden||[];
+  Object.entries(FLAG_LABEL_FIXES).forEach(([code,fix])=>{
+    const r=cfg.renames[code]; if(!r) return;                       // no override — the new default already shows
+    if(!fix.from.includes(r.label)) return;                         // they chose their own wording — leave it
+    cfg.renames[code]={label:fix.label, full:fix.full}; changed=true;
+  });
+  if(!cfg.hidden.includes('telebat')){ cfg.hidden.push('telebat'); changed=true; }   // #4: CPO + Tele already cover it
+  return changed;
+}
 function migrateRubricLabels(secs){
   if(!Array.isArray(secs)) return false;
   let changed=false;
@@ -2009,7 +2038,7 @@ function migrateRubricLabels(secs){
   });
   return changed;
 }
-const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["hep","Hep gtt","Heparin drip"],["ins","Insulin drip","Insulin drip (gtt)"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley care","Foley catheter care"],["extcath","External cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Maintenance","Out of service / Maintenance"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","BS checks","Blood sugar checks"],["sleep","Sleep promo","Sleep promotion 11PM\u20136AM"],["chg","CHG bath","CHG bath (chlorhexidine)"],["sio","Strict I/O","Strict intake & output"],["dwt","Daily weights","Daily weights"],["feed","Feeder","Needs feeding assistance"],["sbrk","Sitter break","Cover 1:1 sitter break"],["snr","Sit near room","Sit near room \u2014 close observation"],["sara","Sara Steady","Sara Steady stand-assist transfer device"],["telebat","Tele battery","Telemetry battery change"],["q4v","Q4 vitals","Vitals every 4 hours"],["q8v","Q8 vitals","Vitals every 8 hours"]];
+const FLAGS=[["iso","Isolation","Isolation precautions"],["airb","Airborne","Airborne isolation"],["dc","Discharge","Discharge pending"],["adm","Admit","New admission"],["proc","Procedure","Procedure / off-floor / testing"],["beh","Behavioral","Behavioral"],["conf","Confused","Confused / fall risk"],["trach","Trach","Tracheostomy"],["gtt","Drip","IV drip (gtt)"],["mivf","mIVF","Maintenance IV fluids"],["hep","Hep gtt","Heparin drip"],["ins","Insulin drip","Insulin drip (gtt)"],["cvl","Central line","Central line (CVL)"],["picc","PICC","PICC line"],["port","Mediport","Implanted port"],["wound","Wound","Wound care"],["wvac","Wound vac","Wound vac"],["pu","Pressure ulcer","Pressure ulcer / injury"],["tot","Total care","Total care"],["sit","1:1 sitter","1:1 sitter"],["pd","PD","Peritoneal dialysis"],["hd","Hemodialysis","Hemodialysis"],["hdcath","HD cath","Hemodialysis catheter"],["tele","Tele","Telemetry / monitored"],["cpo","CPO","Continuous pulse ox (CPO)"],["foley","Foley care","Foley catheter care"],["extcath","External cath","External catheter"],["ostomy","Ostomy","Ostomy"],["dht","DHT/NGT","Tube feeding (DHT/NGT)"],["peg","PEG","PEG tube"],["chest","Chest tube","Pleur-X / chest tube"],["restr","Restraints","Restraints"],["namealert","Name alert","Name alert / same-name warning"],["comfort","Comfort care","Comfort care"],["interp","Interpreter","Interpreter needed"],["nonteach","Non-teaching","Non-teaching"],["oos","Out of service","Room out of service \u2014 closed, not a patient need"],["dnar","DNAR","DNAR / DNR \u2014 do not resuscitate"],["npo","NPO","NPO \u2014 nothing by mouth"],["hfr","High fall risk","High fall risk precautions"],["q2t","Q2 turn","Turn every 2 hours"],["bs","ACHS","ACHS \u2014 blood sugar before meals & at bedtime"],["sleep","DND 11p\u20136a","Do not disturb 11PM\u20136AM \u2014 no routine vitals"],["chg","CHG bath","CHG bath (chlorhexidine)"],["sio","Strict I/O","Strict intake & output"],["dwt","Daily weights","Daily weights"],["feed","Feeder","Needs feeding assistance"],["sbrk","Sitter break","Cover 1:1 sitter break"],["snr","Sit near room","Sit near room \u2014 close observation"],["sara","Sara Steady","Sara Steady stand-assist transfer device"],["q4v","Q4 vitals","Vitals every 4 hours"],["q8v","Q8 vitals","Vitals every 8 hours"]];
 // Engine flags — always present, can rename label but not hide/delete
 const ENGINE_FLAG_CODES=new Set(['iso','dc','adm','beh','conf','sit','dnar','oos']);
 // Per-unit flag customization
@@ -2074,7 +2103,7 @@ function rebuildFloor(){
   PATH=[...left,...right];
 }
 const hallOf = rn => Object.keys(HALLS).find(h=>HALLS[h].rooms.includes(rn));
-const hallColor = rn => { const h=hallOf(rn); return h?HALLS[h].color:'#9aa3b2'; };
+const hallColor = rn => hallNumColor(RHALL[rn]);   // same palette as the hall chips on the nurse card
 const posOf = rn => PATH.indexOf(rn);
 /* walking distance: same hall = step difference; different hall = walk each in to the station,
    then across. Same-wing crosses (halls 1+2 or 3+4) are cheap; cross-wing is expensive.
@@ -2822,7 +2851,7 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
   scheduleSave(); renderAssign();
 }
 function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
-const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','telebat','sleep','interp','dnar','extcath','dwt','q4v','q8v'];
+const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','sleep','interp','dnar','extcath','dwt','q4v','q8v'];
 const PCT_READONLY=['beh','dnar'];   // shown to PCTs for awareness, but only a nurse/charge can change them
 function getPCTView(){
   if(Array.isArray(UNIT_FLAG_CONFIG.pctView)) return [...new Set(UNIT_FLAG_CONFIG.pctView)];   // charge-customized list wins
@@ -2923,8 +2952,15 @@ function renderAssign(){
     const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
     const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=acuFmt(occupied().reduce((s,r)=>s+r.acuity,0));
   } else {
-  const tidyBar = (chargeMode && viewAs==='charge' && cardsOutOfAlphaOrder())
-    ? `<div class="cardtools"><button class="linkx" onclick="sortCardsAlpha()">\u2195 Put the cards back in A\u2013Z order</button><span class="cthint">cards stay put while you move rooms</span></div>` : '';
+  /* Re-balance sits with the nurse cards, next to the PCT one it mirrors. Without it, a charge who
+     moved rooms by hand and wanted the engine's split back had to go out to Score and rebuild from
+     there. The A\u2013Z link only shows when the order is actually off, which now only happens when
+     someone is added mid-shift. */
+  const anyAssignedHere = occupied().some(r=>r.nurse);
+  const tidyBar = (chargeMode && viewAs==='charge' && anyAssignedHere)
+    ? `<div class="cardtools"><button class="btn sm" onclick="rebalanceNurses()">\u2696\ufe0f Re-balance</button>`
+      + (cardsOutOfAlphaOrder() ? `<button class="linkx tidylink" onclick="sortCardsAlpha()">\u2195 Put the cards back in A\u2013Z order</button>` : '')
+      + `<span class="cthint">re-runs the build on the current scores</span></div>` : '';
   const soloStaff = (selfRN && shown.length===1);
   const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
   const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
@@ -2934,7 +2970,12 @@ function renderAssign(){
     const rs=occupied().filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id);
     const bcls=n.level==='Senior'?'senior':(n.level==='Orienting'?'orient':(n.level==='Float'?'float':''));
     const hn=nurseHallNums(n.id); const wings=nurseWings(n.id);
-    const hcov = hn.length? hn.map(x=>HALL_LABEL[x]).join(' + ') : '—';
+    /* Was small grey text going red when a nurse spanned wings — the count of halls was the thing
+       to see, and it didn't stand out. Each hall keeps a fixed colour of its own, so "how many
+       halls am I on" is answered by counting coloured chips. */
+    const hcov = hn.length
+      ? hn.map(x=>`<span class="hallchip" style="--hc:${hallNumColor(x)}">${HALL_LABEL[x]}</span>`).join('')
+      : '<span class="hallchip none">—</span>';
     const bud=buddyNames(n.id);
     const myPct = selfRN ? pctForRooms(rs.map(r=>r.id)) : [];
     const mySit = selfRN ? rs.filter(r=>r.flags.includes('sit')).map(r=>r.id) : [];
@@ -2948,7 +2989,7 @@ function renderAssign(){
       ${selfRN&&myPct.length?`<div class="buddyline">🧑‍⚕️ Your PCT: ${myPct.map(esc).join(', ')}</div>`:''}
       ${(()=>{ const v=vocForNurse(n.id); const slot=nurses.findIndex(x=>x.id===n.id)+1; return v?`<div class="buddyline">📟 Vocera <b>${esc(v)}</b> · RN ${slot}</div>`:''; })()}
       ${selfRN&&mySit.length?`<div class="buddyline">👤 1:1 sitter in room ${mySit.join(', ')}</div>`:''}
-      <div class="loadrow"><div class="loadbar"><i style="width:${pct}%"></i></div><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}${(()=>{ const rc=nurseRatioCap(n.id); return rc?` · <span class="capflag" title="${esc(rc.label)} limits this nurse to ${rc.cap} patients, so their hours sit below the others on purpose">max ${rc.cap} \u00b7 ${esc(rc.label)}</span>`:''; })()}</span></div>
+      <div class="loadrow noBar"><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}${(()=>{ const rc=nurseRatioCap(n.id); return rc?` · <span class="capflag" title="${esc(rc.label)} limits this nurse to ${rc.cap} patients, so their hours sit below the others on purpose">max ${rc.cap} \u00b7 ${esc(rc.label)}</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
       ${selfRN?(()=>{ const pend=rs.filter(r=>!roomCurrentThisShift(r)).length; const done=n.scoredDone&&pend===0;
@@ -4562,6 +4603,11 @@ function cardsOutOfAlphaOrder(){
   return false;
 }
 function sortCardsAlpha(){ if(!chargeMode)return; orderNursesAlpha(); renderAssign(); scheduleSave(); }
+/* The nurse-side twin of rebalancePct. Kept rooms (\ud83d\udd12) survive it, as they do on any build. */
+function rebalanceNurses(){ if(!chargeMode)return;
+  if(!confirm('\u2696\ufe0f Re-balance the nurse assignment?\n\nRe-runs the build on the scores as they stand now.\n\n\u2713 Rooms you kept (\ud83d\udd12) stay with their nurse\n\u2717 Any other rooms you moved by hand go back to where the build puts them\n\nContinue?')) return;
+  generate();
+}
 function keepGroup(nid){ if(!chargeMode)return; pushUndo();
   const rs=occupied().filter(r=>r.nurse===nid);
   const all=rs.length>0 && rs.every(r=>r.lock===nid);
@@ -5263,6 +5309,8 @@ function saveStaff(){
 }
 /* ---- physical walk of the whole unit, for compact zones & buddy pairing ---- */
 const HALL_LABEL={1:'Hall 1',2:'Hall 2',3:'Hall 3',4:'Hall 4'};
+const HALL_COLORS={1:'#3A5BB5',2:'#C77D34',3:'#1C7A46',4:'#7E4BA8'};   // fixed per hall — never reassigned
+const hallNumColor = n => HALL_COLORS[n] || '#9aa3b2';
 function roomsByNurse(nid){ return occupied().filter(r=>r.nurse===nid); }
 function pctForRooms(ids){ const set=new Set(ids); const names=[]; pctZones().forEach(z=>{ if(z.rooms.some(r=>set.has(r))) names.push(z.pct.name); }); return names; }
 function nurseHallNums(nid){ return [...new Set(roomsByNurse(nid).map(r=>RHALL[r.id]))].sort((a,b)=>a-b); }
@@ -6331,6 +6379,11 @@ function applyState(st){
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
   if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{},pctView:Array.isArray(st.unitFlagConfig.pctView)?st.unitFlagConfig.pctView:null};
+  // Deliberately no scheduleSave() here. scheduleSave marks a meta push pending, and a pending push
+  // makes applyCloudRow skip incoming meta — so a migration running on every inbound board would
+  // block the very sync that delivered it. The change is idempotent and re-applies on each load;
+  // the next real edit persists it.
+  migrateFlagConfig();
   PCT_OVERRIDE=(st.pctOverride&&typeof st.pctOverride==='object')?st.pctOverride:{};
   PCT_MANUAL=(st.pctManual&&typeof st.pctManual==='object')?st.pctManual:{};
   CODE_OVERRIDE=(st.codeOverride&&typeof st.codeOverride==='object')?st.codeOverride:{};
@@ -6364,7 +6417,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b19';
+const APP_BUILD='2026-09-04 \u00b7 b20';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8037,13 +8090,15 @@ function buildPrint(){
   const vocCol=shiftType==='Day'?'AM':'PM';
   const mx=Math.max(0.1,...lds);        // heaviest load — scales the little load bars
   const bk=nurseBreaks();               // break window per nurse
-  h+=`<div class="prcap">Nurses</div><table class="prt"><tr><th class="sw"></th><th>RN</th><th class="vc">Voc ${vocCol}</th><th>Rooms</th><th class="brk">Break</th><th class="ld">Load</th></tr>`;
+  // Break windows came off the posted sheet: they change through the shift, so a printed copy goes
+  // stale and people work from a wrong time. Breaks live on the Breaks screen, which is current.
+  h+=`<div class="prcap">Nurses</div><table class="prt"><tr><th class="sw"></th><th>RN</th><th class="vc">Voc ${vocCol}</th><th>Rooms</th><th class="ld">Hrs</th></tr>`;
   nurses.forEach(n=>{ const rs=occ.filter(r=>r.nurse===n.id).sort((a,b)=>a.id-b.id).map(r=>r.id);
     const tag=n.level==='Orienting'?' <small>(or)</small>':(n.level==='Senior'?' <small>(sr)</small>':(n.level==='Float'?' <small>(float)</small>':''));
     const pct=Math.round(nurseLoad(n.id).adj/mx*100); const voc=esc(shiftType==='Day'?(n.vocAM||''):(n.vocPM||''));
-    h+=`<tr><td class="sw" style="background:${NC[n.id]}">${NI[n.id]}</td><td class="nm">${esc(n.name)}${tag}</td><td class="vc">${voc}</td><td>${rs.join(', ')||'\u2014'}</td><td class="brk">${bk[n.id]?bk[n.id].window:''}</td><td class="ld"><span class="ldbar"><i style="width:${pct}%"></i></span></td></tr>`; });
+    h+=`<tr><td class="sw" style="background:${NC[n.id]}">${NI[n.id]}</td><td class="nm">${esc(n.name)}${tag}</td><td class="vc">${voc}</td><td>${rs.join(', ')||'\u2014'}</td><td class="ld"><b>${acuFmt(nurseLoad(n.id).next)}</b></td></tr>`; });
   const un=occ.filter(r=>!r.nurse).map(r=>r.id).sort((a,b)=>a-b);
-  if(un.length) h+=`<tr><td class="sw"></td><td class="nm">Unassigned</td><td class="vc"></td><td>${un.join(', ')}</td><td class="brk"></td><td class="ld"></td></tr>`;
+  if(un.length) h+=`<tr><td class="sw"></td><td class="nm">Unassigned</td><td class="vc"></td><td>${un.join(', ')}</td><td class="ld"></td></tr>`;
   h+=`</table>`;
   // PCT zones
   const zones=pctZones();
@@ -8052,8 +8107,8 @@ function buildPrint(){
     h+=`</table>`; }
   // 1:1 sitters
   if(sitters.length){ const cov=sitterCoverage();
-    h+=`<div class="prcap">1:1 Sitters</div><table class="prt"><tr><th>Room</th><th>Sitter</th><th class="vc">Voc</th><th>Break</th><th>Covered by</th></tr>`;
-    cov.forEach(c=>{ const sd=sitters.find(x=>+x.room===c.room); const sv=sd?(esc(sd.vocAM||'')+(sd.vocPM?' / '+esc(sd.vocPM):'')):''; h+=`<tr><td class="nm">Rm ${c.room}</td><td>${esc(c.sitter)}</td><td class="vc">${sv}</td><td>${c.window}</td><td>${esc(c.cover.name)}${c.cover.role?' ('+c.cover.role+')':''}</td></tr>`; });
+    h+=`<div class="prcap">1:1 Sitters</div><table class="prt"><tr><th>Room</th><th>Sitter</th><th class="vc">Voc</th><th>Covered by</th></tr>`;
+    cov.forEach(c=>{ const sd=sitters.find(x=>+x.room===c.room); const sv=sd?(esc(sd.vocAM||'')+(sd.vocPM?' / '+esc(sd.vocPM):'')):''; h+=`<tr><td class="nm">Rm ${c.room}</td><td>${esc(c.sitter)}</td><td class="vc">${sv}</td><td>${esc(c.cover.name)}${c.cover.role?' ('+c.cover.role+')':''}</td></tr>`; });
     sitters.filter(s=>!s.room).forEach(s=>{ h+=`<tr><td class="nm">\u2014</td><td>${esc(s.name)}</td><td class="vc">${esc(s.vocAM||'')}${s.vocPM?' / '+esc(s.vocPM):''}</td><td>\u2014</td><td>\u2014</td></tr>`; });
     h+=`</table>`; }
   // clinical reference grid
