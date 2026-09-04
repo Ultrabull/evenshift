@@ -1085,6 +1085,12 @@
   .carriedtag{font-size:10px;font-weight:700;color:var(--warn-ink);margin-top:2px;letter-spacing:.01em;}
   .spchip.spc-acc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
   .scoreprog.okacc{background:var(--info-wash);border-color:var(--info-line2);color:var(--info-ink);}
+  .rcard.t-adm{background:var(--info-wash);border-color:var(--info-line2);}
+  .rcard.t-dc{background:var(--ok-wash2);border-color:var(--ok-line);}
+  .expbox{display:flex;align-items:baseline;gap:8px;margin-top:8px;}
+  .expbox input{font-size:30px;font-weight:800;width:130px;padding:8px 10px;border:1.5px solid var(--line-strong);border-radius:12px;background:var(--field);color:var(--ink);text-align:center;}
+  .ftog.offduty{opacity:.75;}
+  .offtag{font-size:9px;font-weight:800;margin-left:4px;padding:1px 4px;border-radius:5px;background:var(--track);color:var(--ink-soft);}
   .cardtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
   .cardtools .cthint{font-size:10.5px;color:var(--ink-soft);}
   .donebtn.said{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink);}
@@ -2424,6 +2430,15 @@ function show(v){
 /* Shared body for the big Score-tab room card: predicted number is the headline (what Make
    Assignment actually builds from), current score shown small underneath only when a prediction
    changed it. */
+/* Admit and discharge are the two the charge scans the board for — an arriving patient and a bed
+   about to free up. They were only marked with a small text chip; the tile itself now carries the
+   colour so they're findable at arm's length. */
+function rcardTone(r){
+  if(!r||!r.occupied) return '';
+  if((r.flags||[]).includes('adm')) return ' t-adm';
+  if((r.flags||[]).includes('dc'))  return ' t-dc';
+  return '';
+}
 function rcardScoredBody(r){
   const dv=dispAcu(r), cls=acuClass(dv);
   const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
@@ -2441,8 +2456,8 @@ function renderAcuity(){
     const n=nurses.find(x=>x.id===viewAs);
     const mine=occupied().filter(r=>r.nurse===viewAs).sort((a,b)=>a.id-b.id);
     const scard=r=> (r.acuity>0)
-      ? `<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div>${rcardScoredBody(r)}</div>`
-      : `<div class="rcard" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`;
+      ? `<div class="rcard${rcardTone(r)}" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div>${rcardScoredBody(r)}</div>`
+      : `<div class="rcard${rcardTone(r)}" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`;
     const loose=occupied().filter(r=>!r.nurse).sort((a,b)=>a.id-b.id);
     html+=`<div class="hall"><h2>${n?n.name+'\u2019s patients':'Your patients'} · ${mine.length} · ${acuFmt(mine.reduce((s,r)=>s+(r.acuity||0),0))} hrs</h2><div class="rgrid">`;
     if(!mine.length) html+=`<div class="empty2">${loose.length?'The board isn\u2019t up yet \u2014 score the rooms you took in report below.':'No patients assigned to you yet.'}</div>`;
@@ -2465,9 +2480,9 @@ function renderAcuity(){
     h.rooms.slice().sort((a,b)=>a-b).forEach(rn=>{
       const r=rooms[rn];
       if(!r.occupied){ html+=`<div class="rcard empty" data-room="${rn}" onclick="openModal(${rn})"><div class="rno" style="color:#9AA6B6">${rn}</div><div style="font-size:11px;color:#9AA6B6;margin-top:18px;">Empty · tap to admit</div></div>`; }
-      else if(!(r.acuity>0)){ html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`; }
+      else if(!(r.acuity>0)){ html+=`<div class="rcard${rcardTone(r)}" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`; }
       else{
-        html+=`<div class="rcard" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div>${rcardScoredBody(r)}</div>`;
+        html+=`<div class="rcard${rcardTone(r)}" data-room="${rn}" onclick="openModal(${rn})"><span class="scoreCue">edit</span><div class="rno">${rn}</div>${rcardScoredBody(r)}</div>`;
       }
     });
     html+='</div></div>';
@@ -2532,7 +2547,13 @@ function showFlagKey(){
 function nurseConstraintHTML(){
   if(!nurses.length) return '';
   const pinChips=nurses.map(n=>`<button type="button" id="pin-${n.id}" class="ftog ${modalPin===n.id?'on':''}" ${modalAvoid.includes(n.id)?'disabled':''} onclick="togPin('${n.id}')">${esc(n.name)}</button>`).join('');
-  const avoid=nurses.map(n=>`<button type="button" id="av-${n.id}" class="ftog ${modalAvoid.includes(n.id)?'avoidon':''}" ${modalPin===n.id?'disabled':''} onclick="togAvoid('${n.id}')">${esc(n.name)}</button>`).join('');
+  /* Everyone on the unit's roster, not just today's crew. A "don't give this patient to X" decision
+     usually gets made while X is off, and it has to be recordable then \u2014 that is the sticky note on
+     the charge's monitor this replaces. It rides on the room, so it holds for the whole admit. */
+  const avoidRoster=[...nurses, ...rosterN.filter(n=>!nurses.some(x=>x.id===n.id))]
+    .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  const avoid=avoidRoster.map(n=>{ const off=!nurses.some(x=>x.id===n.id);
+    return `<button type="button" id="av-${n.id}" class="ftog ${modalAvoid.includes(n.id)?'avoidon':''}${off?' offduty':''}" ${modalPin===n.id?'disabled':''} onclick="togAvoid('${n.id}')">${esc(n.name)}${off?'<span class="offtag">off</span>':''}</button>`; }).join('');
   return `<div class="grp"><h4>Nurse <span style="font-weight:400;color:var(--ink-soft)">· optional</span></h4>`
     +`<div class="nlab" style="margin:2px 0 5px;">Keep with / requested</div><div class="flagrow">${pinChips||'<span class="hint" style="margin:0;">No nurses on yet.</span>'}</div>`
     +`<div class="nlab" style="margin:12px 0 5px;">Won’t take</div><div class="flagrow">${avoid}</div>`
@@ -2562,7 +2583,11 @@ function renderModalBody(){
       body+='</div>'; });
   } else {
     const val=modalExpress!=null?modalExpress:currentHrs();
-    body+=`<div class="exp"><div class="hint">Set nursing hours directly — for when you already know the load.</div><input type="range" min="0" max="8" step="0.25" value="${val}" oninput="setExpress(this.value)" class="slider"><div class="expval"><span id="expNum">${acuFmt(val)}</span> <small>hrs</small></div></div>`;
+    // Typed, not dragged. A slider can't hit 3.25 reliably on a phone with one thumb, and the charge
+    // already knows the number she wants — she was fighting the control to enter something she'd
+    // decided before opening the room.
+    body+=`<div class="exp"><div class="hint">Type the nursing hours — for when you already know the load.</div>`
+      +`<div class="expbox"><input type="number" id="expNum" inputmode="decimal" min="0" max="12" step="0.25" value="${val}" oninput="setExpress(this.value)" onfocus="this.select()"> <small>hrs</small></div></div>`;
   }
   body+=flagsNoteHTML();
   body+=nextShiftHTML();
@@ -2649,7 +2674,12 @@ function nextShiftHTML(){
 function _refreshSwing(){ const w=document.getElementById('swingReasonWrap'); if(w) w.innerHTML=swingReasonHTML(); }
 function setNext(v){ modalNext=parseFloat(v); _nextTouched=true; _refreshNext(); _refreshSwing(); }
 function toggleQuick(key){ if((modalTally[key]||0)>0) delete modalTally[key]; else modalTally[key]=1; renderModalBody(); }
-function setExpress(v){ modalExpress=parseFloat(v); document.getElementById('expNum').textContent=acuFmt(modalExpress); recalc(); _refreshSwing(); }
+function setExpress(v){
+  const n=parseFloat(v);
+  if(!isFinite(n)) return;                       // mid-typing (empty, or just "."), leave the score alone
+  modalExpress=Math.min(12,Math.max(0,n));
+  recalc(); _refreshSwing();                     // don't rewrite the field itself — it would fight the typing
+}
 function cssid(k){return k.replace(/[^a-zA-Z0-9]/g,'_');}
 function bump(key,d){ modalTally[key]=Math.max(0,(modalTally[key]||0)+d); if(modalTally[key]===0) delete modalTally[key]; const sp=document.getElementById('c-'+cssid(key)); if(sp){sp.textContent=modalTally[key]||0; sp.parentElement.classList.toggle('active',(modalTally[key]||0)>0);} recalc(); _refreshSwing(); }
 function togFlag(f){ if(!chargeMode && !canScoreRoom(modalRoom))return; const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1); document.getElementById('ft-'+f).classList.toggle('on'); }
@@ -2893,8 +2923,8 @@ function renderAssign(){
     const pcEl=document.getElementById('ptCount'); if(pcEl) pcEl.textContent=occupied().length;
     const htEl=document.getElementById('hrTotal'); if(htEl) htEl.textContent=acuFmt(occupied().reduce((s,r)=>s+r.acuity,0));
   } else {
-  const tidyBar = (chargeMode && viewAs==='charge' && cardsOutOfRoomOrder())
-    ? `<div class="cardtools"><button class="linkx" onclick="sortCardsByRoom()">\u2195 Put the cards back in room order</button><span class="cthint">cards stay put while you move rooms</span></div>` : '';
+  const tidyBar = (chargeMode && viewAs==='charge' && cardsOutOfAlphaOrder())
+    ? `<div class="cardtools"><button class="linkx" onclick="sortCardsAlpha()">\u2195 Put the cards back in A\u2013Z order</button><span class="cthint">cards stay put while you move rooms</span></div>` : '';
   const soloStaff = (selfRN && shown.length===1);
   const nzc=document.getElementById('nurses'); if(nzc) nzc.classList.toggle('solo', !!soloStaff);
   const welcome = (selfRN && shown.length===1 && shown[0]) ? staffWelcome(shown[0].name) : '';
@@ -4247,7 +4277,7 @@ function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; L
   // Hours are boss: if kept/locked rooms left the spread above target, chase 0.5 with swaps AND moves
   // (tightenHours respects locks, won't-take, orientee/float rules; relaxes geography only if it must).
   if(!swapIds && maxSpread()>TARGET_SPREAD+1e-9) tightenHours();   // never reshuffle an accepted total swap — its groups hand over verbatim
-  orderNursesByRoom();   // fix the card order for this board; manual moves from here on leave it alone
+  orderNursesAlpha();   // fix the card order for this board; manual moves from here on leave it alone
   selectedRoom=null;
   balanceReport();   // runs while acuity = predicted, so the banner reflects the next-shift load
   _restoreAcu();     // put the live "now" scores back; assignment (r.nurse) stays
@@ -4515,20 +4545,23 @@ function tightenHours(){
     if(maxSpread()<=TARGET_SPREAD) break;
   }
 }
-/* Order the cards by the lowest room each nurse holds. Called when a board is built, and offered
-   to the charge as a tidy-up after manual moves — never fired by a move itself. */
-function orderNursesByRoom(){
-  const minRoom=nid=>{ let m=Infinity; occupied().forEach(r=>{ if(r.nurse===nid && r.id<m) m=r.id; }); return m; };
-  const sorted=nurses.slice().sort((a,b)=> (minRoom(a.id)-minRoom(b.id)) || String(a.name||'').localeCompare(String(b.name||'')));
+/* Cards sit in A\u2013Z order by nurse name. Ordering by lowest room meant the card order depended on
+   which rooms a nurse held, so moving a room could reshuffle the board; a name doesn't change when
+   a room is dragged, so nothing moves. The order is still recorded per nurse (ord) rather than
+   re-sorted on every render, so someone added mid-shift lands at the end instead of pushing
+   everyone else's card \u2014 and their RN slot and Vocera number \u2014 down one. */
+function orderNursesAlpha(){
+  const sorted=nurses.slice().sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
   sorted.forEach((n,i)=>{ n.ord=i; });   // same objects as rosterN, so this persists
   syncWorking();
 }
-function cardsOutOfRoomOrder(){
-  const minRoom=nid=>{ let m=Infinity; occupied().forEach(r=>{ if(r.nurse===nid && r.id<m) m=r.id; }); return m; };
-  for(let i=1;i<nurses.length;i++){ if(minRoom(nurses[i-1].id)>minRoom(nurses[i].id)) return true; }
+function cardsOutOfAlphaOrder(){
+  for(let i=1;i<nurses.length;i++){
+    if(String(nurses[i-1].name||'').localeCompare(String(nurses[i].name||''))>0) return true;
+  }
   return false;
 }
-function sortCardsByRoom(){ if(!chargeMode)return; orderNursesByRoom(); renderAssign(); scheduleSave(); }
+function sortCardsAlpha(){ if(!chargeMode)return; orderNursesAlpha(); renderAssign(); scheduleSave(); }
 function keepGroup(nid){ if(!chargeMode)return; pushUndo();
   const rs=occupied().filter(r=>r.nurse===nid);
   const all=rs.length>0 && rs.every(r=>r.lock===nid);
@@ -6331,7 +6364,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-08-30 \u00b7 b18';
+const APP_BUILD='2026-09-04 \u00b7 b19';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
