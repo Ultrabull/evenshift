@@ -2541,7 +2541,7 @@ function rcardTone(r){
 function rcardScoredBody(r){
   const dv=dispAcu(r), cls=acuClass(dv);
   const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
-  const wasLine = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<div class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)} hrs</div>` : '';
+  const wasLine = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<div class="was" title="this shift scored it ${acuFmt(r.acuity)}">was ${acuFmt(r.acuity)} hrs</div>` : '';
   const carried = (r.acuity>0 && !roomCurrentThisShift(r)) ? `<div class="carriedtag" title="Carried over from the last shift">\u21a9 last shift \u00b7 tap to confirm</div>` : '';
   return `<div class="acu">${acuFmt(dv)} <small>hrs</small></div>${wasLine}<span class="pill p${cls}">${acuLabel(dv)}</span>${carried}${flags?`<div class="flags">${flags}</div>`:''}`;
 }
@@ -2969,7 +2969,7 @@ function rnChip(r){
   const carried = scored && !roomCurrentThisShift(r);
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
   const dv=dispAcu(r);
-  const wasTag = (scored && r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)}</span>` : '';
+  const wasTag = (scored && r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="this shift scored it ${acuFmt(r.acuity)}">was ${acuFmt(r.acuity)}</span>` : '';
   return `<span class="chip rntap ${dcAdm}${rose?' rose':''}${carried?' carried':''}" onclick="openModal(${r.id})" title="${carried?'From last shift \u2014 tap to confirm or change':''}"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${flags?`<span class="mini">${flags}</span>`:''}${rose?'<span class="rosefl">↑</span>':''}<span class="ac p${scored?acuClass(dv):'0'}">${scored?acuFmt(dv):'tap'}${wasTag}</span>${carried?'<span class="crmark">\u21a9</span>':''}</span>`;
 }
 function roomChip(r){
@@ -2981,7 +2981,7 @@ function roomChip(r){
   const dcAdm = r.flags.includes('dc') ? 'isdc' : (r.flags.includes('adm') ? 'isadm' : '');
   const editTag = (chargeMode && r.editedBy && r.editedBy!=='Charge') ? `<span class="editby" title="Last edited by ${esc(r.editedBy)}${r.editedAt?' · '+_qhTime(r.editedAt):''}">✎ ${esc((r.editedBy||'').split(' ')[0])}</span>` : '';
     const dv=dispAcu(r);
-  const wasTag = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="scored right now at ${acuFmt(r.acuity)}">now ${acuFmt(r.acuity)}</span>` : '';
+  const wasTag = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<span class="was" title="this shift scored it ${acuFmt(r.acuity)}">was ${acuFmt(r.acuity)}</span>` : '';
   return `<span class="chip ${selectedRoom===r.id?'sel':''} ${acuRose?'rose':''} ${r.lock?'locked':''} ${dcAdm}" draggable="true" ondragstart="dragStart(event,${r.id})" onclick="event.stopPropagation(); selectRoom(${r.id})"><span class="zedge" style="background:${hallColor(r.id)}"></span><span class="rm">${r.id}</span>${r.flags.includes('sit')?'<span title="1:1 sitter">👤</span>':''}${acuRose?`<span class="rosefl" title="Acuity up from ${acuFmt(r.prevAcuity)} last shift">↑</span>`:''}${flags?`<span class="mini">${flags}</span>`:''}${(r.avoid&&r.avoid.length)?'<span class="avm" title="won\u2019t take a nurse">⊘</span>':''}<span class="ac p${acuClass(dv)}" title="predicted for the oncoming shift">${acuFmt(dv)}${wasTag}</span>${r.acuityReason?`<span class="rsnmark" title="Big change: ${esc(r.acuityReason==='Other'&&r.acuityReasonOther?r.acuityReasonOther:r.acuityReason)}">⚠</span>`:''}${editTag}${lockBtn}</span>`;
 }
 function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r||!r.occupied) return;
@@ -6100,7 +6100,7 @@ function openReportSheet(){ _sheetShell('\ud83d\udde3 Report sheet \u2014 '+shif
 function acuitySheetHTML(){
   const occ=occupied().slice().sort((a,b)=>a.id-b.id);
   if(!occ.length) return '<div class="hint">No patients on the board yet.</div>';
-  let h=`<table class="shtbl"><tr><th>Rm</th><th>Nurse</th><th>Now</th><th>Next</th><th>Reason for the change</th></tr>`;
+  let h=`<table class="shtbl"><tr><th>Rm</th><th>Nurse</th><th>Was</th><th>Next</th><th>Reason for the change</th></tr>`;
   occ.forEach(r=>{
     const n=nurses.find(x=>x.id===r.nurse);
     const nx=(r.nextAcuity!=null)?r.nextAcuity:r.acuity;
@@ -6753,7 +6753,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b27';
+const APP_BUILD='2026-09-04 \u00b7 b28';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
