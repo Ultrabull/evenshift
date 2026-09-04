@@ -1132,7 +1132,7 @@
   .hcov.warn{color:var(--ink-soft);}   /* the colours already say it spans halls — no need to shout in red */
   .loadrow.noBar{justify-content:flex-start;}
   .cardtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
-  .cardtools.clinbal{margin:-2px 0 14px;}
+  .btilegrid.clinbal{margin-top:9px;}
   .nsel{width:100%;padding:11px 12px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--field);color:var(--ink);font-family:inherit;font-size:14.5px;font-weight:600;}
   .avchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .avchip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px 6px 11px;background:var(--bad-wash);border:1.5px solid var(--bad-line);border-radius:9px;font-size:13px;font-weight:700;color:var(--bad);}
@@ -2200,6 +2200,7 @@ seedRoom(53,'n8',3.0); seedRoom(55,'n8',3.5); seedRoom(59,'n8',3.5,['wound']); s
 
 let shiftDate=new Date().toISOString().slice(0,10), shiftType='Day';   // declared early: syncWorking() filters the crew by shift
 let nurses=[], pcts=[], sitters=[], hucs=[];          // the working set for TODAY — what the engine assigns
+let _crewIds=new Set();                               // ids of the above, for the hot lookups in the build
 let rosterN=[], rosterP=[], rosterS=[], rosterH=[];   // the master unit roster — everyone, with an "on today" flag
 function syncWorking(){                       // pull today's working set out of the master roster — only THIS shift's crew
   const onShift = x => x.on!==false && ((x.shift||'Day')===shiftType || x.holdover===true);   // holdover = staying past their usual Day/Night tag
@@ -2213,6 +2214,7 @@ function syncWorking(){                       // pull today's working set out of
   pcts    = rosterP.filter(onShift);
   sitters = rosterS.filter(onShift);
   hucs    = rosterH.filter(onShift);
+  _crewIds = new Set(nurses.map(n=>n.id));   // lockHolder() reads this inside the build's inner loops
 }
 /* Staff ids must be unique for the life of the unit, not just this page view. The counter alone
    restarted at 200 every load, so the next person added collided with someone already on the
@@ -4304,7 +4306,10 @@ function generate(){ if(!chargeMode)return;
   if(b && typeof requestAnimationFrame==='function'){ b.style.display='flex'; setTimeout(()=>{ try{ _generateNow(); } finally{ b.style.display='none'; } },50); }
   else _generateNow();
 }
-function lockHolder(r){ return (r && r.lock && nurses.some(n=>n.id===r.lock)) ? r.lock : null; }
+/* Does this room's keep request actually hold it? Only if that nurse is on this shift's crew.
+   The build asks this inside its inner loops, so the crew is kept as a set (_crewIds, rebuilt in
+   syncWorking) rather than re-scanned per room. */
+function lockHolder(r){ return (r && r.lock && _crewIds.has(r.lock)) ? r.lock : null; }
 function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
   // Build the NEXT shift off each patient's predicted acuity. Swap it in for the run, restore the live "now" after.
   const _savedAcu={}; occupied().forEach(r=>{ _savedAcu[r.id]=r.acuity; if(r.nextAcuity!=null) r.acuity=r.nextAcuity; });
@@ -6237,7 +6242,7 @@ function renderSupport(){
   // getting tapped by accident. It stays on the board itself, not inside a tile that has to be
   // opened first — a button you have to go looking for is a button nobody uses.
   if(occupied().some(r=>r.nurse))
-    h+=`<div class="cardtools clinbal"><button class="btn sm" onclick="rebalanceNurses()">\u2696\ufe0f Re-balance</button><span class="cthint">re-runs the build on the scores as they stand now</span></div>`;
+    h+=`<div class="btilegrid clinbal"><button class="btile" onclick="rebalanceNurses()"><span class="btemoji">\u2696\ufe0f</span><span class="btlabel">Re-balance</span><span class="btsub">re-run the build on today's scores</span></button></div>`;
   const sel=allDefs.find(d=>d[0]===boardCard);
   const ex=document.getElementById('staffExtras');
   if(ex) ex.innerHTML=staffInner;   // nurses → PCT → sitter → HUC always flows in order
@@ -6258,7 +6263,7 @@ function renderSupport(){
       `</div>`;
       // Post and End shift are the two ends of the same job, so they sit on one line. Ending the
       // shift always asks first, and staff keep the posted board until the next charge posts theirs.
-      const endBtn=`<button class="postfinal endshift" onclick="nextShift()">🔄 End shift &amp; hand off<small>staff keep theirs till you post</small></button>`;
+      const endBtn=`<button class="postfinal endshift" onclick="nextShift()">🔄 End shift &amp; hand off<small>staff still see this board until the next one is posted</small></button>`;
       pf.innerHTML = (boardPosted
         ? `<div class="postedrow"><div class="postedmsg">✓ Posted${chargeName?` by <b>${esc(chargeName)}</b>`:''} — staff can see the final assignment.</div><div class="postedbtns"><button class="btn ghost" onclick="togglePosted()">Unpost</button></div></div><div class="finalrow">${endBtn}</div>`
         : `<div class="finalrow"><button class="postfinal" onclick="togglePosted()">📌 Post final assignment<small>let everyone see it</small></button>${endBtn}</div>`)
@@ -6699,7 +6704,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b23';
+const APP_BUILD='2026-09-04 \u00b7 b24';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
