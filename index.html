@@ -2496,7 +2496,10 @@ function renderPrevBoardInline(){
   if(!wrap||!inner) return;
   const P=PREV_SHIFT;
   const any = P && ((P.nurses||[]).length||(P.pcts||[]).length||(P.sitters||[]).length);
-  if(!any){ wrap.style.display='none'; return; }
+  // Staff already have "Last shift's board" as a button at the top of their page; showing it again
+  // down here made it look like two different boards. The charge keeps the inline copy — it is the
+  // reference she reads while building, and she reaches it from the menu rather than a button.
+  if(!any || !chargeMode){ wrap.style.display='none'; return; }
   const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'the shift that just ended';
   wrap.style.display='';
   document.getElementById('prevBoardSum').textContent='📋 Last shift’s board · '+lbl;
@@ -6751,7 +6754,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b25';
+const APP_BUILD='2026-09-04 \u00b7 b26';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
