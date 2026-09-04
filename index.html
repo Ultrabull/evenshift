@@ -1112,7 +1112,8 @@
   .sheetnote{font-size:10.5px;color:var(--ink-soft);}
   .shgrp{margin-bottom:12px;} .shgrp h4{margin:0 0 5px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
   .shrow{display:flex;gap:9px;padding:6px 0;border-top:1px solid var(--line);}
-  .shrm{font-weight:800;min-width:34px;}
+  .shrm{font-weight:800;min-width:46px;}
+  .shrm small{display:block;font-weight:600;font-size:9.5px;color:var(--ink-soft);letter-spacing:.01em;margin-top:1px;}
   .shupd{font-size:13px;line-height:1.45;} .shupd.none{color:var(--ink-soft);font-style:italic;}
   .shfl{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
   .shby{font-size:10px;color:var(--ink-soft);margin-top:2px;}
@@ -6080,21 +6081,19 @@ function reportSheetHTML(){
   const occ=occupied().slice().sort((a,b)=>a.id-b.id);
   const withUpd=occ.filter(r=>(r.update||'').trim());
   if(!occ.length) return '<div class="hint">No patients on the board yet.</div>';
-  const byNurse={};
-  occ.forEach(r=>{ const n=nurses.find(x=>x.id===r.nurse); const k=n?n.name:'Not assigned';
-    (byNurse[k]||(byNurse[k]=[])).push(r); });
-  let h=`<div class="hint" style="margin:0 0 10px;">${withUpd.length} of ${occ.length} room${occ.length===1?'':'s'} have an update.</div>`;
-  Object.keys(byNurse).sort().forEach(name=>{
-    h+=`<div class="shgrp"><h4>${esc(name)}</h4>`;
-    byNurse[name].forEach(r=>{
-      const u=(r.update||'').trim();
-      const fl=(r.flags||[]).map(getFlagLabel).slice(0,4).join(' \u00b7 ');
-      h+=`<div class="shrow"><div class="shrm">${r.id}</div><div class="shbody">`
-        +`<div class="shupd${u?'':' none'}">${u?esc(u):'\u2014 no update'}</div>`
-        +`${fl?`<div class="shfl">${esc(fl)}</div>`:''}`
-        +`${r.updateBy?`<div class="shby">${esc(r.updateBy)}${r.updateAt?' \u00b7 '+_qhTime(r.updateAt):''}</div>`:''}`
-        +`</div></div>`; });
-    h+=`</div>`; });
+  /* Straight down the unit in room order. Grouping by nurse meant reading out of sequence and
+     hunting for a room; the nurse's name rides with each room instead of heading a block. */
+  let h=`<div class="hint" style="margin:0 0 10px;">${withUpd.length} of ${occ.length} room${occ.length===1?'':'s'} have an update.</div><div class="shgrp">`;
+  occ.forEach(r=>{
+    const n=nurses.find(x=>x.id===r.nurse);
+    const u=(r.update||'').trim();
+    const fl=(r.flags||[]).map(getFlagLabel).slice(0,4).join(' \u00b7 ');
+    h+=`<div class="shrow"><div class="shrm">${r.id}<small>${n?esc(n.name):'\u2014'}</small></div><div class="shbody">`
+      +`<div class="shupd${u?'':' none'}">${u?esc(u):'\u2014 no update'}</div>`
+      +`${fl?`<div class="shfl">${esc(fl)}</div>`:''}`
+      +`${r.updateBy?`<div class="shby">${esc(r.updateBy)}${r.updateAt?' \u00b7 '+_qhTime(r.updateAt):''}</div>`:''}`
+      +`</div></div>`; });
+  h+=`</div>`;
   return h;
 }
 function openReportSheet(){ _sheetShell('\ud83d\udde3 Report sheet \u2014 '+shiftType+' '+shiftDate, reportSheetHTML(), 'printReportSheet'); }
@@ -6754,7 +6753,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b26';
+const APP_BUILD='2026-09-04 \u00b7 b27';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
