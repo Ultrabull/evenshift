@@ -602,6 +602,7 @@
   .postedmsg{font-size:14.5px;font-weight:700;color:var(--ok-ink);margin-bottom:10px;}
   .postedbtns{display:flex;gap:8px;}
   .postedbtns .ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);}
+  .holdnote{margin-top:8px;padding:12px 14px;background:var(--info-wash);border:1.5px solid var(--info-line2);border-radius:14px;font-size:13px;line-height:1.45;color:var(--ink);}
   .vslot{font-size:12px;font-weight:700;color:var(--teal-deep);}
   .vnum{height:30px;border:1px solid var(--line-strong);border-radius:7px;padding:0 6px;font-size:12px;font-family:inherit;width:100%;}
   .vwho{font-size:12.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1548,7 +1549,7 @@
       <div id="quickHits"></div>
       <div class="chargeOnly" id="postFinalWrap"></div>
     </div>
-    <details class="prevboard" id="prevBoardWrap" style="display:none;">
+    <details class="prevboard" id="prevBoardWrap" style="display:none;" ontoggle="if(!this.open) this.dataset.userClosed='1';">
       <summary id="prevBoardSum">📋 Last shift’s board</summary>
       <div id="prevBoardInline"></div>
     </details>
@@ -2225,6 +2226,10 @@ seedRoom(53,'n8',3.0); seedRoom(55,'n8',3.5); seedRoom(59,'n8',3.5,['wound']); s
 let shiftDate=new Date().toISOString().slice(0,10), shiftType='Day';   // declared early: syncWorking() filters the crew by shift
 let nurses=[], pcts=[], sitters=[], hucs=[];          // the working set for TODAY — what the engine assigns
 let _crewIds=new Set();                               // ids of the above, for the hot lookups in the build
+/* Between End Shift and picking the next crew, the charge's board keeps showing the shift that just
+   ended — without it her cards vanish the moment the shift type flips and she rebuilds from memory.
+   Cleared by saveStaff(), which is also what frees the rooms. */
+let HANDOFF_CREW=null;                                // { shift, date, ids:[nurseId] }
 let rosterN=[], rosterP=[], rosterS=[], rosterH=[];   // the master unit roster — everyone, with an "on today" flag
 function syncWorking(){                       // pull today's working set out of the master roster — only THIS shift's crew
   const onShift = x => x.on!==false && ((x.shift||'Day')===shiftType || x.holdover===true);   // holdover = staying past their usual Day/Night tag
@@ -2501,6 +2506,7 @@ function renderPrevBoardInline(){
   // down here made it look like two different boards. The charge keeps the inline copy — it is the
   // reference she reads while building, and she reaches it from the menu rather than a button.
   if(!any || !chargeMode){ wrap.style.display='none'; return; }
+  if(HANDOFF_CREW && !wrap.dataset.userClosed) wrap.open=true;   // she is building from it right now
   const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'the shift that just ended';
   wrap.style.display='';
   document.getElementById('prevBoardSum').textContent='📋 Last shift’s board · '+lbl;
@@ -2553,11 +2559,11 @@ function renderAcuity(){
   let html='';
   if(viewAs!=='charge'){
     const n=nurses.find(x=>x.id===viewAs);
-    const mine=occupied().filter(r=>r.nurse===viewAs).sort((a,b)=>a.id-b.id);
+    const mine=occupied().filter(r=>roomOwner(r)===viewAs).sort((a,b)=>a.id-b.id);
     const scard=r=> (r.acuity>0)
       ? `<div class="rcard${rcardTone(r)}" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div>${rcardScoredBody(r)}</div>`
       : `<div class="rcard${rcardTone(r)}" data-room="${r.id}" onclick="openModal(${r.id})"><span class="scoreCue">edit</span><div class="rno">${r.id}</div><div style="font-size:11.5px;color:#B0613A;font-weight:700;margin-top:18px;">Needs score · tap</div></div>`;
-    const loose=occupied().filter(r=>!r.nurse).sort((a,b)=>a.id-b.id);
+    const loose=occupied().filter(r=>!roomOwner(r)).sort((a,b)=>a.id-b.id);
     html+=`<div class="hall"><h2>${n?n.name+'\u2019s patients':'Your patients'} · ${mine.length} · ${acuFmt(mine.reduce((s,r)=>s+(r.acuity||0),0))} hrs</h2><div class="rgrid">`;
     if(!mine.length) html+=`<div class="empty2">${loose.length?'The board isn\u2019t up yet \u2014 score the rooms you took in report below.':'No patients assigned to you yet.'}</div>`;
     mine.forEach(r=>{ html+=scard(r); });
@@ -4160,6 +4166,7 @@ function jumpRoom(val, force){
 let boardPosted=false, lastUpdatedAt=0, lastUpdatedBy='';
 let SCORES_OK=false;   // charge confirmed the scores look right — resets every shift
 let CREW_OK=false;     // charge confirmed THIS shift's crew in Who's Working — resets every shift
+
 let SHIFT_START=0;     // Date.now() at the last End Shift — only rooms edited AFTER this count as updated for the next shift
 let DEV_CODE='2468';   // developer-only code for backend settings (changeable in the dev panel). Long-press the top-left corner to reach it.
 // Units at this hospital — same database, separated by unit code. Add more from the dev panel.
@@ -4220,6 +4227,7 @@ if(typeof window!=='undefined'){
 function togglePosted(){ if(!chargeMode)return;
   if(!boardPosted){
     boardPosted=true;
+    HANDOFF_CREW=null;                    // a posted board is the new one; last shift's is done
     lastUpdatedBy=chargeName||'Charge';   // stamp = who prepared it (no extra prompt)
     setDrafting(false);                   // THIS is the moment every phone swaps to the new board
   } else {
@@ -4231,6 +4239,13 @@ function togglePosted(){ if(!chargeMode)return;
 /* True right after End Shift: a previous crew is on record but no room has a nurse yet. Used to
    explain to staff why their patients vanished, rather than leaving them with a generic draft note. */
 function _justHandedOff(){
+  if(HANDOFF_CREW){
+    // Still purely last shift's board while every assigned room belongs to the crew that handed
+    // off. The moment a room goes to anyone else, the new board is going up and the generic
+    // "still building" note is the honest one again.
+    const held=new Set(HANDOFF_CREW.ids||[]);
+    return !occupied().some(r=>r.nurse && !held.has(r.nurse));
+  }
   const hadCrew=!!(PREV_SHIFT && (PREV_SHIFT.nurses||[]).length);
   return hadCrew && !occupied().some(r=>r.nurse);
 }
@@ -4342,7 +4357,8 @@ function generate(){ if(!chargeMode)return;
    The build asks this inside its inner loops, so the crew is kept as a set (_crewIds, rebuilt in
    syncWorking) rather than re-scanned per room. */
 function lockHolder(r){ return (r && r.lock && _crewIds.has(r.lock)) ? r.lock : null; }
-function _generateNow(){ if(!chargeMode)return; pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
+function _generateNow(){ if(!chargeMode)return;
+  if(HANDOFF_CREW){ alert('\ud83d\udc65 Pick this shift\u2019s crew first.\n\nThe board on screen is the shift that just ended \u2014 building now would deal tonight\u2019s patients to people who have gone home.'); openStaff(); return; } pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
   // Build the NEXT shift off each patient's predicted acuity. Swap it in for the run, restore the live "now" after.
   const _savedAcu={}; occupied().forEach(r=>{ _savedAcu[r.id]=r.acuity; if(r.nextAcuity!=null) r.acuity=r.nextAcuity; });
   const _restoreAcu=()=>{ Object.keys(_savedAcu).forEach(id=>{ if(rooms[id]) rooms[id].acuity=_savedAcu[id]; }); };
@@ -4926,8 +4942,9 @@ function lockedRole(){ return roleOf(viewAs); }
 // right after End Shift the whole board is unowned, so an oncoming nurse who has taken report has no
 // other way to score until the charge rebuilds and posts. Mid-shift the same rule covers a fresh admit
 // the charge hasn't placed. Once a room has a nurse, only that nurse can touch it.
+function roomOwner(r){ return (!r || HANDOFF_CREW) ? null : (r.nurse||null); }   // during the hold the name on a room is last shift's, not a claim on the patient
 function canScoreRoom(rn){ if(chargeMode) return true; const r=rooms[rn];
-  return !!(r && r.occupied && lockedRole()==='rn' && (r.nurse===viewAs || !r.nurse)); }
+  return !!(r && r.occupied && lockedRole()==='rn' && (roomOwner(r)===viewAs || !roomOwner(r))); }
 function updateScoreTab(){ const na=document.getElementById('navAcuity'); if(na) na.style.display=(chargeMode||lockedRole()==='rn')?'':'none'; }
 function fillWho(){
   const b=document.getElementById('whoBtns'); if(!b) return;
@@ -5556,6 +5573,7 @@ function saveStaff(){
   rosterP=_wp.filter(p=>p.name.trim()).map(p=>({id:p.id,name:p.name.trim(),on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
   rosterS=_ws.filter(s=>s.name.trim()).map(s=>({id:s.id,name:s.name.trim(),room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''}));
   rosterH=_wh.filter(x=>x.name.trim()).map(x=>({id:x.id,name:x.name.trim(),on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
+  HANDOFF_CREW=null;   // the crew is picked — stop holding last shift's board up
   syncWorking();
   occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });   // free anyone not on today
   if(viewAs!=='charge'&&!nurses.find(x=>x.id===viewAs))viewAs='charge';
@@ -6308,11 +6326,23 @@ function renderSupport(){
   // Post + after-final actions at the very bottom (finalize lives on the Board)
   const pf=document.getElementById('postFinalWrap');
   if(pf){
-    if(chargeMode && assigned){
+    // The two read-only sheets are reference, not actions on a finished board, so they stay
+    // reachable even with nothing assigned — a charge mid-build still needs last shift's report.
+    const sheetTiles=
+      `<button class="btile" onclick="openReportSheet()"><span class="btemoji">\ud83d\uddE3</span><span class="btlabel">Report Sheet</span><span class="btsub">every room's update</span></button>`+
+      `<button class="btile" onclick="openAcuitySheet()"><span class="btemoji">\ud83d\udcca</span><span class="btlabel">Acuity Record</span><span class="btsub">was, next &amp; reason</span></button>`;
+    if(chargeMode && HANDOFF_CREW){
+      // Last shift's board is still up so it can be read and copied. It must not be re-postable as
+      // though it were tonight's, and the shift cannot be ended a second time.
+      pf.innerHTML=`<div class="holdnote">\ud83d\udccb <b>This is the ${esc(HANDOFF_CREW.shift||'last')} board that just ended.</b> It stays up so you can build the new one from it \u2014 it clears when you pick who is working.</div>`
+        +`<button class="postfinal" onclick="openStaff()">\ud83d\udc65 Pick this shift\u2019s crew</button>`
+        +`<div class="cardsec">Sheets</div><div class="btilegrid">${sheetTiles}</div>`;
+    } else if(chargeMode && !assigned && occupied().length){
+      pf.innerHTML=`<div class="cardsec">Sheets</div><div class="btilegrid">${sheetTiles}</div>`;
+    } else if(chargeMode && assigned){
       const afterTiles=`<div class="cardsec">After it\u2019s final</div><div class="btilegrid">`+
         `<button class="btile" onclick="goShare()"><span class="btemoji">📤</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`+
-        `<button class="btile" onclick="openReportSheet()"><span class="btemoji">🗣</span><span class="btlabel">Report Sheet</span><span class="btsub">every room's update</span></button>`+
-        `<button class="btile" onclick="openAcuitySheet()"><span class="btemoji">📊</span><span class="btlabel">Acuity Record</span><span class="btsub">now, next & reason</span></button>`+
+        sheetTiles+
         `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">📋</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`+
       `</div>`;
       // Post and End shift are the two ends of the same job, so they sit on one line. Ending the
@@ -6630,7 +6660,7 @@ function showHandoffBar(){
   const j=_readHandoffUndo(); const b=document.getElementById('handoffBar'); if(!b) return;
   if(!j || !chargeMode){ b.style.display='none'; return; }
   const mins=Math.max(1,Math.round((Date.now()-j.at)/60000));
-  b.innerHTML=`🔄 <b>Shift handed off ${mins} min ago</b> — assignments were cleared, so staff can no longer see or score their patients. `
+  b.innerHTML=`🔄 <b>Shift handed off ${mins} min ago</b> — the board that just ended is still up for you to build from; it clears when you pick the new crew. `
     +`<button class="btn sm" onclick="undoHandoff()">Undo hand-off — put the board back</button> `
     +`<button class="btn sm" onclick="dismissHandoff()">It was meant</button>`;
   b.style.display='';
@@ -6657,7 +6687,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -6715,6 +6745,7 @@ function applyState(st){
   syncWorking();   // AFTER shiftType is applied — filtering the crew with the old shift left a stale/empty working set
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.chargeOncoming==='string') chargeOncoming=st.chargeOncoming;
+  HANDOFF_CREW=(st.handoffCrew&&st.handoffCrew.ids)?st.handoffCrew:null;
   boardPosted=!!st.boardPosted; SCORES_OK=!!st.scoresOk; CREW_OK=!!st.crewOk; vocConfirmed=!!st.vocOk; SHIFT_START=st.shiftStart||0; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
@@ -6758,7 +6789,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b29';
+const APP_BUILD='2026-09-04 \u00b7 b30';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8256,7 +8287,10 @@ function nextShift(){ if(!chargeMode)return;
   Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity;
     if(r.occupied && r.nextAcuity!=null) r.acuity=r.nextAcuity;   // predicted becomes the new "now"
     r.nextAcuity=r.acuity;                                        // fresh prediction defaults to the new now
-    r.nurse=null; r.lock=null;
+    // The assignment is deliberately LEFT ON the board here. The charge builds the next one by
+    // reading the one that just ended, and wiping it at End Shift meant rebuilding from memory.
+    // saveStaff() frees every room whose nurse isn't on the new crew, so it clears at the moment
+    // she picks who is working - which is the moment it stops being useful.
     r.capCarried = rcCodes.some(c=>(r.flags||[]).includes(c)||(r.tags||[]).includes(c)); });
   rosterN.forEach(n=>{ n.scoredDone=false; n.doneAt=0; n.breakSlot=''; n.breakApproved=false; });  // reset scoring-done + breaks for the new shift
   [rosterN,rosterP,rosterS,rosterH].forEach(arr=>arr.forEach(x=>{ if(x.holdover){ x.holdover=false; x.on=false; } }));  // holdovers were ad-hoc for the ending shift — they go home
@@ -8276,7 +8310,8 @@ function nextShift(){ if(!chargeMode)return;
   chargeName=(chargeOncoming||'').trim(); chargeOncoming='';
   balancePriority='hours';   // new shift starts by evening the hours; charge can switch to "keep rooms close" on the Build tab
   setDrafting(true);         // from here until Post, staff phones stay on the board they already have
-  syncWorking();   // switch to the new shift's crew so both teams never stack on the floor
+  HANDOFF_CREW={ shift:_snap.shift, date:_snap.date, ids:_snap.nurses.map(n=>n.id) };
+  syncWorking();   // the outgoing crew stays up (HANDOFF_CREW) until the charge saves the new one
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
   _stashPostedBoard(_preHandoff);   // what staff are still looking at, for this device's own staff view
   _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showBuildingBar();
