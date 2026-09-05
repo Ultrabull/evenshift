@@ -3575,10 +3575,17 @@ function addManualRetPct(pid){ if(!pid||RET.pcts[pid])return; (RET.pctHall=RET.p
 function setRetPctHall(pid,hall){ (RET.pctHall=RET.pctHall||{})[pid]=hall; renderReturning(); scheduleSave(); }
 function togReturnSitter(id){ if(RET.sitters[id]){ delete RET.sitters[id]; _retCrewUndo(rosterS,id); } else { RET.sitters[id]=true; _retCrewAdd(rosterS,id); } renderReturning(); scheduleSave(); }
 function applyReturning(){
-  // Nurses: lock kept rooms to them; clear any stale locks for returning nurses' unkept rooms
+  /* Returning staff owns exactly the rooms it last claimed. Release those first, then claim the
+     current picks — otherwise un-ticking a room, or a whole person, left the old lock behind and
+     nothing appeared to change. Rooms the charge locked by hand are never touched. */
+  const prev=RET.applied||{};
+  Object.entries(prev).forEach(([nid,rms])=>(rms||[]).forEach(rn=>{ const r=rooms[rn]; if(r && r.lock===nid) r.lock=null; }));
+  const claimed={};
   Object.entries(RET.nurses).forEach(([nid,kept])=>{
-    (kept||[]).forEach(rn=>{ if(rooms[rn]&&rooms[rn].occupied){ rooms[rn].nurse=nid; rooms[rn].lock=nid; } });
+    claimed[nid]=(kept||[]).filter(rn=>rooms[rn]&&rooms[rn].occupied);
+    claimed[nid].forEach(rn=>{ rooms[rn].nurse=nid; rooms[rn].lock=nid; });
   });
+  RET.applied=claimed;
   // PCTs: pin their zone rooms via PCT_OVERRIDE — a hand-picked hallway, else the snapshot zone
   const P=retSnap()||{};
   Object.keys(RET.pcts).forEach(pid=>{ const hall=RET.pctHall&&RET.pctHall[pid];
@@ -6080,7 +6087,7 @@ let boardCard='staff';        // which support card is expanded under the tiles
 let PREV_SHIFT=null;        // snapshot of the IMMEDIATELY-preceding crew — powers report / total-swap for the oncoming shift
 let PREV_BY_SHIFT={Day:null,Night:null};   // last snapshot of EACH shift type, keyed by shift — powers same-shift "returning staff"
 function retSnap(){ return PREV_BY_SHIFT[shiftType]||null; }   // returning staff = the crew from the last time THIS shift (Day/Night) ran
-let RET={ done:false, nurses:{}, pcts:{}, sitters:{}, manualN:{}, pctHall:{} };  // returning picks: nurses:{id:[rooms]}, pcts:{id:true}, sitters:{id:true}, manualN:{id:true}=hand-added, pctHall:{id:hallNo}=hand-picked zone
+let RET={ done:false, nurses:{}, pcts:{}, sitters:{}, manualN:{}, pctHall:{}, applied:{} };  // returning picks: nurses:{id:[rooms]}, pcts:{id:true}, sitters:{id:true}, manualN:{id:true}=hand-added, pctHall:{id:hallNo}=hand-picked zone
 function selectPctRoom(rm){ if(!chargeMode)return; selectedPctRoom=(selectedPctRoom===rm)?null:rm; renderAssign(); }
 function movePctRoom(pid){ if(!chargeMode||selectedPctRoom==null)return; setPctRoom(selectedPctRoom,pid); selectedPctRoom=null; }
 function showBoardCard(k){ boardCard=(boardCard===k)?'':k; const sp=document.getElementById('cardStack'); if(sp) sp.dataset.userPicked='1'; renderAssign(); }
@@ -6689,7 +6696,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -6747,6 +6754,11 @@ function applyState(st){
   syncWorking();   // AFTER shiftType is applied — filtering the crew with the old shift left a stale/empty working set
   if(typeof st.chargeName==='string') chargeName=st.chargeName;
   if(typeof st.chargeOncoming==='string') chargeOncoming=st.chargeOncoming;
+  // Who is returning, and which rooms the charge kept for each of them, was living only in the tab
+  // she happened to be using: a reload, or a second charge phone, and the screen showed nobody
+  // marked. The rooms themselves were locked correctly — it was the record of the choice that went.
+  if(st.ret && typeof st.ret==='object') RET={ done:!!st.ret.done, nurses:st.ret.nurses||{}, pcts:st.ret.pcts||{},
+    sitters:st.ret.sitters||{}, manualN:st.ret.manualN||{}, pctHall:st.ret.pctHall||{}, applied:st.ret.applied||{} };
   HANDOFF_CREW=(st.handoffCrew&&st.handoffCrew.ids)?st.handoffCrew:null;
   boardPosted=!!st.boardPosted; SCORES_OK=!!st.scoresOk; CREW_OK=!!st.crewOk; vocConfirmed=!!st.vocOk; SHIFT_START=st.shiftStart||0; lastUpdatedAt=st.lastUpdatedAt||0; lastUpdatedBy=st.lastUpdatedBy||'';
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
@@ -6791,7 +6803,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b31';
+const APP_BUILD='2026-09-04 \u00b7 b32';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8302,7 +8314,7 @@ function nextShift(){ if(!chargeMode)return;
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
   ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
-  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{}}; PCT_MANUAL={};
+  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{},applied:{}}; PCT_MANUAL={};
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
   shiftType = shiftType==='Day'?'Night':'Day';
   // The oncoming charge is now the charge. Without this, chargeName kept whoever last typed it, so
