@@ -6312,7 +6312,7 @@ function renderSupport(){
   h='<div class="cardsec">Staff assignment</div><div class="btilegrid">'+staffDefs.map(bigtile).join('')+'</div>';
   // Re-balance rides in the same grid, next to Pending, so the row reads as one block instead of a
   // stray button under it. On the board itself, not inside a tile that has to be opened first.
-  const rebalTile = occupied().some(r=>r.nurse)
+  const rebalTile = (occupied().some(r=>r.nurse) && !HANDOFF_CREW)   // nothing to re-balance until this shift's crew is picked
     ? `<button class="btile clinbal" onclick="rebalanceNurses()"><span class="btemoji">\u2696\ufe0f</span><span class="btlabel">Re-balance</span><span class="btsub">re-run the build on today's scores</span></button>` : '';
   h+='<div class="cardsec">Coverage &amp; safety</div><div class="btilegrid">'+covDefs.map(bigtile).join('')+rebalTile+'</div>';
   const sel=allDefs.find(d=>d[0]===boardCard);
@@ -6326,32 +6326,34 @@ function renderSupport(){
   // Post + after-final actions at the very bottom (finalize lives on the Board)
   const pf=document.getElementById('postFinalWrap');
   if(pf){
-    // The two read-only sheets are reference, not actions on a finished board, so they stay
-    // reachable even with nothing assigned — a charge mid-build still needs last shift's report.
-    const sheetTiles=
-      `<button class="btile" onclick="openReportSheet()"><span class="btemoji">\ud83d\uddE3</span><span class="btlabel">Report Sheet</span><span class="btsub">every room's update</span></button>`+
-      `<button class="btile" onclick="openAcuitySheet()"><span class="btemoji">\ud83d\udcca</span><span class="btlabel">Acuity Record</span><span class="btsub">was, next &amp; reason</span></button>`;
+    /* The four tools under the board are reference, not actions on a finished board: a report to
+       read out from, the ANM's acuity record, the sheet to print, the huddle snapshot. They all
+       apply the moment there are patients, so they stay put whether or not a board is built. Only
+       the Post / End shift buttons above them depend on there being an assignment. */
+    const tools = occupied().length
+      ? `<div class="cardsec">${(assigned&&!HANDOFF_CREW)?'After it\u2019s final':'Sheets &amp; tools'}</div><div class="btilegrid">`
+        + `<button class="btile" onclick="goShare()"><span class="btemoji">\ud83d\udce4</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`
+        + `<button class="btile" onclick="openReportSheet()"><span class="btemoji">\ud83d\udde3</span><span class="btlabel">Report Sheet</span><span class="btsub">every room's update</span></button>`
+        + `<button class="btile" onclick="openAcuitySheet()"><span class="btemoji">\ud83d\udcca</span><span class="btlabel">Acuity Record</span><span class="btsub">was, next &amp; reason</span></button>`
+        + `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">\ud83d\udccb</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`
+        + `</div>`
+      : '';
     if(chargeMode && HANDOFF_CREW){
       // Last shift's board is still up so it can be read and copied. It must not be re-postable as
       // though it were tonight's, and the shift cannot be ended a second time.
       pf.innerHTML=`<div class="holdnote">\ud83d\udccb <b>This is the ${esc(HANDOFF_CREW.shift||'last')} board that just ended.</b> It stays up so you can build the new one from it \u2014 it clears when you pick who is working.</div>`
         +`<button class="postfinal" onclick="openStaff()">\ud83d\udc65 Pick this shift\u2019s crew</button>`
-        +`<div class="cardsec">Sheets</div><div class="btilegrid">${sheetTiles}</div>`;
-    } else if(chargeMode && !assigned && occupied().length){
-      pf.innerHTML=`<div class="cardsec">Sheets</div><div class="btilegrid">${sheetTiles}</div>`;
+        + tools;
     } else if(chargeMode && assigned){
-      const afterTiles=`<div class="cardsec">After it\u2019s final</div><div class="btilegrid">`+
-        `<button class="btile" onclick="goShare()"><span class="btemoji">📤</span><span class="btlabel">Share / Print</span><span class="btsub">send the board</span></button>`+
-        sheetTiles+
-        `<button class="btile" onclick="openMeetingPrep()"><span class="btemoji">📋</span><span class="btlabel">Meeting prep</span><span class="btsub">huddle snapshot</span></button>`+
-      `</div>`;
       // Post and End shift are the two ends of the same job, so they sit on one line. Ending the
       // shift always asks first, and staff keep the posted board until the next charge posts theirs.
-      const endBtn=`<button class="postfinal endshift" onclick="nextShift()">🔄 End shift &amp; hand off<small>staff still see this board until the next one is posted</small></button>`;
+      const endBtn=`<button class="postfinal endshift" onclick="nextShift()">\ud83d\udd04 End shift &amp; hand off<small>staff still see this board until the next one is posted</small></button>`;
       pf.innerHTML = (boardPosted
-        ? `<div class="postedrow"><div class="postedmsg">✓ Posted${chargeName?` by <b>${esc(chargeName)}</b>`:''} — staff can see the final assignment.</div><div class="postedbtns"><button class="btn ghost" onclick="togglePosted()">Unpost</button></div></div><div class="finalrow">${endBtn}</div>`
-        : `<div class="finalrow"><button class="postfinal" onclick="togglePosted()">📌 Post final assignment<small>let everyone see it</small></button>${endBtn}</div>`)
-        + afterTiles;
+        ? `<div class="postedrow"><div class="postedmsg">\u2713 Posted${chargeName?` by <b>${esc(chargeName)}</b>`:''} \u2014 staff can see the final assignment.</div><div class="postedbtns"><button class="btn ghost" onclick="togglePosted()">Unpost</button></div></div><div class="finalrow">${endBtn}</div>`
+        : `<div class="finalrow"><button class="postfinal" onclick="togglePosted()">\ud83d\udccc Post final assignment<small>let everyone see it</small></button>${endBtn}</div>`)
+        + tools;
+    } else if(chargeMode && occupied().length){
+      pf.innerHTML = tools;
     } else pf.innerHTML='';
   }
 }
@@ -6789,7 +6791,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b30';
+const APP_BUILD='2026-09-04 \u00b7 b31';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
