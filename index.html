@@ -6803,7 +6803,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b32';
+const APP_BUILD='2026-09-04 \u00b7 b33';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8327,7 +8327,14 @@ function nextShift(){ if(!chargeMode)return;
   HANDOFF_CREW={ shift:_snap.shift, date:_snap.date, ids:_snap.nurses.map(n=>n.id) };
   syncWorking();   // the outgoing crew stays up (HANDOFF_CREW) until the charge saves the new one
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
-  _stashPostedBoard(_preHandoff);   // what staff are still looking at, for this device's own staff view
+  /* What staff keep looking at while the next board is built. It has to be the board as it stood at
+     hand-off, but carrying the snapshot of the shift that JUST ended — _preHandoff was captured
+     before that snapshot was written, so "Last shift's board" was handing every nurse the shift
+     before last, and looked like it never changed. Undo still uses the untouched _preHandoff. */
+  const _postedForStaff=JSON.parse(JSON.stringify(_preHandoff));
+  _postedForStaff.prevShift=_snap;
+  _postedForStaff.prevByShift=JSON.parse(JSON.stringify(PREV_BY_SHIFT));
+  _stashPostedBoard(_postedForStaff);
   _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showBuildingBar();
 }
 /* The charge must never be left guessing whether staff can see this yet. */
