@@ -3749,7 +3749,9 @@ function submitPulse(breaks){
   if(_pulseMood===null||_pulseFair===null||_pulseSupport===null) return;
   SURVEY_RESPONSES.push({ ts:Date.now(), date:shiftDate, shift:shiftType, mood:+_pulseMood, fair:_pulseFair, support:_pulseSupport, breaks });
   try{ localStorage.setItem(pulseRespondedKey(_quickViewerName()),'1'); }catch(e){}
-  _pulseMood=null; _pulseFair=null; _pulseSupport=null; scheduleSave(); renderAssign();
+  _pulseMood=null; _pulseFair=null; _pulseSupport=null;
+  scheduleSave(); pushAcuity();   // scheduleSave only pushes for a charge; this is how a staff answer travels
+  renderAssign();
 }
 function dismissPulse(){ try{ localStorage.setItem(pulseRespondedKey(_quickViewerName()),'1'); }catch(e){} _pulseMood=null; _pulseFair=null; _pulseSupport=null; renderAssign(); }
 /* Card shown on a staff member's own assignment when the survey is on and they haven't answered this shift. */
@@ -6434,6 +6436,9 @@ function acuityObj(){
   // Acknowledgments are tapped by staff, and staff phones only ever push the acuity column —
   // sending them here is the only way they reach the charge's board.
   if(QUICK_ACKS && Object.keys(QUICK_ACKS).length) a._acks=JSON.parse(JSON.stringify(QUICK_ACKS));
+  // Same story for the pulse survey: it is answered by staff, on staff phones, and those only ever
+  // push this column — so every anonymous answer was saving to that phone and going no further.
+  if(SURVEY_RESPONSES && SURVEY_RESPONSES.length) a._pulse=SURVEY_RESPONSES.slice(-200);
   Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
@@ -6471,6 +6476,14 @@ function applyCloudRow(row){
       for(const nm in inc){ if((inc[nm]||0) > (QUICK_ACKS[qid][nm]||0)) QUICK_ACKS[qid][nm]=inc[nm]; }
     }
   }
+  if(row.acuity && Array.isArray(row.acuity._pulse)){
+    // Anonymous, so the timestamp is the only identity there is; merge on it so two people
+    // answering at the same moment both land.
+    const have=new Set(SURVEY_RESPONSES.map(r=>r&&r.ts));
+    row.acuity._pulse.forEach(r=>{ if(r && r.ts && !have.has(r.ts)){ SURVEY_RESPONSES.push(r); have.add(r.ts); } });
+    SURVEY_RESPONSES.sort((x,y)=>(x.ts||0)-(y.ts||0));
+    if(SURVEY_RESPONSES.length>400) SURVEY_RESPONSES=SURVEY_RESPONSES.slice(-400);
+  }
   if(row.acuity && row.acuity._done){
     const base=shiftBaseline();
     for(const nid in row.acuity._done){ const ts=row.acuity._done[nid];
@@ -6484,7 +6497,7 @@ function applyCloudRow(row){
   // boot-time reconcile already uses; acceptance is gated on its own timestamp since a charge can
   // accept an old score after a newer edit has already arrived.
   if(row.acuity) for(const id in row.acuity){
-    if(id==='_done') continue;
+    if(id==='_done' || id==='_acks' || id==='_pulse') continue;
     const r=rooms[+id]; if(!r) continue;
     const a=row.acuity[id];
     if((a.editedAt||0) >= (r.editedAt||0)){
@@ -6539,7 +6552,12 @@ function _metaPayload(){
   // always safer than overwriting it with work in progress.
   const posted=_readStash(POSTED_KEY) || _lastPostedMeta;
   if(!posted) return null;
-  return Object.assign(_stripDraft(posted), {_draft:_currentDraftState(), _draftAt:Date.now(), _draftBy:clientId});
+  /* Announcements are unit comms, not part of the board being built. Held inside the draft they
+     reached nobody until the board was posted — which on this unit is hours later, and the whole
+     point of "2 falls overnight" is that the oncoming crew reads it now. They ride on the posted
+     half so every phone gets them straight away. */
+  return Object.assign(_stripDraft(posted), { quickHits:QUICK_HITS, quickAcks:QUICK_ACKS,
+    _draft:_currentDraftState(), _draftAt:Date.now(), _draftBy:clientId });
 }
 async function pushMeta(){
   if(!cloudOn())return;
@@ -6696,7 +6714,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -6787,6 +6805,14 @@ function applyState(st){
   if(typeof st.surveyOn==='boolean') SURVEY_ON=st.surveyOn;
   if(Array.isArray(st.surveyResponses)) SURVEY_RESPONSES=st.surveyResponses;
   if(typeof st.pctMode==='boolean') PCT_MODE=st.pctMode;
+  // The charge's own staffing-request numbers — she taps them up or down off the suggestion, and
+  // setReq() has always called scheduleSave(), but they were never written into the board, so they
+  // reverted on a reload and never reached the next charge's phone.
+  if(st.reqAdj && typeof st.reqAdj==='object'){
+    _rnReqAdj  = (typeof st.reqAdj.rn==='number')  ? st.reqAdj.rn  : null;
+    _pctReqAdj = (typeof st.reqAdj.pct==='number') ? st.reqAdj.pct : null;
+    _hucReqAdj = (typeof st.reqAdj.huc==='number') ? st.reqAdj.huc : null;
+  }
   if(st.staffReqF) STAFFREQ_F={...st.staffReqF};
   else { STAFFREQ_F={}; if(st.staffReqOR)STAFFREQ_F.or=st.staffReqOR; if(st.staffReqNote)STAFFREQ_F.note=st.staffReqNote; if(st.staffReqCallRN)STAFFREQ_F.callrn=st.staffReqCallRN; if(st.staffReqCallPCT)STAFFREQ_F.callpct=st.staffReqCallPCT; if(st.staffReqWTW)STAFFREQ_F.wtw=st.staffReqWTW; if(st.staffReqFloat)STAFFREQ_F.float=st.staffReqFloat; }   // legacy keys migrate
   if(st.unitInfo && typeof st.unitInfo.directory==='string') UNITINFO=st.unitInfo;
@@ -6803,7 +6829,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b33';
+const APP_BUILD='2026-09-04 \u00b7 b34';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
