@@ -2130,10 +2130,31 @@ function nurseRatioCap(nid){
 function getActiveFlags(){
   const base=FLAGS.filter(([code])=>!UNIT_FLAG_CONFIG.hidden.includes(code)||ENGINE_FLAG_CODES.has(code));
   const renamed=base.map(([code,label,full])=>{ const r=UNIT_FLAG_CONFIG.renames[code]; return r?[code,r.label||label,r.full||full]:[code,label,full]; });
-  const custom=(UNIT_FLAG_CONFIG.custom||[]).map(c=>[c.code,c.label||c.code,c.full||c.label||c.code]);
+  /* A custom flag is created empty and named afterwards. Falling back to the code for a blank name
+     is how a raw code like cf7326 ended up on a room where a clinical flag should be — so an unnamed
+     one is simply not offered until it has a name. */
+  const custom=(UNIT_FLAG_CONFIG.custom||[]).filter(c=>c && c.code && (c.label||'').trim())
+    .map(c=>[c.code,c.label,c.full||c.label]);
   return [...renamed,...custom].sort((a,b)=>a[1].localeCompare(b[1]));   // alphabetical by label everywhere
 }
-function getFlagLabel(code){ const f=getActiveFlags().find(x=>x[0]===code); return f?f[1]:code; }
+/* Is this code something the unit can still explain? A custom flag that was deleted, or never
+   named, leaves its code behind on every room that had it — and showing a nurse "cf73265" where a
+   clinical flag belongs is worse than showing nothing. */
+function knownFlag(code){ return !!getActiveFlags().find(x=>x[0]===code); }
+function getFlagLabel(code){ const f=getActiveFlags().find(x=>x[0]===code); return f?f[1]:''; }
+/* Strip codes no flag list can name. Runs when the unit's flag config arrives, so a board that
+   already carries orphans from a deleted custom flag cleans itself up. */
+function pruneUnknownFlags(){
+  let n=0;
+  Object.values(rooms||{}).forEach(r=>{
+    ['flags','tags','pctFlags'].forEach(k=>{
+      if(!Array.isArray(r[k])) return;
+      const keep=r[k].filter(c=>knownFlag(c));
+      if(keep.length!==r[k].length){ r[k]=keep; n++; }
+    });
+  });
+  return n;
+}
 let RUBRIC_FLAT=[], POINTS={}, COMMON=[];
 function rebuildRubric(){ RUBRIC_FLAT=[]; POINTS={}; COMMON=[];
   RUBRIC.forEach(([grp,items])=>items.forEach(([lab,pts,quick],i)=>{ const key=grp+'|'+i; RUBRIC_FLAT.push({key,lab,pts,grp,quick:!!quick}); POINTS[key]=pts; if(quick)COMMON.push(key); })); }
@@ -2501,7 +2522,7 @@ function lastShiftHTML(){
     P.nurses.slice().sort((a,b)=>{ const ma=(a.rooms&&a.rooms.length)?Math.min.apply(null,a.rooms):9999; const mb=(b.rooms&&b.rooms.length)?Math.min.apply(null,b.rooms):9999; return ma-mb; }).forEach(rec=>{
       const rms=(rec.rooms||[]).slice().sort((x,y)=>x-y);
       h+=`<div class="lscard"><div class="lsname">${esc(rec.name)} <span class="lscount">${rms.length} room${rms.length===1?'':'s'}</span></div><div class="lschips">`
-        +rms.map(rn=>{ const r=rooms[rn]; const fl=r?(r.flags||[]).map(getFlagLabel).slice(0,4).join(' · '):''; return `<span class="lschip"><b>${rn}</b>${fl?`<span class="lsfl">${esc(fl)}</span>`:''}</span>`; }).join('')
+        +rms.map(rn=>{ const r=rooms[rn]; const fl=r?(r.flags||[]).map(getFlagLabel).filter(Boolean).slice(0,4).join(' · '):''; return `<span class="lschip"><b>${rn}</b>${fl?`<span class="lsfl">${esc(fl)}</span>`:''}</span>`; }).join('')
         +`</div></div>`;
     });
     h+=`</div>`;
@@ -2568,7 +2589,7 @@ function rcardTone(r){
 }
 function rcardScoredBody(r){
   const dv=dispAcu(r), cls=acuClass(dv);
-  const flags=r.flags.map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
+  const flags=r.flags.filter(knownFlag).map(f=>`<span class="flag ${f}">${getFlagLabel(f)}</span>`).join('');
   const wasLine = (r.nextAcuity!=null && Math.abs(dv-r.acuity)>=0.25) ? `<div class="was" title="this shift scored it ${acuFmt(r.acuity)}">was ${acuFmt(r.acuity)} hrs</div>` : '';
   const carried = (r.acuity>0 && !roomCurrentThisShift(r)) ? `<div class="carriedtag" title="Carried over from the last shift">\u21a9 last shift \u00b7 tap to confirm</div>` : '';
   return `<div class="acu">${acuFmt(dv)} <small>hrs</small></div>${wasLine}<span class="pill p${cls}">${acuLabel(dv)}</span>${carried}${flags?`<div class="flags">${flags}</div>`:''}`;
@@ -3057,7 +3078,7 @@ function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===ni
 /* RN self-view chip — tappable to score, shows "tap" if unscored */
 /* short codes ONLY for the tiny board chips; everywhere else uses full labels */
 const MINI_LABEL={iso:'Iso',dc:'D/C',adm:'Adm',sit:'1:1',beh:'Beh'};
-function miniFlag(f){ return MINI_LABEL[f]||getFlagLabel(f); }
+function miniFlag(f){ return MINI_LABEL[f]||getFlagLabel(f); }   // '' for a code nothing can name
 function rnChip(r){
   const flags=r.flags.filter(f=>['iso','dc','adm','sit','beh'].includes(f)).map(miniFlag).join(' ');
   const rose=r.prevAcuity!=null&&r.acuity!=null&&r.acuity>r.prevAcuity+0.25;
@@ -3089,7 +3110,7 @@ function toggleRoomLock(rid){ if(!chargeMode) return; const r=rooms[rid]; if(!r|
   else { if(!r.nurse){ return; } r.lock=r.nurse; }   // can only lock a room that's assigned to a nurse
   scheduleSave(); renderAssign();
 }
-function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||code; }
+function flagLabel(code){ return getFlagLabel(code)||({feed:'Feed',draw:'Draw'})[code]||''; }
 const PCT_VIEW_BASE=['adm','dc','chg','foley','beh','iso','bs','q2t','sio','sbrk','npo','snr','sara','tot','feed','sleep','interp','dnar','extcath','dwt','q4v','q8v'];
 const PCT_READONLY=['beh','dnar'];   // shown to PCTs for awareness, but only a nurse/charge can change them
 function getPCTView(){
@@ -6210,7 +6231,7 @@ function reportSheetHTML(){
   occ.forEach(r=>{
     const n=nurses.find(x=>x.id===r.nurse);
     const u=(r.update||'').trim();
-    const fl=(r.flags||[]).map(getFlagLabel).slice(0,4).join(' \u00b7 ');
+    const fl=(r.flags||[]).map(getFlagLabel).filter(Boolean).slice(0,4).join(' \u00b7 ');
     const cn=(r.cnote||'').trim();
     h+=`<div class="shrow"><div class="shrm">${r.id}<small>${n?esc(n.name):'\u2014'}</small></div><div class="shbody">`
       +`<div class="shupd${u?'':' none'}">${u?esc(u):'\u2014 no update'}</div>`
@@ -6897,6 +6918,7 @@ function applyState(st){
   if(typeof st.unitPass==='string') unitPass=st.unitPass;
   if(typeof st.breakCap==='number') BREAK_CAP=st.breakCap;
   if(st.unitFlagConfig) UNIT_FLAG_CONFIG={hidden:st.unitFlagConfig.hidden||[],renames:st.unitFlagConfig.renames||{},custom:st.unitFlagConfig.custom||[],rules:st.unitFlagConfig.rules||{},pctView:Array.isArray(st.unitFlagConfig.pctView)?st.unitFlagConfig.pctView:null};
+  pruneUnknownFlags();   // the flag list just arrived — drop any code it cannot name
   // Deliberately no scheduleSave() here. scheduleSave marks a meta push pending, and a pending push
   // makes applyCloudRow skip incoming meta — so a migration running on every inbound board would
   // block the very sync that delivered it. The change is idempotent and re-applies on each load;
@@ -6944,7 +6966,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b38';
+const APP_BUILD='2026-09-04 \u00b7 b39';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -7071,7 +7093,17 @@ function addCustomFlag(){
   UNIT_FLAG_CONFIG.custom.push({code,label:'',full:''}); scheduleSave(); renderFlagEditor();
 }
 function removeCustomFlag(i){
-  UNIT_FLAG_CONFIG.custom.splice(i,1); scheduleSave(); renderFlagEditor();
+  const gone=(UNIT_FLAG_CONFIG.custom||[])[i];
+  UNIT_FLAG_CONFIG.custom.splice(i,1);
+  // The rooms that carried it have to let go too, or the code sits on the board with nothing left
+  // to name it.
+  if(gone && gone.code){
+    Object.values(rooms||{}).forEach(r=>{ ['flags','tags','pctFlags'].forEach(k=>{
+      if(Array.isArray(r[k])) r[k]=r[k].filter(c=>c!==gone.code); }); });
+    if(Array.isArray(UNIT_FLAG_CONFIG.pctView)) UNIT_FLAG_CONFIG.pctView=UNIT_FLAG_CONFIG.pctView.filter(c=>c!==gone.code);
+    if(UNIT_FLAG_CONFIG.rules) delete UNIT_FLAG_CONFIG.rules[gone.code];
+  }
+  scheduleSave(); renderFlagEditor(); renderAcuity(); if(assignVisible()) renderAssign();
 }
 /* ── PCT care-flag picker (More Tools): which flags PCTs see & edit on their zone rooms ── */
 function openPctFlagCfg(){ if(!chargeMode)return; renderPctFlagCfg(); document.getElementById('pctFlagCfgScrim').classList.add('on'); }
@@ -8589,7 +8621,7 @@ function getDisplayFlagCodes(){ return getActiveFlags().map(x=>x[0]).filter(c=>!
    engine flags — so isolation, 1:1, behavioral, confused, admit and discharge were missing from the
    clinical reference and the printed handoff sheet, which are exactly the ones a charge reads out. */
 function clinicalGrid(){ const occ=occupied(); const codes=getActiveFlags().map(x=>x[0]);
-  return codes.map(code=>{ const label=getFlagLabel(code)||code;
+  return codes.filter(knownFlag).map(code=>{ const label=getFlagLabel(code);
     const rms=occ.filter(r=>(r.flags||[]).includes(code)||(r.tags||[]).includes(code)).map(r=>r.id).sort((a,b)=>a-b);
     return rms.length?{label,rooms:rms}:null; }).filter(Boolean); }
 function prColors(){ const PAL=['#DCE8FF','#FFE3D6','#DDF3E0','#F3DDF0','#FFF1C9','#D9F0F4','#E7E1FF','#FCE0E6','#E3EFD3','#FAD9C2','#D6E9FF','#EAD9C9']; const m={}; nurses.forEach((n,i)=>{ m[n.id]=PAL[i%PAL.length]; }); return m; }
