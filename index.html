@@ -3335,13 +3335,28 @@ function updateScoreProgress(){
     // Who has updated their patients this shift, and who still hasn't — by name, with the exact
     // rooms they missed, so the charge can chase a room rather than a vague count.
     const roomList=(ids)=>ids.slice(0,3).join(', ')+(ids.length>3?` +${ids.length-3}`:'');
+    /* A room's number can be current without THIS nurse having anything to do with it: on this unit
+       the outgoing staff score for the shift coming on, so the new crew inherits fresh numbers they
+       never touched. Ticking their names for that work was a plain lie — it read as "everyone
+       scored" to a charge who had only just picked them. Count what each nurse actually scored, and
+       say who did the rest. */
+    /* Somebody who is still on the unit scoring a room is fine — the charge does it herself all the
+       time. What is not fine is crediting the crew that has just been picked for work the crew that
+       went home did: that read as "everyone scored" to a charge who had not even posted the board.
+       So a room only counts as carried when the person who scored it is no longer here. */
+    const stillHere = sb => !sb || sb==='charge' || _crewIds.has(sb);
     const rows=assignedNurses.map(n=>{
       const rs=occ.filter(r=>r.nurse===n.id);
-      const scored=rs.filter(roomUpdatedThisShift).length;
+      const fresh=rs.filter(roomUpdatedThisShift);
+      const hers=fresh.filter(r=>r.scoredBy===n.id);
+      const here=fresh.filter(r=>r.scoredBy!==n.id && stillHere(r.scoredBy));
+      const carried=fresh.filter(r=>!stillHere(r.scoredBy));
       const acc=rs.filter(r=>!roomUpdatedThisShift(r)&&roomAcceptedThisShift(r)).length;
       const missed=rs.filter(r=>!roomCurrentThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
-      return {name:(n.name||'').split(' ')[0], scored, acc, total:rs.length, all:scored===rs.length,
-              covered:scored+acc===rs.length, said:!!n.scoredDone, missed};
+      const by=[...new Set(carried.map(r=>r.editedBy).filter(Boolean))].slice(0,3).join(', ');
+      return {name:(n.name||'').split(' ')[0], scored:hers.length+here.length, other:carried.length, by, acc,
+              total:rs.length, all:hers.length+here.length===rs.length, covered:missed.length===0,
+              said:!!n.scoredDone, missed};
     }).sort((a,b)=> (a.all?1:0)-(b.all?1:0) || a.name.localeCompare(b.name));   // pending first
     const pending=rows.filter(r=>!r.covered);
     // Rooms nobody on the crew owns were invisible here, yet the all-clear line counted them as
@@ -3351,8 +3366,8 @@ function updateScoreProgress(){
     const chips=rows.map(r=> r.all
       ? `<span class="spchip spc-done">✓ ${esc(r.name)}</span>`
       : (r.covered
-        ? `<span class="spchip spc-acc" title="Not scored by this nurse — the charge accepted the carried-over numbers">${esc(r.name)} <b>${r.scored}/${r.total}</b> · ${r.acc} accepted</span>`
-        : `<span class="spchip ${r.scored>0?'spc-part':'spc-none'}">${esc(r.name)} <b>${r.scored}/${r.total}</b>${r.missed.length?` · Rm ${roomList(r.missed)}`:''}${r.said?' · said done':''}${r.acc?` · ${r.acc} accepted`:''}</span>`)).join('')
+        ? `<span class="spchip spc-acc" title="${r.other?`Scored by ${esc(r.by||'someone else')}, not by this nurse`:'The charge accepted the carried-over numbers'}">${esc(r.name)} <b>${r.scored}/${r.total}</b>${r.other?` · ${r.other} by ${esc(r.by||'others')}`:''}${r.acc?` · ${r.acc} accepted`:''}</span>`
+        : `<span class="spchip ${r.scored>0?'spc-part':'spc-none'}">${esc(r.name)} <b>${r.scored}/${r.total}</b>${r.missed.length?` · Rm ${roomList(r.missed)}`:''}${r.said?' · said done':''}${r.other?` · ${r.other} by ${esc(r.by||'others')}`:''}${r.acc?` · ${r.acc} accepted`:''}</span>`)).join('')
       + (looseMissed.length?`<span class="spchip spc-none">No nurse yet · Rm ${roomList(looseMissed)}</span>`:'');
     let head;
     if(pending.length||looseMissed.length){
@@ -3362,10 +3377,17 @@ function updateScoreProgress(){
       head=`🩺 Next-shift scoring — ${bits.join(' · ')}${unscored?` · ${unscored} unscored`:''}`;
     } else {
       const accTotal=occ.filter(r=>!roomUpdatedThisShift(r)&&roomAcceptedThisShift(r)).length;
-      const scoredTotal=total-accTotal;
+      const crewTotal=rows.reduce((n,r)=>n+r.scored,0);
+      const otherTotal=rows.reduce((n,r)=>n+r.other,0);
       const accBy=(occ.find(r=>roomAcceptedThisShift(r))||{}).acceptedBy;
-      head = accTotal
-        ? `✓ Scores current — <b>${scoredTotal}</b> room${scoredTotal===1?'':'s'} scored by staff · <b>${accTotal}</b> accepted by ${esc(accBy||'charge')}`
+      const bits=[];
+      if(crewTotal)  bits.push(`<b>${crewTotal}</b> room${crewTotal===1?'':'s'} scored by staff`);
+      if(otherTotal) bits.push(`<b>${otherTotal}</b> carried from the crew that scored them`);
+      if(accTotal)   bits.push(`<b>${accTotal}</b> accepted by ${esc(accBy||'charge')}`);
+      // Only the crew on the board can be said to have scored for the next shift. Anything else is
+      // a current number, which is a different claim and worth making separately.
+      head = (otherTotal||accTotal)
+        ? `✓ Numbers are current — ${bits.join(' · ')}`
         : `✓ Everyone scored for next shift — all ${total} rooms updated this shift`;
     }
     el.innerHTML=`<div class="sp-head">${head}</div><div class="sp-chips">${chips}</div>`;
@@ -3375,7 +3397,7 @@ function updateScoreProgress(){
   // No assignment loaded — can't attribute to a nurse, so show which ROOMS still need scoring.
   const head = stale>0
     ? `\uD83E\uDE7A Next-shift scoring: <b>${fresh} of ${total}</b> rooms updated \u00b7 \u26a0 <b>${stale}</b> still pending${unscored?` (${unscored} unscored)`:''}`
-    : `\u2713 All ${total} rooms updated this shift \u2014 scored for the next shift`;
+    : `\u2713 All ${total} rooms have a current number for the next shift`;
   if(stale>0){
     const nums=occ.filter(r=>!roomCurrentThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
     const chips=nums.map(rn=>`<span class="spchip spc-none">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
@@ -6966,7 +6988,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b39';
+const APP_BUILD='2026-09-04 \u00b7 b40';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
