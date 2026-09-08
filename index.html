@@ -3250,10 +3250,11 @@ function renderAssign(){
       <div class="loadrow noBar"><span class="loadnum"><b>${acuFmt(L.next)}</b> hrs · ${L.count} pt${(()=>{ const hc=rs.filter(isHigh).length; return hc?` · <span class="hiflag" title="High acuity (${acuFmt(highCut())}+): rooms ${rs.filter(isHigh).map(r=>r.id).join(', ')}">${hc} high</span>`:''; })()}${(()=>{ const rc=nurseRatioCap(n.id); return rc?` · <span class="capflag" title="${esc(rc.label)} limits this nurse to ${rc.cap} patients, so their hours sit below the others on purpose">max ${rc.cap} \u00b7 ${esc(rc.label)}</span>`:''; })()}</span></div>
       ${bparts.length?`<div class="burds">${bparts.join('')}</div>`:''}
       ${selfRN?'<div class="scorehint">🩺 Tap any room to score it — scores sync live to the charge board</div>':''}
-      ${selfRN?(()=>{ const pend=rs.filter(r=>!roomCurrentThisShift(r)).length; const done=n.scoredDone&&pend===0;
+      ${selfRN?(()=>{ const pend=rs.filter(r=>!roomCurrentThisShift(r)).length;
+        const said=!!(n.scoredDone && (n.doneAt||0)>=shiftBaseline());   // an "I'm done" from an earlier cycle is not this one
+        const done=said&&pend===0;
         // Tapping while rooms are still unchecked used to change nothing on screen, so it read as a
         // dead button. The claim is recorded and shown back either way.
-        const said=n.scoredDone&&pend>0;
         const lab = done ? '✓ You\u2019re done — scores sent'
                   : said ? `✓ You said done — ${pend} not checked yet (tap to undo)`
                   : (pend>0 ? `${pend} still to check, then tap “I\u2019m done”` : '✓ Tap when all your patients are scored');
@@ -3356,7 +3357,7 @@ function updateScoreProgress(){
       const by=[...new Set(carried.map(r=>r.editedBy).filter(Boolean))].slice(0,3).join(', ');
       return {name:(n.name||'').split(' ')[0], scored:hers.length+here.length, other:carried.length, by, acc,
               total:rs.length, all:hers.length+here.length===rs.length, covered:missed.length===0,
-              said:!!n.scoredDone, missed};
+              said:!!(n.scoredDone && (n.doneAt||0) >= shiftBaseline()), missed};
     }).sort((a,b)=> (a.all?1:0)-(b.all?1:0) || a.name.localeCompare(b.name));   // pending first
     const pending=rows.filter(r=>!r.covered);
     // Rooms nobody on the crew owns were invisible here, yet the all-clear line counted them as
@@ -5723,8 +5724,11 @@ function saveStaff(){
     if(HANDOFF_CREW.toDate) shiftDate=HANDOFF_CREW.toDate;
     chargeName=HANDOFF_CREW.toCharge||''; chargeOncoming='';
     balancePriority='hours';   // a new shift starts by evening the hours
+    boardPosted=false;         // from here the board is the NEXT shift's, and it has not been posted
   }
   HANDOFF_CREW=null;   // the crew is picked — stop holding last shift's board up
+  // Nobody on a crew that is only now being picked has scored anything for it yet.
+  rosterN.forEach(n=>{ n.scoredDone=false; n.doneAt=0; });
   syncWorking();
   applyShiftUI();
   occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });   // free anyone not on today
@@ -7000,7 +7004,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b41';
+const APP_BUILD='2026-09-04 \u00b7 b42';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8521,7 +8525,7 @@ function nextShift(){ if(!chargeMode)return;
   rosterS.forEach(s=>{ s.breakSlot=''; s.breakApproved=false; s.breakCover=''; });
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
   ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
-  boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{},applied:{}}; PCT_MANUAL={};
+  SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{},applied:{}}; PCT_MANUAL={};
   /* Nothing about WHICH shift the board is for changes here. Ending a shift used to flip straight
      over — new shift, new crew, board repopulated — and a charge who had already built the oncoming
      board watched it disappear with no way back to it. The flip is written down and applied at the
