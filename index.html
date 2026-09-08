@@ -4499,7 +4499,7 @@ function generate(){ if(!chargeMode)return;
    syncWorking) rather than re-scanned per room. */
 function lockHolder(r){ return (r && r.lock && _crewIds.has(r.lock)) ? r.lock : null; }
 function _generateNow(){ if(!chargeMode)return;
-  if(HANDOFF_CREW){ alert('\ud83d\udc65 Pick this shift\u2019s crew first.\n\nThe board on screen is the shift that just ended \u2014 building now would deal tonight\u2019s patients to people who have gone home.'); openStaff(); return; } pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
+  if(HANDOFF_CREW){ alert('\ud83d\udc65 Pick the '+(HANDOFF_CREW.toShift||'next')+' crew first.\n\nThe board on screen is still the '+(HANDOFF_CREW.shift||'last')+' shift that just ended. Picking who is working is what moves it over \u2014 until then nothing here changes.'); openStaff(); return; } pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
   // Build the NEXT shift off each patient's predicted acuity. Swap it in for the run, restore the live "now" after.
   const _savedAcu={}; occupied().forEach(r=>{ _savedAcu[r.id]=r.acuity; if(r.nextAcuity!=null) r.acuity=r.nextAcuity; });
   const _restoreAcu=()=>{ Object.keys(_savedAcu).forEach(id=>{ if(rooms[id]) rooms[id].acuity=_savedAcu[id]; }); };
@@ -5307,7 +5307,9 @@ function rebuildStaff(){ syncWorking(); }
 function openIncoming(){ openStaff(); }
 /* ─────────────────── end incoming ─────────────────── */
 
-function openStaff(){ if(!chargeMode)return; _staffTab=shiftType==='Night'?'night':'day'; staffConfirmed=false; _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); _wh=rosterH.map(x=>({...x})); renderStaffModal(); document.getElementById('staffScrim').classList.add('on'); }
+function openStaff(){ if(!chargeMode)return;
+  const tgt=(HANDOFF_CREW&&HANDOFF_CREW.toShift)||shiftType;   // mid-hand-off she is picking the NEXT shift's crew
+  _staffTab=tgt==='Night'?'night':'day'; staffConfirmed=false; _wn=rosterN.map(n=>({...n})); _wp=rosterP.map(p=>({...p})); _ws=rosterS.map(s=>({...s})); _wh=rosterH.map(x=>({...x})); renderStaffModal(); document.getElementById('staffScrim').classList.add('on'); }
 let staffConfirmed=false;
 function closeStaff(){ document.getElementById('staffScrim').classList.remove('on'); }
 function syncStaffDOM(){
@@ -5714,8 +5716,17 @@ function saveStaff(){
   rosterP=_wp.filter(p=>p.name.trim()).map(p=>({id:p.id,name:p.name.trim(),on:p.on!==false,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
   rosterS=_ws.filter(s=>s.name.trim()).map(s=>({id:s.id,name:s.name.trim(),room:s.room||'',on:s.on!==false,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''}));
   rosterH=_wh.filter(x=>x.name.trim()).map(x=>({id:x.id,name:x.name.trim(),on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''}));
+  /* Picking the crew is the moment the board becomes the next shift's: the pending flip recorded at
+     End Shift lands here, before the crew is worked out, so the roster filters on the right shift. */
+  if(HANDOFF_CREW && HANDOFF_CREW.toShift){
+    shiftType=HANDOFF_CREW.toShift;
+    if(HANDOFF_CREW.toDate) shiftDate=HANDOFF_CREW.toDate;
+    chargeName=HANDOFF_CREW.toCharge||''; chargeOncoming='';
+    balancePriority='hours';   // a new shift starts by evening the hours
+  }
   HANDOFF_CREW=null;   // the crew is picked — stop holding last shift's board up
   syncWorking();
+  applyShiftUI();
   occupied().forEach(r=>{ if(r.lock&&!nurses.find(x=>x.id===r.lock))r.lock=null; if(r.nurse&&!nurses.find(x=>x.id===r.nurse))r.nurse=null; });   // free anyone not on today
   if(viewAs!=='charge'&&!nurses.find(x=>x.id===viewAs))viewAs='charge';
   CREW_OK=true;   // Save staff = this shift's crew is confirmed (guide bar step 3)
@@ -6487,8 +6498,9 @@ function renderSupport(){
     if(chargeMode && HANDOFF_CREW){
       // Last shift's board is still up so it can be read and copied. It must not be re-postable as
       // though it were tonight's, and the shift cannot be ended a second time.
-      pf.innerHTML=`<div class="holdnote">\ud83d\udccb <b>This is the ${esc(HANDOFF_CREW.shift||'last')} board that just ended.</b> It stays up so you can build the new one from it \u2014 it clears when you pick who is working.</div>`
-        +`<button class="postfinal" onclick="openStaff()">\ud83d\udc65 Pick this shift\u2019s crew</button>`
+      const nx=esc(HANDOFF_CREW.toShift||'next');
+      pf.innerHTML=`<div class="holdnote">\ud83d\udccb <b>This is the ${esc(HANDOFF_CREW.shift||'last')} board that just ended.</b> Nothing moves to <b>${nx}</b> until you pick who is working \u2014 so it stays exactly here for you to build the new one from.</div>`
+        +`<button class="postfinal" onclick="openStaff()">\ud83d\udc65 Pick the ${nx} crew</button>`
         + tools;
     } else if(chargeMode && assigned){
       // Post and End shift are the two ends of the same job, so they sit on one line. Ending the
@@ -6988,7 +7000,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b40';
+const APP_BUILD='2026-09-04 \u00b7 b41';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8478,7 +8490,7 @@ function _fileShiftReport(){          // → true if this call is what wrote the
 }
 function nextShift(){ if(!chargeMode)return;
   const to = shiftType==='Day' ? 'Night' : 'Day';
-  if(!confirm('\ud83d\udd04 End shift and hand off?\n\n\u2713 This shift is SAVED to Manager reports.\n\u2713 Each patient keeps their score, flags and notes.\n\u2713 Staff keep seeing the board you posted \u2014 they do NOT lose their patients while you build.\n\nYou will build the '+to+' crew\u2019s board next. Tap \ud83d\udccc Post when it is ready and everyone swaps over at once. Continue?')) return;
+  if(!confirm('\ud83d\udd04 End shift and hand off?\n\n\u2713 This shift is SAVED to Manager reports.\n\u2713 The board stays exactly as it is \u2014 same shift, same crew, same rooms.\n\u2713 Staff keep seeing the board you posted.\n\nNothing moves to '+to+' until you pick the '+to+' crew. Build it, then tap \ud83d\udccc Post and everyone swaps over at once. Continue?')) return;
   const _preHandoff=stateObj();                      // full picture before anything changes
   const _fileKey=_shiftKey();
   pushUndo();
@@ -8510,17 +8522,17 @@ function nextShift(){ if(!chargeMode)return;
   // Vocera: fresh check-in for the new shift's device set, but Lost/Repair stay flagged
   ['Day','Night'].forEach(t=>{ const s=VOC_DEVICES[t]; if(s)['rn','pct','sit'].forEach(g=>(s[g]||[]).forEach(d=>{ if(d.status!=='Lost'&&d.status!=='Repair') d.status='Assigned'; })); });
   boardPosted=false; SCORES_OK=false; CREW_OK=false; SHIFT_START=Date.now(); lastUpdatedAt=0; lastUpdatedBy=''; vocConfirmed=false; RET={done:false,nurses:{},pcts:{},sitters:{},manualN:{},pctHall:{},applied:{}}; PCT_MANUAL={};
-  if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); shiftDate=d.toISOString().slice(0,10); }
-  shiftType = shiftType==='Day'?'Night':'Day';
-  // The oncoming charge is now the charge. Without this, chargeName kept whoever last typed it, so
-  // every later shift was filed in Manager reports under that stale name. The history row for the
-  // shift that just ran was already written above, with the right name on it. Blank when nobody was
-  // named — an empty "prepared by" is honest, a wrong one quietly corrupts the manager's record.
-  chargeName=(chargeOncoming||'').trim(); chargeOncoming='';
-  balancePriority='hours';   // new shift starts by evening the hours; charge can switch to "keep rooms close" on the Build tab
+  /* Nothing about WHICH shift the board is for changes here. Ending a shift used to flip straight
+     over — new shift, new crew, board repopulated — and a charge who had already built the oncoming
+     board watched it disappear with no way back to it. The flip is written down and applied at the
+     moment the next crew is picked, which is when it actually means something. */
+  const _toShift = shiftType==='Day' ? 'Night' : 'Day';
+  let _toDate = shiftDate;
+  if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); _toDate=d.toISOString().slice(0,10); }
   setDrafting(true);         // from here until Post, staff phones stay on the board they already have
-  HANDOFF_CREW={ shift:_snap.shift, date:_snap.date, ids:_snap.nurses.map(n=>n.id) };
-  syncWorking();   // the outgoing crew stays up (HANDOFF_CREW) until the charge saves the new one
+  HANDOFF_CREW={ shift:_snap.shift, date:_snap.date, ids:_snap.nurses.map(n=>n.id),
+                 toShift:_toShift, toDate:_toDate, toCharge:(chargeOncoming||'').trim() };
+  syncWorking();   // still this shift's crew — the board is exactly where it was left
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
   /* What staff keep looking at while the next board is built. It has to be the board as it stood at
      hand-off, but carrying the snapshot of the shift that JUST ended — _preHandoff was captured
