@@ -602,6 +602,8 @@
   .postedmsg{font-size:14.5px;font-weight:700;color:var(--ok-ink);margin-bottom:10px;}
   .postedbtns{display:flex;gap:8px;}
   .postedbtns .ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);}
+  .shwhen{display:block;font-size:9.5px;color:var(--ink-soft);font-weight:600;}
+  .ftog.oostog.on{background:var(--bad-wash2);border-color:var(--bad-line2);color:var(--bad-ink);}
   .clearopt{display:block;width:100%;text-align:left;margin-top:10px;padding:14px 15px;border:1.5px solid var(--info-line2);background:var(--info-wash);border-radius:14px;font-family:inherit;font-size:14.5px;font-weight:800;color:var(--ink);cursor:pointer;}
   .clearopt small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--ink-soft);line-height:1.4;}
   .clearopt.closed{border-color:var(--line-strong);background:var(--surface);}
@@ -1832,7 +1834,7 @@
     <div class="mbody">
       <p class="covnote" id="clearWho"></p>
       <button class="clearopt" onclick="dischargeRoom()"><b>🚪 Discharged — the patient has left</b><small id="clearDcSub"></small></button>
-      <button class="clearopt closed" onclick="closeBed()"><b>⛔ Bed closed — nobody is coming</b><small id="clearClSub"></small></button>
+      <p class="hint" id="clearOosHint" style="margin:12px 2px 0;"></p>
     </div>
   </div>
 </div>
@@ -2354,7 +2356,11 @@ function highCut(){ const v=+(FLOOR&&FLOOR.highAcuity); return v>0?v:HIGH_ACUITY
    Make Assignment actually builds from. Falls back to the current score for a room whose
    prediction was never touched (saveScore defaults nextAcuity to the current score, so this is
    only ever different when someone deliberately changed the slider). */
-function dispAcu(r){ return (r&&r.nextAcuity!=null)?r.nextAcuity:(r?r.acuity:null); }
+/* A room out of service is a closed bed, not a light patient. It scores 0 everywhere the number is
+   read, so it stops pulling on the balance the moment the flag goes on and starts again when it
+   comes off — no re-scoring, and nothing to remember to undo. */
+function roomBlocked(r){ return !!(r && (r.flags||[]).includes('oos')); }
+function dispAcu(r){ if(roomBlocked(r)) return 0; return (r&&r.nextAcuity!=null)?r.nextAcuity:(r?r.acuity:null); }
 function isHigh(r){ return (dispAcu(r)||0)>=highCut(); }
 function acuClass(h){if(h<2.5)return'L';if(h<3.5)return'M';if(h<5)return'H';return'X';}
 function acuFmt(x){ return (Math.round((+x||0)*100)/100).toFixed(2).replace(/(\.\d)0$/,'$1'); }   // 2.75 stays 2.75; 2.50 -> 2.5; 3 -> 3.0
@@ -2644,9 +2650,10 @@ function flagEffectText(code){
 }
 function flagsNoteHTML(){
   const r=rooms[modalRoom];
-  const toggles=getActiveFlags().map(([f,l,full])=>{
+  const toggles=getActiveFlags().filter(([f])=>chargeMode||f!=='oos').map(([f,l,full])=>{
     const eff=flagEffectText(f);
-    return `<button class="ftog ${eff?'rulefl ':''}${modalFlags.includes(f)?'on':''}" id="ft-${f}" title="${full}${eff?' — changes the board: '+eff:''}" onclick="togFlag('${f}')">${l}</button>`;
+    const oos=(f==='oos');
+    return `<button class="ftog ${oos?'oostog ':''}${eff?'rulefl ':''}${modalFlags.includes(f)?'on':''}" id="ft-${f}" title="${oos?'Closes this bed — it scores 0 and stops counting against the nurse':full}${eff?' — changes the board: '+eff:''}" onclick="togFlag('${f}')">${l}</button>`;
   }).join('');
   const anyRule=getActiveFlags().some(([f])=>flagEffectText(f));
   const legend=anyRule?`<div class="flagleg"><span class="legchip"></span> tinted flags change how the board is built — tap <b>?</b> above for what each one does</div>`:'';
@@ -2865,7 +2872,18 @@ function setExpress(v){
 }
 function cssid(k){return k.replace(/[^a-zA-Z0-9]/g,'_');}
 function bump(key,d){ modalTally[key]=Math.max(0,(modalTally[key]||0)+d); if(modalTally[key]===0) delete modalTally[key]; const sp=document.getElementById('c-'+cssid(key)); if(sp){sp.textContent=modalTally[key]||0; sp.parentElement.classList.toggle('active',(modalTally[key]||0)>0);} recalc(); _refreshSwing(); }
-function togFlag(f){ if(!chargeMode && !canScoreRoom(modalRoom))return; const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1); document.getElementById('ft-'+f).classList.toggle('on'); }
+function togFlag(f){
+  if(!chargeMode && !canScoreRoom(modalRoom))return;
+  if(f==='oos' && !chargeMode) return;   // closing a bed is a charge call
+  const i=modalFlags.indexOf(f); if(i<0)modalFlags.push(f); else modalFlags.splice(i,1);
+  const el=document.getElementById('ft-'+f); if(el) el.classList.toggle('on');
+  // A closed bed is not a patient: the score drops to 0 as soon as the flag goes on, and the room
+  // is scoreable again the moment it comes off.
+  if(f==='oos'){
+    if(modalFlags.includes('oos')){ modalTally={}; modalExpress=0; modalNext=0; _nextTouched=true; }
+    renderModalBody();
+  }
+}
 function recalc(){
   if(modalMode==='express'){ document.getElementById('mPts').textContent='—'; document.getElementById('mHrs').textContent=acuFmt(modalExpress!=null?modalExpress:0); _refreshNext(); return; }
   let pts=0; for(const k in modalTally) pts+=(modalTally[k]||0)*(POINTS[k]||0);
@@ -2903,6 +2921,7 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   if(modalPin){ r.avoid=r.avoid.filter(x=>x!==modalPin);
     if(nurses.some(n=>n.id===modalPin)) r.nurse=modalPin;   // on tonight's crew — hand her the room now
   }
+  if(roomBlocked(r)){ r.acuity=0; r.nextAcuity=0; r.tally={}; }   // a closed bed is not a patient — it scores 0
   r.capCarried=false;  // re-scoring this room acknowledges the ratio-cap reminder
   // Record who last touched this room and when — so the charge can spot a wrong/impersonated edit.
   r.editedBy = chargeMode ? 'Charge' : (_quickViewerName() || 'Staff');
@@ -2956,10 +2975,10 @@ function openClearRoom(){
   if(a) a.innerHTML = who
     ? `Stays with <b>${who}</b> for the next admit. Flags, notes and the update are cleared and it starts again at <b>3.0</b>.`
     : `Kept on the board for the next admit. Flags, notes and the update are cleared and it starts again at <b>3.0</b>.`;
-  const c=document.getElementById('clearClSub');
-  if(c) c.innerHTML = who
-    ? `Takes the room off <b>${who}</b> and out of the count until someone is admitted.`
-    : `Takes the room off the board until someone is admitted.`;
+  const c=document.getElementById('clearOosHint');
+  if(c) c.innerHTML = chargeMode
+    ? `Closing a bed is different \u2014 tap <b>Out of service</b> in the room\u2019s flags and it scores 0.`
+    : '';
   document.getElementById('clearScrim').classList.add('on');
 }
 function closeClearRoom(){ const el=document.getElementById('clearScrim'); if(el) el.classList.remove('on'); }
@@ -2986,12 +3005,8 @@ function dischargeRoom(){
   scheduleSave(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); }
   evToast('Room '+r.id+' cleared \u2014 ready for the next admit');
 }
-function closeBed(){
-  const r=rooms[modalRoom]; if(!r) return;
-  if(!chargeMode && !canScoreRoom(r.id)) return;
-  closeClearRoom(); markEmpty();
-}
-function markEmpty(){ if(!chargeMode && !canScoreRoom(modalRoom))return; pushUndo(); const r=rooms[modalRoom];
+function closeBed(){ if(!chargeMode) return; closeClearRoom(); markEmpty(); }
+function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom];
   r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;
   // wipe the rest of the outgoing patient's data so the next admit starts clean
   r.tags=[];r.avoid=[];r.nextAcuity=null;r.prevAcuity=null;r.isoType='';r.dcTime='';r.admTime='';
@@ -3031,7 +3046,9 @@ function roomAcceptedThisShift(r){ if(!(r.acuity>0)) return false;
   return r.acceptedAt>=base;
 }
 function roomCurrentThisShift(r){ return roomUpdatedThisShift(r)||roomAcceptedThisShift(r); }
-function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid); const raw=rs.reduce((s,r)=>s+r.acuity,0); const nx=rs.reduce((s,r)=>s+((r.nextAcuity!=null)?r.nextAcuity:r.acuity),0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,next:nx,adj:raw/cap}; }
+function nurseLoad(nid){ const rs=occupied().filter(r=>r.nurse===nid);
+  const raw=rs.reduce((s,r)=>s+(roomBlocked(r)?0:r.acuity),0);
+  const nx=rs.reduce((s,r)=>s+(roomBlocked(r)?0:((r.nextAcuity!=null)?r.nextAcuity:r.acuity)),0); const n=nurses.find(x=>x.id===nid); const cap=(n&&n.level==='Float')?0.8:((n&&n.cap)||1.0); return {count:rs.length,hrs:raw,next:nx,adj:raw/cap}; }
 function maxAdj(){return Math.max(10,...nurses.map(n=>{const L=nurseLoad(n.id);return L.next||L.hrs;}));}
 function nurseHalls(nid){ const hs=[...new Set(occupied().filter(r=>r.nurse===nid).map(r=>hallOf(r.id)))]; return hs; }
 
@@ -6202,7 +6219,7 @@ function openReportSheet(){ _sheetShell('\ud83d\udde3 Report sheet \u2014 '+shif
 function acuitySheetHTML(){
   const occ=occupied().slice().sort((a,b)=>a.id-b.id);
   if(!occ.length) return '<div class="hint">No patients on the board yet.</div>';
-  let h=`<table class="shtbl"><tr><th>Rm</th><th>Nurse</th><th>Was</th><th>Next</th><th>Reason for the change</th></tr>`;
+  let h=`<table class="shtbl"><tr><th>Rm</th><th>Nurse</th><th>Was</th><th>Next</th><th>Scored by</th><th>Reason for the change</th></tr>`;
   occ.forEach(r=>{
     const n=nurses.find(x=>x.id===r.nurse);
     const nx=(r.nextAcuity!=null)?r.nextAcuity:r.acuity;
@@ -6211,9 +6228,10 @@ function acuitySheetHTML(){
     h+=`<tr><td><b>${r.id}</b></td><td>${n?esc(n.name):'\u2014'}</td>`
       +`<td>${r.acuity!=null?acuFmt(r.acuity):'\u2014'}</td>`
       +`<td class="${moved?'shmv':''}">${nx!=null?acuFmt(nx):'\u2014'}</td>`
+      +`<td>${r.editedBy?esc(r.editedBy):'\u2014'}${r.editedAt?`<small class="shwhen">${_qhTime(r.editedAt)}</small>`:''}</td>`
       +`<td>${esc(reason)||(moved?'\u2014':'')}</td></tr>`; });
   const tot=occ.reduce((s,r)=>s+(r.acuity||0),0), totN=occ.reduce((s,r)=>s+((r.nextAcuity!=null?r.nextAcuity:r.acuity)||0),0);
-  h+=`<tr class="shtot"><td colspan="2">Total \u00b7 ${occ.length} patients</td><td>${acuFmt(tot)}</td><td>${acuFmt(totN)}</td><td></td></tr></table>`;
+  h+=`<tr class="shtot"><td colspan="2">Total \u00b7 ${occ.length} patients</td><td>${acuFmt(tot)}</td><td>${acuFmt(totN)}</td><td></td><td></td></tr></table>`;
   return h;
 }
 function openAcuitySheet(){ _sheetShell('\ud83d\udcca Acuity record \u2014 '+shiftType+' '+shiftDate, acuitySheetHTML(), 'printAcuitySheet'); }
@@ -6920,7 +6938,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b36';
+const APP_BUILD='2026-09-04 \u00b7 b37';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
