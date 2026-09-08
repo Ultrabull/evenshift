@@ -261,6 +261,7 @@
 
   .scrim{position:fixed;inset:0;background:rgba(21,35,59,.42);display:none;align-items:center;justify-content:center;padding:24px 14px 96px;z-index:60;overflow:auto;}
   .scrim.gate{background:var(--bg);z-index:300;align-items:center;}
+  #clearScrim{z-index:120;}   /* opened from inside the score box — it has to sit on top of it */
   .scrim.on{display:flex;}
   .modal{background:var(--surface);border-radius:16px;max-width:560px;width:100%;box-shadow:0 24px 60px rgba(21,35,59,.3);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);}
   .mhead{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);}
@@ -602,6 +603,7 @@
   .postedmsg{font-size:14.5px;font-weight:700;color:var(--ok-ink);margin-bottom:10px;}
   .postedbtns{display:flex;gap:8px;}
   .postedbtns .ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);}
+  .shcn{margin-top:5px;font-size:12.5px;line-height:1.4;color:var(--ink);background:var(--warn-wash2);border-left:3px solid var(--warn-line);border-radius:0 8px 8px 0;padding:5px 9px;}
   .shwhen{display:block;font-size:9.5px;color:var(--ink-soft);font-weight:600;}
   .ftog.oostog.on{background:var(--bad-wash2);border-color:var(--bad-line2);color:var(--bad-ink);}
   .clearopt{display:block;width:100%;text-align:left;margin-top:10px;padding:14px 15px;border:1.5px solid var(--info-line2);background:var(--info-wash);border-radius:14px;font-family:inherit;font-size:14.5px;font-weight:800;color:var(--ink);cursor:pointer;}
@@ -1989,7 +1991,7 @@
     </div>
     <div class="mbody" id="mBody"></div>
     <div class="saveattrib" id="saveAttrib" style="display:none;"></div>
-    <div class="mfoot"><button class="btn" id="clearRoomBtn" onclick="openClearRoom()">🛏 Clear room</button>
+    <div class="mfoot"><button class="btn" id="clearRoomBtn" onclick="openClearRoom()">🛏 Discharge / clear</button>
       <div style="display:flex;gap:9px;"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary savebig" onclick="saveScore()">✓ Save score</button></div>
     </div>
   </div>
@@ -2966,7 +2968,7 @@ function openClearRoom(){
   if(!chargeMode && !canScoreRoom(r.id)) return;
   const n=nurses.find(x=>x.id===r.nurse);
   const who=n?esc(n.name):null;
-  const t=document.getElementById('clearTitle'); if(t) t.textContent='\ud83d\udecf Room '+r.id;
+  const t=document.getElementById('clearTitle'); if(t) t.textContent='\ud83d\udecf Discharge / clear \u00b7 Room '+r.id;
   const w=document.getElementById('clearWho');
   if(w) w.innerHTML = who
     ? `Room <b>${r.id}</b> is <b>${who}</b>\u2019s. What happened to this bed?`
@@ -6202,13 +6204,17 @@ function reportSheetHTML(){
   if(!occ.length) return '<div class="hint">No patients on the board yet.</div>';
   /* Straight down the unit in room order. Grouping by nurse meant reading out of sequence and
      hunting for a room; the nurse's name rides with each room instead of heading a block. */
-  let h=`<div class="hint" style="margin:0 0 10px;">${withUpd.length} of ${occ.length} room${occ.length===1?'':'s'} have an update.</div><div class="shgrp">`;
+  const withNote=occ.filter(r=>(r.cnote||'').trim());
+  let h=`<div class="hint" style="margin:0 0 10px;">${withUpd.length} of ${occ.length} room${occ.length===1?'':'s'} have an update.`
+    +`${withNote.length?` \ud83d\udd12 marks your charge note \u2014 this sheet is yours, staff never see it.`:''}</div><div class="shgrp">`;
   occ.forEach(r=>{
     const n=nurses.find(x=>x.id===r.nurse);
     const u=(r.update||'').trim();
     const fl=(r.flags||[]).map(getFlagLabel).slice(0,4).join(' \u00b7 ');
+    const cn=(r.cnote||'').trim();
     h+=`<div class="shrow"><div class="shrm">${r.id}<small>${n?esc(n.name):'\u2014'}</small></div><div class="shbody">`
       +`<div class="shupd${u?'':' none'}">${u?esc(u):'\u2014 no update'}</div>`
+      +`${cn?`<div class="shcn">\ud83d\udd12 ${esc(cn)}</div>`:''}`
       +`${fl?`<div class="shfl">${esc(fl)}</div>`:''}`
       +`${r.updateBy?`<div class="shby">${esc(r.updateBy)}${r.updateAt?' \u00b7 '+_qhTime(r.updateAt):''}</div>`:''}`
       +`</div></div>`; });
@@ -6938,7 +6944,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b37';
+const APP_BUILD='2026-09-04 \u00b7 b38';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
