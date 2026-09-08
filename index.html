@@ -602,6 +602,9 @@
   .postedmsg{font-size:14.5px;font-weight:700;color:var(--ok-ink);margin-bottom:10px;}
   .postedbtns{display:flex;gap:8px;}
   .postedbtns .ghost{background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);}
+  .clearopt{display:block;width:100%;text-align:left;margin-top:10px;padding:14px 15px;border:1.5px solid var(--info-line2);background:var(--info-wash);border-radius:14px;font-family:inherit;font-size:14.5px;font-weight:800;color:var(--ink);cursor:pointer;}
+  .clearopt small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--ink-soft);line-height:1.4;}
+  .clearopt.closed{border-color:var(--line-strong);background:var(--surface);}
   .holdnote{margin-top:8px;padding:12px 14px;background:var(--info-wash);border:1.5px solid var(--info-line2);border-radius:14px;font-size:13px;line-height:1.45;color:var(--ink);}
   .vslot{font-size:12px;font-weight:700;color:var(--teal-deep);}
   .vnum{height:30px;border:1px solid var(--line-strong);border-radius:7px;padding:0 6px;font-size:12px;font-family:inherit;width:100%;}
@@ -1823,6 +1826,17 @@
   </div>
 </div>
 
+<div class="scrim" id="clearScrim" onclick="if(event.target===this)closeClearRoom()">
+  <div class="modal" style="max-width:430px;">
+    <div class="mhead"><span class="rt" id="clearTitle">🛏 Clear room</span><button class="btn" onclick="closeClearRoom()">Cancel</button></div>
+    <div class="mbody">
+      <p class="covnote" id="clearWho"></p>
+      <button class="clearopt" onclick="dischargeRoom()"><b>🚪 Discharged — the patient has left</b><small id="clearDcSub"></small></button>
+      <button class="clearopt closed" onclick="closeBed()"><b>⛔ Bed closed — nobody is coming</b><small id="clearClSub"></small></button>
+    </div>
+  </div>
+</div>
+
 <div class="scrim" id="quickScrim" onclick="if(event.target===this)closeQuickEdit()">
   <div class="modal" style="max-width:460px;">
     <div class="mhead"><span class="rt" id="qhHead">📣 New announcement</span><button class="btn" onclick="closeQuickEdit()">Close</button></div>
@@ -1973,7 +1987,7 @@
     </div>
     <div class="mbody" id="mBody"></div>
     <div class="saveattrib" id="saveAttrib" style="display:none;"></div>
-    <div class="mfoot"><button class="btn chargeOnly" onclick="markEmpty()">Discharge / empty</button>
+    <div class="mfoot"><button class="btn" id="clearRoomBtn" onclick="openClearRoom()">🛏 Clear room</button>
       <div style="display:flex;gap:9px;"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary savebig" onclick="saveScore()">✓ Save score</button></div>
     </div>
   </div>
@@ -2884,7 +2898,7 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   // The update is the nurse's, so anyone who can score the room can write it. The charge note is
   // charge-only, so a staff save must never blank it.
   if((r.update||'')!==modalUpdate){ r.update=modalUpdate; r.updateBy=(chargeMode?'Charge':(_quickViewerName()||'Staff')); r.updateAt=Date.now(); }
-  if(chargeMode) r.cnote=modalCnote;
+  if(chargeMode && (r.cnote||'')!==modalCnote){ r.cnote=modalCnote; r.cnoteAt=Date.now(); }
   r.avoid=modalAvoid.slice(); r.lock=modalPin||null;
   if(modalPin){ r.avoid=r.avoid.filter(x=>x!==modalPin);
     if(nurses.some(n=>n.id===modalPin)) r.nurse=modalPin;   // on tonight's crew — hand her the room now
@@ -2922,14 +2936,68 @@ function saveScore(){ if(!canScoreRoom(modalRoom))return; const r=rooms[modalRoo
   if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); }
   if(_placedWith) evToast('Room '+r.id+' → '+_placedWith+' · '+cntOf(r.nurse)+' patients');
 }
-function markEmpty(){ if(!chargeMode)return; pushUndo(); const r=rooms[modalRoom];
+/* Clearing a bed is two different events wearing one button. A DISCHARGE means the patient has
+   gone and the next admit is coming to that same bed — the room stays with the nurse who has it,
+   everything about the patient who left is wiped, and it comes back as a fresh admit at 3 so it is
+   already carrying a fair share while nobody knows anything about them yet. A CLOSED BED means no
+   one is coming, and only then does the room leave the nurse and stop counting. Staff can do this
+   for their own rooms, so it always asks which one is meant. */
+function openClearRoom(){
+  const r=rooms[modalRoom]; if(!r) return;
+  if(!chargeMode && !canScoreRoom(r.id)) return;
+  const n=nurses.find(x=>x.id===r.nurse);
+  const who=n?esc(n.name):null;
+  const t=document.getElementById('clearTitle'); if(t) t.textContent='\ud83d\udecf Room '+r.id;
+  const w=document.getElementById('clearWho');
+  if(w) w.innerHTML = who
+    ? `Room <b>${r.id}</b> is <b>${who}</b>\u2019s. What happened to this bed?`
+    : `Room <b>${r.id}</b> has no nurse yet. What happened to this bed?`;
+  const a=document.getElementById('clearDcSub');
+  if(a) a.innerHTML = who
+    ? `Stays with <b>${who}</b> for the next admit. Flags, notes and the update are cleared and it starts again at <b>3.0</b>.`
+    : `Kept on the board for the next admit. Flags, notes and the update are cleared and it starts again at <b>3.0</b>.`;
+  const c=document.getElementById('clearClSub');
+  if(c) c.innerHTML = who
+    ? `Takes the room off <b>${who}</b> and out of the count until someone is admitted.`
+    : `Takes the room off the board until someone is admitted.`;
+  document.getElementById('clearScrim').classList.add('on');
+}
+function closeClearRoom(){ const el=document.getElementById('clearScrim'); if(el) el.classList.remove('on'); }
+function _wipePatient(r){
+  r.tally={}; r.flags=[]; r.note=''; r.tags=[]; r.avoid=[];
+  r.isoType=''; r.dcTime=''; r.admTime='';
+  r.acuityReason=''; r.acuityReasonOther=''; r.capCarried=false; r.pctFlags=[];
+  r.update=''; r.updateBy=null; r.updateAt=null;
+  r.cnote=''; r.cnoteAt=0; r.cnoteClearedAt=Date.now();   // the charge note is explicitly "until discharge" — this is that
+  r.acceptedBy=null; r.acceptedAt=null;
+  r.pctEditedBy=null; r.pctEditedAt=null; r.flagsEditedBy=null; r.flagsEditedAt=null;
+}
+function dischargeRoom(){
+  const r=rooms[modalRoom]; if(!r) return;
+  if(!chargeMode && !canScoreRoom(r.id)) return;
+  pushUndo();
+  _wipePatient(r);
+  r.prevAcuity=r.acuity;
+  r.occupied=true; r.flags=['adm']; r.acuity=3; r.nextAcuity=3;   // an empty bed on this unit is a bed about to fill
+  r.editedBy=(chargeMode?'Charge':(_quickViewerName()||'Staff')); r.editedAt=Date.now();
+  // r.nurse and r.lock are deliberately left alone — the bed does not leave the nurse who has it
+  closeClearRoom(); closeModal(); renderAcuity(); if(assignVisible()) renderAssign();
+  scheduleSave(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); }
+  evToast('Room '+r.id+' cleared \u2014 ready for the next admit');
+}
+function closeBed(){
+  const r=rooms[modalRoom]; if(!r) return;
+  if(!chargeMode && !canScoreRoom(r.id)) return;
+  closeClearRoom(); markEmpty();
+}
+function markEmpty(){ if(!chargeMode && !canScoreRoom(modalRoom))return; pushUndo(); const r=rooms[modalRoom];
   r.occupied=false;r.acuity=null;r.tally={};r.flags=[];r.note='';r.nurse=null;r.lock=null;
   // wipe the rest of the outgoing patient's data so the next admit starts clean
   r.tags=[];r.avoid=[];r.nextAcuity=null;r.prevAcuity=null;r.isoType='';r.dcTime='';r.admTime='';
   r.acuityReason='';r.acuityReasonOther='';r.capCarried=false;r.pctFlags=[];r.editedBy=null;r.editedAt=null;r.pctEditedBy=null;r.pctEditedAt=null;r.flagsEditedBy=null;r.flagsEditedAt=null;
   // Both notes belong to the patient who was in the bed, so emptying it clears them. The charge
   // note is explicitly "stays until discharge" — this is that discharge.
-  r.update='';r.updateBy=null;r.updateAt=null;r.cnote='';r.acceptedBy=null;r.acceptedAt=null;
+  r.update='';r.updateBy=null;r.updateAt=null;r.cnote='';r.cnoteAt=0;r.cnoteClearedAt=Date.now();r.acceptedBy=null;r.acceptedAt=null;
   closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
@@ -6439,7 +6507,7 @@ function acuityObj(){
   // Same story for the pulse survey: it is answered by staff, on staff phones, and those only ever
   // push this column — so every anonymous answer was saving to that phone and going no further.
   if(SURVEY_RESPONSES && SURVEY_RESPONSES.length) a._pulse=SURVEY_RESPONSES.slice(-200);
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnoteClearedAt:r.cnoteClearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
@@ -6504,6 +6572,11 @@ function applyCloudRow(row){
       r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note='';
       if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt;
       if(a.update!==undefined){ r.update=a.update||''; r.updateBy=a.updateBy||null; r.updateAt=a.updateAt||null; }
+      // A discharge on a staff phone cannot carry the charge note (staff never see it), but it can
+      // say the bed turned over — so the note goes here rather than outliving its patient.
+      if((a.cnoteClearedAt||0) > (r.cnoteAt||0) && (a.cnoteClearedAt||0) > (r.cnoteClearedAt||0)){
+        r.cnote=''; r.cnoteAt=0; r.cnoteClearedAt=a.cnoteClearedAt;
+      }
       if(a.pctFlags!=null) r.pctFlags=a.pctFlags; if(a.pctEditedBy!=null) r.pctEditedBy=a.pctEditedBy; if(a.pctEditedAt!=null) r.pctEditedAt=a.pctEditedAt;
       if(a.flagsEditedBy!=null) r.flagsEditedBy=a.flagsEditedBy; if(a.flagsEditedAt!=null) r.flagsEditedAt=a.flagsEditedAt;
     }
@@ -6713,7 +6786,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',cnoteAt:r.cnoteAt||0,cnoteClearedAt:r.cnoteClearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
@@ -6753,7 +6826,7 @@ function applyState(st){
     r.acuityReason=d.acuityReason||''; r.acuityReasonOther=d.acuityReasonOther||'';
     r.scoredBy=d.scoredBy||null; r.editedBy=d.editedBy||null; r.editedAt=d.editedAt||null;
     r.acceptedBy=d.acceptedBy||null; r.acceptedAt=d.acceptedAt||null;
-    r.update=d.update||''; r.updateBy=d.updateBy||null; r.updateAt=d.updateAt||null; r.cnote=d.cnote||'';
+    r.update=d.update||''; r.updateBy=d.updateBy||null; r.updateAt=d.updateAt||null; r.cnote=d.cnote||''; r.cnoteAt=d.cnoteAt||0; r.cnoteClearedAt=d.cnoteClearedAt||0;
     r.pctFlags=d.pctFlags||null; r.pctEditedBy=d.pctEditedBy||null; r.pctEditedAt=d.pctEditedAt||null;
     r.flagsEditedBy=d.flagsEditedBy||null; r.flagsEditedAt=d.flagsEditedAt||null;
     r.note='';   // purges any note saved by an older version (HIPAA)
@@ -6829,7 +6902,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b34';
+const APP_BUILD='2026-09-04 \u00b7 b35';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
