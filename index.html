@@ -2969,6 +2969,7 @@ function _wipePatient(r){
   r.acuityReason=''; r.acuityReasonOther=''; r.capCarried=false; r.pctFlags=[];
   r.update=''; r.updateBy=null; r.updateAt=null;
   r.cnote=''; r.cnoteAt=0; r.cnoteClearedAt=Date.now();   // the charge note is explicitly "until discharge" — this is that
+  r.clearedAt=Date.now();   // an event with a time on it: "this bed turned over", so a stale score can't outrank it
   r.acceptedBy=null; r.acceptedAt=null;
   r.pctEditedBy=null; r.pctEditedAt=null; r.flagsEditedBy=null; r.flagsEditedAt=null;
 }
@@ -2997,8 +2998,9 @@ function markEmpty(){ if(!chargeMode && !canScoreRoom(modalRoom))return; pushUnd
   r.acuityReason='';r.acuityReasonOther='';r.capCarried=false;r.pctFlags=[];r.editedBy=null;r.editedAt=null;r.pctEditedBy=null;r.pctEditedAt=null;r.flagsEditedBy=null;r.flagsEditedAt=null;
   // Both notes belong to the patient who was in the bed, so emptying it clears them. The charge
   // note is explicitly "stays until discharge" — this is that discharge.
-  r.update='';r.updateBy=null;r.updateAt=null;r.cnote='';r.cnoteAt=0;r.cnoteClearedAt=Date.now();r.acceptedBy=null;r.acceptedAt=null;
-  closeModal(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave(); }
+  r.update='';r.updateBy=null;r.updateAt=null;r.cnote='';r.cnoteAt=0;r.cnoteClearedAt=Date.now();r.clearedAt=Date.now();r.acceptedBy=null;r.acceptedAt=null;
+  closeModal(); renderAcuity(); if(assignVisible()) renderAssign();
+  scheduleSave(); if(cloudOn()){ pushAcuity(); if(chargeMode) pushMeta(); } }
 function closeModal(){ document.getElementById('scrim').classList.remove('on'); modalRoom=null; }
 
 function occupied(){return Object.values(rooms).filter(r=>r.occupied);}
@@ -6507,7 +6509,7 @@ function acuityObj(){
   // Same story for the pulse survey: it is answered by staff, on staff phones, and those only ever
   // push this column — so every anonymous answer was saving to that phone and going no further.
   if(SURVEY_RESPONSES && SURVEY_RESPONSES.length) a._pulse=SURVEY_RESPONSES.slice(-200);
-  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length)) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnoteClearedAt:r.cnoteClearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
+  Object.values(rooms).forEach(r=>{ if(r.acuity!=null || r.nextAcuity!=null || (r.flags&&r.flags.length) || (r.tally&&Object.keys(r.tally).length) || (r.pctFlags&&r.pctFlags.length) || r.clearedAt) a[r.id]={acuity:r.acuity,nextAcuity:(r.nextAcuity!=null?r.nextAcuity:null),tally:r.tally,flags:r.flags,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnoteClearedAt:r.cnoteClearedAt||0,clearedAt:r.clearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null}; });
   return a;
 }
 function applyCloudRow(row){
@@ -6568,6 +6570,13 @@ function applyCloudRow(row){
     if(id==='_done' || id==='_acks' || id==='_pulse') continue;
     const r=rooms[+id]; if(!r) continue;
     const a=row.acuity[id];
+    // A bed that turned over takes the old patient's score with it, however fresh that score was.
+    if((a.clearedAt||0) > (r.clearedAt||0)){
+      r.clearedAt=a.clearedAt; r.editedAt=null; r.editedBy=null;
+      r.tally={}; r.tags=[]; r.acuityReason=''; r.acuityReasonOther='';
+      r.update=''; r.updateBy=null; r.updateAt=null; r.acceptedBy=null; r.acceptedAt=null;
+      if(!(a.flags&&a.flags.length) && a.acuity==null){ r.occupied=false; r.acuity=null; r.nextAcuity=null; r.flags=[]; }
+    }
     if((a.editedAt||0) >= (r.editedAt||0)){
       r.acuity=a.acuity; if(a.nextAcuity!==undefined) r.nextAcuity=a.nextAcuity; r.tally=a.tally||{}; r.flags=a.flags||[]; r.note='';
       if(a.editedBy!=null) r.editedBy=a.editedBy; if(a.editedAt!=null) r.editedAt=a.editedAt;
@@ -6786,7 +6795,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 
 function stateObj(){
   const rs={};
-  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',cnoteAt:r.cnoteAt||0,cnoteClearedAt:r.cnoteClearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
+  Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)||r.clearedAt) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',cnoteAt:r.cnoteAt||0,cnoteClearedAt:r.cnoteClearedAt||0,clearedAt:r.clearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
   return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
@@ -6819,7 +6828,16 @@ function applyState(st){
   if(st.rooms) Object.entries(st.rooms).forEach(([id,d])=>{
     const r=rooms[+id]; if(!r) return;
     r.nurse=(d.nurse!=null)?d.nurse:null; r.lock=(d.lock!=null)?d.lock:null; r.avoid=d.avoid||[];
-    if(r.editedAt && r.editedAt>snapTime) return;
+    /* Clearing a bed is somebody stating a fact about the floor, not a data edit racing another
+       one, so it beats any score this device is holding. Comparing the two timestamps was no good:
+       phone clocks differ by seconds, and a score stamped a moment "later" than the clear kept a
+       discharged patient on that phone's board. The test is instead whether this is a clear the
+       device has not seen yet — once applied it is remembered, so a replay cannot undo a score
+       taken after it. */
+    const freshClear = (d.clearedAt||0) > (r.clearedAt||0);
+    if(freshClear) r.editedAt=null;
+    if(!freshClear && r.editedAt && r.editedAt>snapTime) return;
+    r.clearedAt=Math.max(d.clearedAt||0, r.clearedAt||0);
     r.acuity=d.acuity; r.nextAcuity=(d.nextAcuity!=null)?d.nextAcuity:null; r.prevAcuity=d.prevAcuity||null;
     r.tally=d.tally; r.flags=d.flags; r.tags=d.tags; r.occupied=d.occupied;
     r.isoType=d.isoType||''; r.dcTime=d.dcTime||''; r.admTime=d.admTime||''; r.capCarried=!!d.capCarried;
@@ -6902,7 +6920,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b35';
+const APP_BUILD='2026-09-04 \u00b7 b36';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
