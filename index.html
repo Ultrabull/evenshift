@@ -2549,7 +2549,9 @@ function renderPrevBoardInline(){
   // down here made it look like two different boards. The charge keeps the inline copy — it is the
   // reference she reads while building, and she reaches it from the menu rather than a button.
   if(!any || !chargeMode){ wrap.style.display='none'; return; }
-  if(HANDOFF_CREW && !wrap.dataset.userClosed) wrap.open=true;   // she is building from it right now
+  // The shift that just ended isn't in here yet — see the note in nextShift(). This still shows
+  // (and auto-opens) whatever the real last shift was, in case that's a useful reference while she builds.
+  if(HANDOFF_CREW && !wrap.dataset.userClosed) wrap.open=true;
   const lbl = P.shift ? `${esc(P.shift)}${P.date?' · '+esc(P.date):''}` : 'the shift that just ended';
   wrap.style.display='';
   document.getElementById('prevBoardSum').textContent='📋 Last shift’s board · '+lbl;
@@ -4369,6 +4371,9 @@ if(typeof window!=='undefined'){
 function togglePosted(){ if(!chargeMode)return;
   if(!boardPosted){
     boardPosted=true;
+    // Normally already committed by saveStaff() when the crew was picked — this only fires if
+    // Post is somehow reached with the hold still up, so the just-ended shift isn't lost.
+    if(HANDOFF_CREW && HANDOFF_CREW.snap){ PREV_SHIFT=HANDOFF_CREW.snap; PREV_BY_SHIFT[HANDOFF_CREW.snap.shift]=HANDOFF_CREW.snap; }
     HANDOFF_CREW=null;                    // a posted board is the new one; last shift's is done
     lastUpdatedBy=chargeName||'Charge';   // stamp = who prepared it (no extra prompt)
     setDrafting(false);                   // THIS is the moment every phone swaps to the new board
@@ -5720,6 +5725,11 @@ function saveStaff(){
   /* Picking the crew is the moment the board becomes the next shift's: the pending flip recorded at
      End Shift lands here, before the crew is worked out, so the roster filters on the right shift. */
   if(HANDOFF_CREW && HANDOFF_CREW.toShift){
+    // The crew is being picked for the NEXT shift — this is the moment the shift that just ended
+    // actually becomes "last shift". Until now, PREV_SHIFT still pointed at the real previous
+    // shift, so anyone checking "Last shift's board" mid-handoff saw that instead of the shift
+    // that just ended and hasn't gone anywhere yet.
+    if(HANDOFF_CREW.snap){ PREV_SHIFT=HANDOFF_CREW.snap; PREV_BY_SHIFT[HANDOFF_CREW.snap.shift]=HANDOFF_CREW.snap; }
     shiftType=HANDOFF_CREW.toShift;
     if(HANDOFF_CREW.toDate) shiftDate=HANDOFF_CREW.toDate;
     chargeName=HANDOFF_CREW.toCharge||''; chargeOncoming='';
@@ -7004,7 +7014,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-04 \u00b7 b42';
+const APP_BUILD='2026-09-09 \u00b7 b43';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8506,8 +8516,11 @@ function nextShift(){ if(!chargeMode)return;
     pcts: pcts.map(p=>({id:p.id,name:p.name,rooms:(pctZones().find(z=>z.pct.id===p.id)||{rooms:[]}).rooms.slice()})).filter(x=>x.rooms.length),
     sitters: sitters.map(s=>({id:s.id,name:s.name,room:s.room})).filter(x=>x.room)
   };
-  PREV_SHIFT=_snap;                       // for the oncoming shift's report / total-swap (who hands off to whom)
-  PREV_BY_SHIFT[shiftType]=_snap;         // shiftType here is still the shift that just ran — keyed so returning staff pulls the SAME shift next time
+  /* PREV_SHIFT / PREV_BY_SHIFT are NOT updated here. Staff (and the charge's own "Last shift's
+     board") keep the shift before this one until the oncoming crew is actually picked in
+     saveStaff() — that is the moment this shift stops being "current" in any real sense. Update it
+     here instead and the shift that just ended replaces the real last shift the instant End Shift
+     is tapped, even though the board on every screen (including this one) hasn't moved at all yet. */
   const rcCodes=getActiveFlags().map(x=>x[0]).filter(c=>flagRule(c).mode==='ratiocap');
   Object.values(rooms).forEach(r=>{ r.prevAcuity=r.acuity;
     if(r.occupied && r.nextAcuity!=null) r.acuity=r.nextAcuity;   // predicted becomes the new "now"
@@ -8535,16 +8548,14 @@ function nextShift(){ if(!chargeMode)return;
   if(shiftType==='Night'){ const d=new Date(shiftDate); d.setDate(d.getDate()+1); _toDate=d.toISOString().slice(0,10); }
   setDrafting(true);         // from here until Post, staff phones stay on the board they already have
   HANDOFF_CREW={ shift:_snap.shift, date:_snap.date, ids:_snap.nurses.map(n=>n.id),
-                 toShift:_toShift, toDate:_toDate, toCharge:(chargeOncoming||'').trim() };
+                 toShift:_toShift, toDate:_toDate, toCharge:(chargeOncoming||'').trim(), snap:_snap };
   syncWorking();   // still this shift's crew — the board is exactly where it was left
   applyShiftUI(); renderAcuity(); if(assignVisible()) renderAssign(); scheduleSave();
-  /* What staff keep looking at while the next board is built. It has to be the board as it stood at
-     hand-off, but carrying the snapshot of the shift that JUST ended — _preHandoff was captured
-     before that snapshot was written, so "Last shift's board" was handing every nurse the shift
-     before last, and looked like it never changed. Undo still uses the untouched _preHandoff. */
+  /* What staff keep looking at while the next board is built: the board exactly as it stood at
+     hand-off, PHI and all fields untouched — including its own prevShift/prevByShift, which is
+     still the real last shift. The snapshot of the shift that just ended rides on HANDOFF_CREW
+     instead and only becomes "last shift" once saveStaff() picks the oncoming crew. */
   const _postedForStaff=JSON.parse(JSON.stringify(_preHandoff));
-  _postedForStaff.prevShift=_snap;
-  _postedForStaff.prevByShift=JSON.parse(JSON.stringify(PREV_BY_SHIFT));
   _stashPostedBoard(_postedForStaff);
   _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showBuildingBar();
 }
