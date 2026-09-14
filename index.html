@@ -4375,9 +4375,9 @@ function togglePosted(){ if(!chargeMode)return;
     // Post is somehow reached with the hold still up, so the just-ended shift isn't lost.
     if(HANDOFF_CREW && HANDOFF_CREW.snap){ PREV_SHIFT=HANDOFF_CREW.snap; PREV_BY_SHIFT[HANDOFF_CREW.snap.shift]=HANDOFF_CREW.snap; }
     HANDOFF_CREW=null;                    // a posted board is the new one; last shift's is done
-    // Once per POSTED shift (not per re-generate, or a charge tweaking the board would rack up a
-    // streak in minutes): how many shifts in a row has each nurse held the same hall. Feeds
-    // geoCapped(), which stops continuity from turning into a permanent hallway assignment.
+    // Record each nurse's hall for THIS posted shift, so the next build can rotate her off it.
+    // Once per POSTED shift, not per re-generate — otherwise a charge tweaking the board mid-build
+    // would keep overwriting it. geoStreak is kept only for reference (how many in a row).
     nurses.forEach(n=>{ const h=primaryHall(n.id);
       n.geoStreak = (h!=null && h===n.geoHall) ? (n.geoStreak||0)+1 : (h!=null?1:0);
       n.geoHall = h; });
@@ -4722,17 +4722,23 @@ function _generateNow(){ if(!chargeMode)return;
   const ord=[...freeNurses].sort((a,b)=>sc(b)-sc(a));
   // For each group, which still-working nurse owned the most of its rooms last shift (for continuity).
   const groupPrevOwner=G.map(g=>{ const tally={}; for(const r of g){ const pv=prevOwner[r.id]; if(pv!=null && freeNurses.some(n=>n.id===pv)) tally[pv]=(tally[pv]||0)+1; } let best=null,bn=0; for(const pv in tally){ if(tally[pv]>bn){ bn=tally[pv]; best=pv; } } return best; });
+  // Each group's primary hall — used to rotate nurses off the hall they worked last shift.
+  const groupHall=G.map(g=>{ const c={}; for(const r of g){ const h=RHALL[r.id]; c[h]=(c[h]||0)+1; } let best=null,bn=-1; for(const h in c){ if(c[h]>bn){bn=c[h];best=+h;} } return best; });
   const gHrs=G.map(hrs); const assign=new Array(M).fill(null);
   (function bt(oi){ if(oi>=ord.length) return true; const nid=ord[oi].id;
     let cands=[]; for(let gi=0;gi<M;gi++) if(assign[gi]==null && can(nid,gi)) cands.push(gi);
     if(ord[oi].level==='Orienting'||ord[oi].level==='Float') cands.sort((x,y)=>gHrs[x]-gHrs[y]);
-    // keep same nurse on their own group if working back-to-back — unless she's held it too many
-    // posted shifts running already, in which case someone else gets first claim (GEO_STREAK_CAP).
-    // Shuffle first: once that preference doesn't single one group out, the fallback order is just
-    // group index — a hidden, fixed pecking order for who gets which physical hall.
-    else { const capped=geoCapped(nid);
+    // STRICT ROTATION: put her anywhere but the hall she had last shift. This is free — the groups
+    // (hours balance, safety spread) are already fixed; we're only choosing WHICH nurse gets which,
+    // so rotating costs the assignment nothing. A nurse kept on her own patients has locked rooms,
+    // so can() pins her to that one group and this can't move her (continuity still wins there).
+    // Shuffle first so equal choices aren't decided by a fixed roster order. Own-group continuity
+    // survives only as a faint tiebreak among halls she wasn't in last shift.
+    else { const lastHall=(nurseObj(nid)||{}).geoHall;
       for(let k=cands.length-1;k>0;k--){ const q=Math.random()*(k+1)|0; const t=cands[k]; cands[k]=cands[q]; cands[q]=t; }
-      cands.sort((x,y)=>((groupPrevOwner[y]===nid&&!capped)?1:0)-((groupPrevOwner[x]===nid&&!capped)?1:0)); }
+      cands.sort((x,y)=>{ const rx=(groupHall[x]===lastHall)?1:0, ry=(groupHall[y]===lastHall)?1:0;
+        if(rx!==ry) return rx-ry;                                                   // a hall she wasn't in last shift comes first
+        return (groupPrevOwner[y]===nid?1:0)-(groupPrevOwner[x]===nid?1:0); }); }   // then a faint nod to her own rooms
     for(const gi of cands){ assign[gi]=nid; if(bt(oi+1)) return true; assign[gi]=null; }
     return false; })(0);
   finalIds = assign.every(x=>x!=null) ? assign : G.map((g,gi)=>{ const f=g.find(r=>lockHolder(r)); return f?f.lock:freeNurses[gi%M].id; });
@@ -5768,14 +5774,13 @@ function nurseHallNums(nid){ return [...new Set(roomsByNurse(nid).map(r=>RHALL[r
 function nurseWings(nid){ return [...new Set(roomsByNurse(nid).map(r=>rwing(r.id)))]; }
 function hallsLabel(nums){ if(!nums.length) return '—'; return nums.length===1 ? HALL_LABEL[nums[0]] : 'Halls '+nums.join(' + '); }
 function primaryHall(nid){ const c={}; roomsByNurse(nid).forEach(r=>{ c[RHALL[r.id]]=(c[RHALL[r.id]]||0)+1; }); let best=null,bn=-1; for(const h in c){ if(c[h]>bn){bn=c[h];best=+h;} } return best; }
-/* Continuity (below, and in buildTotalSwapG) deliberately prefers keeping a nurse on the rooms she
-   just had — fewer reports to give. Left unchecked that turns into a permanent hallway: once
-   someone draws a hall, "keep her on her own group" keeps handing it back to her forever, because
-   it goes by which nurse held those exact rooms last time, not by rotation. GEO_STREAK_CAP is how
-   many POSTED shifts in a row she can hold the same hall before continuity yields the floor to
-   someone else for a build; geoStreak/geoHall are updated once per posted shift, in togglePosted(). */
-const GEO_STREAK_CAP=3;
-function geoCapped(nid){ const n=nurseObj(nid); return !!(n && (n.geoStreak||0)>=GEO_STREAK_CAP); }
+/* Strict hall rotation: each build assigns a nurse to any group EXCEPT one on the hall she worked
+   last shift (geoHall, stamped once per posted shift in togglePosted). This lives in the two
+   nurse-to-group matchers (the anneal's, and buildTotalSwapG's) — never in the group-building, so
+   it never touches hours balance or safety spread. A nurse deliberately kept on her own patients
+   has locked rooms, which pin her to that group regardless, so returning-staff continuity still
+   wins over rotation. When the floor genuinely leaves no non-repeat option, the matcher falls
+   through and she repeats rather than failing to build. */
 /* a location a float would understand: list a few rooms, or "odd 41–49" for a run */
 function roomsHint(ids){
   const rs=ids.slice().sort((a,b)=>a-b); if(!rs.length) return '—';
@@ -5822,17 +5827,16 @@ function buildTotalSwapG(occ, freeNurses){
     return true;
   };
   const ids=new Array(M).fill(null), used=new Set();
+  // This group's primary hall — so we can rotate nurses off the hall they worked last shift.
+  const groupHallOf=gi=>{ const c={}; for(const r of groups[gi].rooms){ const h=RHALL[r.id]; c[h]=(c[h]||0)+1; } let best=null,bn=-1; for(const h in c){ if(c[h]>bn){bn=c[h];best=+h;} } return best; };
   const bt=gi=>{ if(gi>=M) return true;
-    const own=freeNurses.findIndex(n=>n.id===groups[gi].prevId);
-    // She's held this exact group too many posted shifts running — still a valid candidate, just
-    // no longer the preferred one, so the swap gives someone else a turn at it (see GEO_STREAK_CAP).
-    const ownPref = own>=0 && !geoCapped(groups[gi].prevId);
+    const gh=groupHallOf(gi);
     const cands=freeNurses.map((_,i)=>i).filter(i=>!used.has(i)&&gOK(freeNurses[i],gi));
-    // Ties (including every candidate once nobody has an "own" preference here) fall back to plain
-    // array position, which is roster order — shuffle first so that isn't a hidden, fixed pecking
-    // order for who gets first pick of which physical hall.
+    // STRICT ROTATION: prefer a nurse who was NOT in this hall last shift. A nurse with locked
+    // (kept) rooms is pinned to her group by gOK, so continuity for returning staff still wins.
+    // Shuffle first so equal choices aren't settled by roster order.
     for(let k=cands.length-1;k>0;k--){ const q=Math.random()*(k+1)|0; const t=cands[k]; cands[k]=cands[q]; cands[q]=t; }
-    cands.sort((a,b)=>(a===own&&ownPref?0:1)-(b===own&&ownPref?0:1));
+    cands.sort((a,b)=>((freeNurses[a].geoHall===gh)?1:0)-((freeNurses[b].geoHall===gh)?1:0));   // a nurse not in this hall last shift first
     for(const ni of cands){ used.add(ni); ids[gi]=freeNurses[ni].id; if(bt(gi+1)) return true; used.delete(ni); ids[gi]=null; }
     return false;
   };
@@ -7041,7 +7045,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-12 \u00b7 b44';
+const APP_BUILD='2026-09-14 \u00b7 b45';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
