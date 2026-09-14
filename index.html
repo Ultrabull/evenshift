@@ -4375,12 +4375,14 @@ function togglePosted(){ if(!chargeMode)return;
     // Post is somehow reached with the hold still up, so the just-ended shift isn't lost.
     if(HANDOFF_CREW && HANDOFF_CREW.snap){ PREV_SHIFT=HANDOFF_CREW.snap; PREV_BY_SHIFT[HANDOFF_CREW.snap.shift]=HANDOFF_CREW.snap; }
     HANDOFF_CREW=null;                    // a posted board is the new one; last shift's is done
-    // Record each nurse's hall for THIS posted shift, so the next build can rotate her off it.
-    // Once per POSTED shift, not per re-generate — otherwise a charge tweaking the board mid-build
-    // would keep overwriting it. geoStreak is kept only for reference (how many in a row).
+    // Record each nurse's hall for THIS posted shift into her recent-history trail, so the next
+    // builds can steer her toward halls she's had LEAST lately (spread over weeks) rather than just
+    // dodging last shift. Once per POSTED shift, not per re-generate — otherwise a charge tweaking
+    // the board mid-build would keep appending. geoStreak/geoHall kept only for reference.
     nurses.forEach(n=>{ const h=primaryHall(n.id);
       n.geoStreak = (h!=null && h===n.geoHall) ? (n.geoStreak||0)+1 : (h!=null?1:0);
-      n.geoHall = h; });
+      n.geoHall = h;
+      if(h!=null) n.hallHist = (n.hallHist||[]).concat(h).slice(-HALL_HIST_MAX); });
     lastUpdatedBy=chargeName||'Charge';   // stamp = who prepared it (no extra prompt)
     setDrafting(false);                   // THIS is the moment every phone swaps to the new board
   } else {
@@ -4728,16 +4730,17 @@ function _generateNow(){ if(!chargeMode)return;
   (function bt(oi){ if(oi>=ord.length) return true; const nid=ord[oi].id;
     let cands=[]; for(let gi=0;gi<M;gi++) if(assign[gi]==null && can(nid,gi)) cands.push(gi);
     if(ord[oi].level==='Orienting'||ord[oi].level==='Float') cands.sort((x,y)=>gHrs[x]-gHrs[y]);
-    // STRICT ROTATION: put her anywhere but the hall she had last shift. This is free — the groups
-    // (hours balance, safety spread) are already fixed; we're only choosing WHICH nurse gets which,
-    // so rotating costs the assignment nothing. A nurse kept on her own patients has locked rooms,
-    // so can() pins her to that one group and this can't move her (continuity still wins there).
-    // Shuffle first so equal choices aren't decided by a fixed roster order. Own-group continuity
-    // survives only as a faint tiebreak among halls she wasn't in last shift.
-    else { const lastHall=(nurseObj(nid)||{}).geoHall;
+    // SPREAD OVER TIME (not strict no-repeat): give her the hall she's worked LEAST across her
+    // recent shifts, so a repeat or two is fine but nobody lives on one hall week after week. This
+    // is free — the groups (hours balance, safety spread) are already fixed; we only choose WHICH
+    // nurse gets which, so it costs the assignment nothing. A nurse kept on her own patients has
+    // locked rooms, so can() pins her to that group and this can't move her — back-to-back
+    // continuity still wins. Shuffle first so equal choices aren't decided by a fixed roster order.
+    else { const hist=(nurseObj(nid)||{}).hallHist||[];
+      const load=h=>{ let c=0; for(let i=0;i<hist.length;i++) if(hist[i]===h) c++; return c; };
       for(let k=cands.length-1;k>0;k--){ const q=Math.random()*(k+1)|0; const t=cands[k]; cands[k]=cands[q]; cands[q]=t; }
-      cands.sort((x,y)=>{ const rx=(groupHall[x]===lastHall)?1:0, ry=(groupHall[y]===lastHall)?1:0;
-        if(rx!==ry) return rx-ry;                                                   // a hall she wasn't in last shift comes first
+      cands.sort((x,y)=>{ const d=load(groupHall[x])-load(groupHall[y]);
+        if(d!==0) return d;                                                         // hall she's had least recently comes first
         return (groupPrevOwner[y]===nid?1:0)-(groupPrevOwner[x]===nid?1:0); }); }   // then a faint nod to her own rooms
     for(const gi of cands){ assign[gi]=nid; if(bt(oi+1)) return true; assign[gi]=null; }
     return false; })(0);
@@ -5733,7 +5736,7 @@ function loadRoster(){
 }
 function saveStaff(){
   syncStaffDOM();
-  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall)}));
+  const cleanN=_wn.filter(n=>n.name.trim()).map(n=>({id:n.id,name:n.name.trim(),level:normLevel(n.level),cap:1.0,on:n.on!==false,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall),hallHist:Array.isArray(n.hallHist)?n.hallHist.slice(-HALL_HIST_MAX):[]}));
   if(cleanN.length<1){ alert('Add at least one nurse.'); return; }
   if(!cleanN.some(n=>n.on!==false)){ alert('Mark at least one nurse “On” for today.'); return; }
   rosterN=cleanN;
@@ -5774,13 +5777,16 @@ function nurseHallNums(nid){ return [...new Set(roomsByNurse(nid).map(r=>RHALL[r
 function nurseWings(nid){ return [...new Set(roomsByNurse(nid).map(r=>rwing(r.id)))]; }
 function hallsLabel(nums){ if(!nums.length) return '—'; return nums.length===1 ? HALL_LABEL[nums[0]] : 'Halls '+nums.join(' + '); }
 function primaryHall(nid){ const c={}; roomsByNurse(nid).forEach(r=>{ c[RHALL[r.id]]=(c[RHALL[r.id]]||0)+1; }); let best=null,bn=-1; for(const h in c){ if(c[h]>bn){bn=c[h];best=+h;} } return best; }
-/* Strict hall rotation: each build assigns a nurse to any group EXCEPT one on the hall she worked
-   last shift (geoHall, stamped once per posted shift in togglePosted). This lives in the two
-   nurse-to-group matchers (the anneal's, and buildTotalSwapG's) — never in the group-building, so
-   it never touches hours balance or safety spread. A nurse deliberately kept on her own patients
-   has locked rooms, which pin her to that group regardless, so returning-staff continuity still
-   wins over rotation. When the floor genuinely leaves no non-repeat option, the matcher falls
-   through and she repeats rather than failing to build. */
+/* Hall spread over time (NOT strict no-repeat): each nurse carries a short trail of the halls she
+   worked on her recent posted shifts (hallHist, stamped in togglePosted, capped at HALL_HIST_MAX).
+   The two nurse-to-group matchers (the anneal's, and buildTotalSwapG's) give her the hall she's
+   worked LEAST across that trail. So a repeat or two is fine — a nurse doing three shifts in a row
+   isn't yanked around — but nobody lives on one hall week after week, and it can't be driven by her
+   name or a room number (the pick is her own history plus a shuffle). It lives only in the matchers,
+   never in group-building, so it never touches hours balance or safety spread. A nurse deliberately
+   kept on her patients has locked rooms, which pin her to that group regardless — back-to-back
+   continuity still wins. HALL_HIST_MAX ≈ two weeks of shifts, so the trail forgets old halls. */
+const HALL_HIST_MAX=6;
 /* a location a float would understand: list a few rooms, or "odd 41–49" for a run */
 function roomsHint(ids){
   const rs=ids.slice().sort((a,b)=>a-b); if(!rs.length) return '—';
@@ -5827,16 +5833,18 @@ function buildTotalSwapG(occ, freeNurses){
     return true;
   };
   const ids=new Array(M).fill(null), used=new Set();
-  // This group's primary hall — so we can rotate nurses off the hall they worked last shift.
+  // This group's primary hall — so we can steer it to whoever's worked it least lately.
   const groupHallOf=gi=>{ const c={}; for(const r of groups[gi].rooms){ const h=RHALL[r.id]; c[h]=(c[h]||0)+1; } let best=null,bn=-1; for(const h in c){ if(c[h]>bn){bn=c[h];best=+h;} } return best; };
+  const histLoad=(n,h)=>{ const a=n.hallHist||[]; let c=0; for(let i=0;i<a.length;i++) if(a[i]===h) c++; return c; };
   const bt=gi=>{ if(gi>=M) return true;
     const gh=groupHallOf(gi);
     const cands=freeNurses.map((_,i)=>i).filter(i=>!used.has(i)&&gOK(freeNurses[i],gi));
-    // STRICT ROTATION: prefer a nurse who was NOT in this hall last shift. A nurse with locked
-    // (kept) rooms is pinned to her group by gOK, so continuity for returning staff still wins.
+    // SPREAD OVER TIME: prefer the nurse who has worked this hall LEAST across her recent shifts,
+    // so halls even out over weeks without banning a back-to-back repeat. A nurse with locked
+    // (kept) rooms is pinned to her group by gOK, so returning-staff continuity still wins.
     // Shuffle first so equal choices aren't settled by roster order.
     for(let k=cands.length-1;k>0;k--){ const q=Math.random()*(k+1)|0; const t=cands[k]; cands[k]=cands[q]; cands[q]=t; }
-    cands.sort((a,b)=>((freeNurses[a].geoHall===gh)?1:0)-((freeNurses[b].geoHall===gh)?1:0));   // a nurse not in this hall last shift first
+    cands.sort((a,b)=>histLoad(freeNurses[a],gh)-histLoad(freeNurses[b],gh));   // least-recent on this hall first
     for(const ni of cands){ used.add(ni); ids[gi]=freeNurses[ni].id; if(bt(gi+1)) return true; used.delete(ni); ids[gi]=null; }
     return false;
   };
@@ -6920,7 +6928,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)||r.clearedAt) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',cnoteAt:r.cnoteAt||0,cnoteClearedAt:r.cnoteClearedAt||0,clearedAt:r.clearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall)})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall),hallHist:Array.isArray(n.hallHist)?n.hallHist.slice(-HALL_HIST_MAX):[]})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -6973,7 +6981,7 @@ function applyState(st){
     r.flagsEditedBy=d.flagsEditedBy||null; r.flagsEditedAt=d.flagsEditedAt||null;
     r.note='';   // purges any note saved by an older version (HIPAA)
   });
-  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),ord:(n.ord==null?null:n.ord),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall)}));
+  if(Array.isArray(st.rosterN)&&st.rosterN.length) rosterN=st.rosterN.map(n=>({id:n.id,name:n.name,level:normLevel(n.level),ord:(n.ord==null?null:n.ord),cap:1.0,on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall),hallHist:Array.isArray(n.hallHist)?n.hallHist.slice(-HALL_HIST_MAX):[]}));
   else if(Array.isArray(st.nurses)&&st.nurses.length) rosterN=st.nurses.map(n=>({id:n.id,name:n.name,level:n.level||'RN',cap:1.0,on:true,shift:'Day'}));   // legacy save
   if(Array.isArray(st.rosterP)) rosterP=st.rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''}));
   else if(Array.isArray(st.pcts)) rosterP=st.pcts.map(p=>({id:p.id,name:p.name,on:true,shift:'Day'}));
@@ -7045,7 +7053,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-14 \u00b7 b45';
+const APP_BUILD='2026-09-14 \u00b7 b46';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
