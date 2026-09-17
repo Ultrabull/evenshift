@@ -4391,6 +4391,7 @@ function togglePosted(){ if(!chargeMode)return;
     // Post is somehow reached with the hold still up, so the just-ended shift isn't lost.
     if(HANDOFF_CREW && HANDOFF_CREW.snap){ PREV_SHIFT=HANDOFF_CREW.snap; PREV_BY_SHIFT[HANDOFF_CREW.snap.shift]=HANDOFF_CREW.snap; }
     HANDOFF_CREW=null;                    // a posted board is the new one; last shift's is done
+    HANDOFF_UNDO_CLOUD=null;              // and the undo window closes with it
     // Record each nurse's hall for THIS posted shift into her recent-history trail, so the next
     // builds can steer her toward halls she's had LEAST lately (spread over weeks) rather than just
     // dodging last shift. Once per POSTED shift, not per re-generate — otherwise a charge tweaking
@@ -5787,6 +5788,7 @@ function saveStaff(){
     boardPosted=false;         // from here the board is the NEXT shift's, and it has not been posted
   }
   HANDOFF_CREW=null;   // the crew is picked — stop holding last shift's board up
+  HANDOFF_UNDO_CLOUD=null;   // committing to the new crew closes the undo window for everyone
   // Nobody on a crew that is only now being picked has scored anything for it yet.
   rosterN.forEach(n=>{ n.scoredDone=false; n.doneAt=0; });
   syncWorking();
@@ -6800,6 +6802,7 @@ function _metaPayload(){
      point of "2 falls overnight" is that the oncoming crew reads it now. They ride on the posted
      half so every phone gets them straight away. */
   return Object.assign(_stripDraft(posted), { quickHits:QUICK_HITS, quickAcks:QUICK_ACKS,
+    handoffUndoCloud:HANDOFF_UNDO_CLOUD,   // rides the posted half so a takeover charge can undo
     _draft:_currentDraftState(), _draftAt:Date.now(), _draftBy:clientId });
 }
 async function pushMeta(){
@@ -6848,6 +6851,11 @@ async function reconcileLocalAcuity(){
    snapshot on this device instead, offer it back plainly, and push the restore so the staff's
    phones recover too. */
 const HANDOFF_KEY='evenshift_handoff_undo_v1';
+/* The undo above is stored only on the device that ended the shift. When the day charge ends and
+   goes home and a DIFFERENT computer takes over, that charge never sees the undo. So the snapshot
+   also rides the shared board (like announcements do — see _metaPayload), letting any charge device
+   put the board back within the window. Cleared once the new crew is picked or the board is posted. */
+let HANDOFF_UNDO_CLOUD=null;   // { at, by, filedKey, state } — the pre-handoff board, synced
 let _alreadyFiled='';   // (date|shift) already written to Manager reports — so an undo + re-end doesn't file it twice
 /* ── Building the new board without taking the old one away ────────────────────────
    Assignments travel to the other phones inside the `meta` blob; patient scores travel
@@ -6920,11 +6928,12 @@ function _stashHandoffUndo(state, filedKey){
 }
 function _readHandoffUndo(){
   try{ const j=JSON.parse(localStorage.getItem(HANDOFF_KEY)||'null');
-    if(!j||!j.state) return null;
-    if(j.unit!==unitId) return null;
-    if(Date.now()-(j.at||0) > 12*3600*1000) return null;   // a whole shift later it is no longer a mistake
-    return j;
-  }catch(e){ return null; }
+    if(j && j.state && j.unit===unitId && Date.now()-(j.at||0) <= 12*3600*1000) return j;   // this device ended the shift
+  }catch(e){}
+  // No local stash (a different computer took over) — fall back to the copy synced on the board.
+  const c=HANDOFF_UNDO_CLOUD;
+  if(c && c.state && Date.now()-(c.at||0) <= 12*3600*1000) return {at:c.at, filedKey:c.filedKey, state:c.state};
+  return null;
 }
 function showHandoffBar(){
   const j=_readHandoffUndo(); const b=document.getElementById('handoffBar'); if(!b) return;
@@ -6937,15 +6946,17 @@ function showHandoffBar(){
 }
 function undoHandoff(){
   const j=_readHandoffUndo(); if(!j){ dismissHandoff(); return; }
+  HANDOFF_UNDO_CLOUD=null;               // clear before applyState so the restored state doesn't carry it
   applyState(j.state);
   _alreadyFiled=j.filedKey||'';         // that shift is already in Manager reports; don't file it twice
   setDrafting(false);                   // the restored board is the real one again — let it sync out
   try{ localStorage.removeItem(HANDOFF_KEY); }catch(e){}
-  cloudRerender(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta();
+  HANDOFF_UNDO_CLOUD=null;
+  cloudRerender(); scheduleSave(); if(cloudOn()&&chargeMode) pushMeta();   // push clears it off the shared board for everyone
   const b=document.getElementById('handoffBar'); if(b) b.style.display='none';
   evToast('Board restored — staff can see their patients again');
 }
-function dismissHandoff(){ try{ localStorage.removeItem(HANDOFF_KEY); }catch(e){} const b=document.getElementById('handoffBar'); if(b) b.style.display='none'; }
+function dismissHandoff(){ try{ localStorage.removeItem(HANDOFF_KEY); }catch(e){} HANDOFF_UNDO_CLOUD=null; const b=document.getElementById('handoffBar'); if(b) b.style.display='none'; if(cloudOn()&&chargeMode) pushMeta(); }
 function showFlipBar(to,from){ const b=document.getElementById('flipBar'); if(!b) return;
   b.innerHTML=`⚠ <b>Another device or tab switched this board to ${esc(String(to).toUpperCase())}</b> — you were working the ${esc(String(from).toUpperCase())} board. `
     +`<button class="btn sm" onclick="undoShiftFlip()">Switch back to ${esc(String(from).toUpperCase())}</button> `
@@ -6957,7 +6968,7 @@ function dismissFlipBar(){ const b=document.getElementById('flipBar'); if(b) b.s
 function stateObj(){
   const rs={};
   Object.values(rooms).forEach(r=>{ if(r.occupied||r.nurse||r.lock||(r.avoid&&r.avoid.length)||r.clearedAt) rs[r.id]={acuity:r.acuity,nextAcuity:r.nextAcuity!=null?r.nextAcuity:null,prevAcuity:r.prevAcuity||null,scoredBy:r.scoredBy||null,editedBy:r.editedBy||null,editedAt:r.editedAt||null,acceptedBy:r.acceptedBy||null,acceptedAt:r.acceptedAt||null,update:r.update||'',updateBy:r.updateBy||null,updateAt:r.updateAt||null,cnote:r.cnote||'',cnoteAt:r.cnoteAt||0,cnoteClearedAt:r.cnoteClearedAt||0,clearedAt:r.clearedAt||0,pctFlags:r.pctFlags||null,pctEditedBy:r.pctEditedBy||null,pctEditedAt:r.pctEditedAt||null,flagsEditedBy:r.flagsEditedBy||null,flagsEditedAt:r.flagsEditedAt||null,occupied:r.occupied,tally:r.tally,flags:r.flags,lock:r.lock,nurse:r.nurse,tags:r.tags,avoid:r.avoid,isoType:r.isoType||'',dcTime:r.dcTime||'',admTime:r.admTime||'',capCarried:!!r.capCarried,acuityReason:r.acuityReason||'',acuityReasonOther:r.acuityReasonOther||''}; });
-  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall),hallHist:Array.isArray(n.hallHist)?n.hallHist.slice(-HALL_HIST_MAX):[]})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, savedAt:Date.now()};
+  return {rooms:rs, rosterN:rosterN.map(n=>({id:n.id,name:n.name,level:n.level,ord:(n.ord==null?null:n.ord),on:n.on!==false,holdover:!!n.holdover,shift:n.shift||'Day',vocAM:n.vocAM||'',vocPM:n.vocPM||'',vocStatus:n.vocStatus||'Assigned',breakTime:n.breakTime||'',breakSlot:n.breakSlot||'',breakApproved:!!n.breakApproved,scoredDone:!!n.scoredDone,doneAt:n.doneAt||0,geoStreak:n.geoStreak||0,geoHall:(n.geoHall==null?null:n.geoHall),hallHist:Array.isArray(n.hallHist)?n.hallHist.slice(-HALL_HIST_MAX):[]})), rosterP:rosterP.map(p=>({id:p.id,name:p.name,on:p.on!==false,holdover:!!p.holdover,shift:p.shift||'Day',vocAM:p.vocAM||'',vocPM:p.vocPM||'',vocStatus:p.vocStatus||'Assigned',breakTime:p.breakTime||'',breakSlot:p.breakSlot||'',breakApproved:!!p.breakApproved,coverBy:p.coverBy||''})), rosterS:rosterS.map(s=>({id:s.id,name:s.name,room:s.room,on:s.on!==false,holdover:!!s.holdover,shift:s.shift||'Day',vocAM:s.vocAM||'',vocPM:s.vocPM||'',vocStatus:s.vocStatus||'Assigned',breakTime:s.breakTime||'',breakSlot:s.breakSlot||'',breakApproved:!!s.breakApproved,breakCover:s.breakCover||'',coverBy:s.coverBy||''})), rosterH:rosterH.map(x=>({id:x.id,name:x.name,on:x.on!==false,shift:x.shift||'Day',vocAM:x.vocAM||'',vocPM:x.vocPM||''})), priority:balancePriority,shiftDate,shiftType,chargeName,chargeOncoming,burdenWDay:BURDEN_W_DAY,burdenWNight:BURDEN_W_NIGHT,bedCap:BED_CAP,dcBarriers:DC_BARRIERS,huddleNote:HUDDLE_NOTE,huddleHistory:HUDDLE_HISTORY,quickHits:QUICK_HITS,quickAcks:QUICK_ACKS,surveyOn:SURVEY_ON,surveyResponses:SURVEY_RESPONSES,pctMode:PCT_MODE,staffReqF:STAFFREQ_F,boardPosted,scoresOk:SCORES_OK,crewOk:CREW_OK,handoffCrew:HANDOFF_CREW,vocOk:vocConfirmed,shiftStart:SHIFT_START,lastUpdatedAt,lastUpdatedBy,unitInfo:UNITINFO,pin:chargePin,hucPin,mgrPin,adminPin,prevShift:PREV_SHIFT,prevByShift:PREV_BY_SHIFT,unitPass,meetConfig,unitFlagConfig:UNIT_FLAG_CONFIG, breakCap:BREAK_CAP, pctOverride:PCT_OVERRIDE, pctManual:PCT_MANUAL, ret:RET, reqAdj:{rn:_rnReqAdj,pct:_pctReqAdj,huc:_hucReqAdj}, codeOverride:CODE_OVERRIDE, vocDevices:VOC_DEVICES, floor:FLOOR, rubric:{name:RUBRIC_NAME,divisor:DIVISOR,label:ACUITY_LABEL,sections:RUBRIC}, handoffUndoCloud:HANDOFF_UNDO_CLOUD, savedAt:Date.now()};
 }
 async function saveState(){ try{ await STORE.set(STORE_KEY, JSON.stringify(stateObj())); setSaved(cloudOn()?'☁ Saved':'Saved'); }catch(e){ setSaved('Not saved'); } }
 function scheduleSave(){ if(storageOK){ setSaved(cloudOn()?'☁ Saving…':'Saving…'); clearTimeout(saveTimer); saveTimer=setTimeout(saveState,500); } if(cloudOn()&&chargeMode){ _metaPushPending=true; clearTimeout(pushTimer); pushTimer=setTimeout(pushMeta,400); } }   // charge structural changes sync to the shared board
@@ -7054,6 +7065,8 @@ function applyState(st){
   if(Array.isArray(st.huddleHistory)) HUDDLE_HISTORY=st.huddleHistory;
   if(st.quickHits && typeof st.quickHits==='object') QUICK_HITS=st.quickHits;
   if(st.quickAcks && typeof st.quickAcks==='object') QUICK_ACKS=st.quickAcks;
+  // Pick up (or clear) the cross-device hand-off undo the ending device put on the board.
+  HANDOFF_UNDO_CLOUD=(st.handoffUndoCloud && st.handoffUndoCloud.state) ? st.handoffUndoCloud : null;
   pruneQuickHits();
   if(typeof st.surveyOn==='boolean') SURVEY_ON=st.surveyOn;
   if(Array.isArray(st.surveyResponses)) SURVEY_RESPONSES=st.surveyResponses;
@@ -7082,7 +7095,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-17 \u00b7 b47';
+const APP_BUILD='2026-09-17 \u00b7 b48';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
@@ -8625,7 +8638,12 @@ function nextShift(){ if(!chargeMode)return;
      instead and only becomes "last shift" once saveStaff() picks the oncoming crew. */
   const _postedForStaff=JSON.parse(JSON.stringify(_preHandoff));
   _stashPostedBoard(_postedForStaff);
-  _stashHandoffUndo(_preHandoff, _fileKey); showHandoffBar(); showBuildingBar();
+  _stashHandoffUndo(_preHandoff, _fileKey);
+  // Also put the undo on the shared board so a charge on any computer can use it (a stripped copy —
+  // no nested undo-in-undo). Rides out with the next meta push (setDrafting already scheduled one).
+  { const _u=JSON.parse(JSON.stringify(_preHandoff)); _u.handoffUndoCloud=null;
+    HANDOFF_UNDO_CLOUD={ at:Date.now(), by:clientId, filedKey:_fileKey, state:_u }; }
+  showHandoffBar(); showBuildingBar();
 }
 /* The charge must never be left guessing whether staff can see this yet. */
 function showBuildingBar(){
