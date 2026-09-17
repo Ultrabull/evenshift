@@ -3398,12 +3398,28 @@ function updateScoreProgress(){
     return;
   }
   // No assignment loaded — can't attribute to a nurse, so show which ROOMS still need scoring.
-  const head = stale>0
-    ? `\uD83E\uDE7A Next-shift scoring: <b>${fresh} of ${total}</b> rooms updated \u00b7 \u26a0 <b>${stale}</b> still pending${unscored?` (${unscored} unscored)`:''}`
-    : `\u2713 All ${total} rooms have a current number for the next shift`;
+  // When NOTHING is scored for this shift yet but the rooms carry numbers, say so plainly and name
+  // who entered them (last shift's crew) \u2014 otherwise a charge who just picked a new crew sees last
+  // shift's names and thinks her crew scored, or can't tell that nobody has. Then point her at who
+  // she's actually waiting on: this shift's crew, not last shift's names.
+  const carriedBy=[...new Set(occ.filter(r=>!roomCurrentThisShift(r)&&(r.acuity>0)&&r.editedBy).map(r=>String(r.editedBy).split(' ')[0]))].slice(0,4);
+  const crewNames=nurses.map(n=>(n.name||'').split(' ')[0]).filter(Boolean);
+  let head;
+  if(fresh===0 && stale>0){
+    head=`\uD83E\uDE7A <b>This shift\u2019s crew hasn\u2019t scored yet.</b> The ${total} number${total>1?'s':''} on the board ${total>1?'were':'was'} carried from last shift${carriedBy.length?` (entered by ${esc(carriedBy.join(', '))})`:''}.`;
+  } else {
+    head = stale>0
+      ? `\uD83E\uDE7A Next-shift scoring: <b>${fresh} of ${total}</b> rooms updated \u00b7 \u26a0 <b>${stale}</b> still pending${unscored?` (${unscored} unscored)`:''}`
+      : `\u2713 All ${total} rooms have a current number for the next shift`;
+  }
   if(stale>0){
-    const nums=occ.filter(r=>!roomCurrentThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
-    const chips=nums.map(rn=>`<span class="spchip spc-none">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
+    let chips;
+    if(fresh===0 && crewNames.length){
+      chips=`<span class="spchip spc-none">Waiting on this shift\u2019s crew to score: ${crewNames.slice(0,6).map(esc).join(', ')}${crewNames.length>6?` +${crewNames.length-6}`:''}</span>`;
+    } else {
+      const nums=occ.filter(r=>!roomCurrentThisShift(r)).map(r=>r.id).sort((a,b)=>a-b);
+      chips=nums.map(rn=>`<span class="spchip spc-none">Rm ${rn}${!(rooms[rn].acuity>0)?' \u00b7 unscored':''}</span>`).join('');
+    }
     el.innerHTML=`<div class="sp-head">${head}</div><div class="sp-chips">${chips}</div>`;
   } else {
     el.innerHTML=`<div class="sp-head">${head}</div>`;
@@ -4513,7 +4529,20 @@ function generate(){ if(!chargeMode)return;
    syncWorking) rather than re-scanned per room. */
 function lockHolder(r){ return (r && r.lock && _crewIds.has(r.lock)) ? r.lock : null; }
 function _generateNow(){ if(!chargeMode)return;
-  if(HANDOFF_CREW){ alert('\ud83d\udc65 Pick the '+(HANDOFF_CREW.toShift||'next')+' crew first.\n\nThe board on screen is still the '+(HANDOFF_CREW.shift||'last')+' shift that just ended. Picking who is working is what moves it over \u2014 until then nothing here changes.'); openStaff(); return; } pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
+  if(HANDOFF_CREW){ alert('\ud83d\udc65 Pick the '+(HANDOFF_CREW.toShift||'next')+' crew first.\n\nThe board on screen is still the '+(HANDOFF_CREW.shift||'last')+' shift that just ended. Picking who is working is what moves it over \u2014 until then nothing here changes.'); openStaff(); return; }
+  // Guard: building before the crew has scored uses last shift's carried-over numbers. A charge who
+  // starts too early gets a board off stale scores and can't tell who's still pending. Warn with the
+  // real count and who last entered the numbers, so she can wait for the crew instead. (shiftBaseline
+  // exists once the shift is started; if it doesn't, there's nothing to measure, so don't nag.)
+  if(shiftBaseline()){
+    const _occ=occupied();
+    const _scored=_occ.filter(roomCurrentThisShift).length;
+    if(_occ.length && _scored<_occ.length){
+      const _by=[...new Set(_occ.filter(r=>!roomCurrentThisShift(r)&&r.editedBy).map(r=>String(r.editedBy).split(' ')[0]))].slice(0,3).join(', ');
+      if(!confirm('\u26a0\ufe0f Only '+_scored+' of '+_occ.length+' rooms are scored for this shift.\n\nThe other '+(_occ.length-_scored)+' still show last shift\u2019s numbers'+(_by?' (entered by '+_by+')':'')+'. Building now uses those old numbers.\n\nIf the crew is still scoring, tap Cancel and wait for them. Build anyway?')) return;
+    }
+  }
+  pushUndo(); boardPosted=false; LAST_GEN_SWAP=null;
   // Build the NEXT shift off each patient's predicted acuity. Swap it in for the run, restore the live "now" after.
   const _savedAcu={}; occupied().forEach(r=>{ _savedAcu[r.id]=r.acuity; if(r.nextAcuity!=null) r.acuity=r.nextAcuity; });
   const _restoreAcu=()=>{ Object.keys(_savedAcu).forEach(id=>{ if(rooms[id]) rooms[id].acuity=_savedAcu[id]; }); };
@@ -7053,7 +7082,7 @@ async function loadState(){
   try{ const res=await STORE.get(STORE_KEY); if(res&&res.value){ applyState(JSON.parse(res.value)); } storageOK=true; setSaved('Saved'); }
   catch(e){ storageOK=true; }
 }
-const APP_BUILD='2026-09-14 \u00b7 b46';
+const APP_BUILD='2026-09-17 \u00b7 b47';
 function stampBuild(){ const e=document.getElementById('buildStamp'); if(e) e.textContent='EvenShift build '+APP_BUILD; }
 function applyShiftUI(){ const d=document.getElementById('shiftDate'); if(d)d.value=shiftDate; const a=document.getElementById('shD'),b=document.getElementById('shN'); if(a)a.classList.toggle('on',shiftType==='Day'); if(b)b.classList.toggle('on',shiftType==='Night'); syncPrioUI(); }
 function onShiftMeta(){ const prev=shiftDate; shiftDate=document.getElementById('shiftDate').value; onShiftDateChanged(prev); scheduleSave(); }
